@@ -9,11 +9,20 @@ from io import BytesIO
 app = Flask(__name__)
 DB_FILE = "library_attendance.db"
 
-# ===================== LOGIN CREDENTIALS =====================
+def ph_now():
+    utc_now = datetime.datetime.utcnow()
+    ph_offset = datetime.timedelta(hours=8)
+    return utc_now + ph_offset
+
+def ph_date():
+    return ph_now().date().isoformat()
+
+def ph_datetime_str():
+    return ph_now().isoformat(timespec="seconds")
+
 USERNAME = "slsu"
 PASSWORD = "jge"
 
-# ===================== DATABASE INIT =====================
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -37,22 +46,20 @@ def init_db():
     conn.close()
 
 DEPARTMENTS = ["CT", "FBT", "BSED", "BEED", "BSFI", "BSBA", "EMPLOYEE"]
-YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "N/A"]
+YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "N/A"]
 
 def generate_barcode_b64(student_number):
     code128 = barcode.get_barcode_class("code128")
     writer = ImageWriter()
-    writer.set_options({"module_width":0.3, "module_height":10, "font_size":8, "text_distance":2})
+    writer.set_options({"module_width":0.25, "module_height":6, "font_size":10, "text_distance":1.5})
     img = code128(student_number, writer=writer).render()
     buffered = BytesIO()
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
-# ===================== LOGIN CHECK =====================
 def is_logged_in():
     return request.cookies.get('logged_in') == 'true'
 
-# ===================== LOGIN PAGE =====================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -102,7 +109,6 @@ def login():
 </body>
 </html>"""
 
-# ===================== MAIN PAGE =====================
 @app.route('/')
 def home():
     if not is_logged_in():
@@ -140,10 +146,17 @@ def home():
         th{background:#f8f9fa;font-weight:bold;color:#667eea;}
         .tab-content{display:none;}
         .tab-content.active{display:block;}
-        .barcode-img{max-width:300px;margin:15px auto;display:block;}
+        .barcode-img{max-width:220px;margin:15px auto;display:block;}
         .btn-print{background:#28a745;}
         .btn-download{background:#ffc107;color:#333;}
         .logout{background:#dc3545;}
+        @media print{
+            body *{visibility:hidden;}
+            .print-barcode-area, .print-barcode-area *{visibility:visible;}
+            .print-barcode-area{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;}
+            .barcode-img{max-width:180px !important;}
+            @page{size:3in 1in;margin:0;}
+        }
     </style>
 </head>
 <body>
@@ -160,7 +173,6 @@ def home():
             <button class="tab" onclick="showTab('export')">📄 Export</button>
         </div>
 
-        <!-- === SCAN TAB === -->
         <div id="scan" class="tab-content active">
             <div class="card">
                 <h2>📱 Scan Student Number Barcode</h2>
@@ -171,7 +183,6 @@ def home():
             </div>
         </div>
 
-        <!-- === REGISTER TAB === -->
         <div id="register" class="tab-content">
             <div class="card">
                 <h2>📇 Register New Student — NO LIMIT!</h2>
@@ -209,14 +220,15 @@ def home():
                 <div id="barcode-result" style="display:none;margin-top:25px;text-align:center;padding:20px;background:#f0f4ff;border-radius:15px;">
                     <h3>✅ Registered Successfully!</h3>
                     <p><strong id="student-info"></strong></p>
-                    <img id="barcode-img" class="barcode-img">
+                    <div class="print-barcode-area">
+                        <img id="barcode-img" class="barcode-img">
+                    </div>
                     <br>
                     <button class="btn-print" onclick="window.print()">🖨️ Print Barcode</button>
                 </div>
             </div>
         </div>
 
-        <!-- === RECORDS TAB === -->
         <div id="records" class="tab-content">
             <div class="card">
                 <h2>📋 Attendance Records</h2>
@@ -225,7 +237,6 @@ def home():
             </div>
         </div>
 
-        <!-- === EXPORT TAB === -->
         <div id="export" class="tab-content">
             <div class="card">
                 <h2>📄 Download / Export Reports</h2>
@@ -247,7 +258,6 @@ function showTab(name){
     if(name==='scan') setTimeout(()=>document.getElementById('scan-input').focus(),100);
 }
 
-// SCAN LOGIC
 const scanInput = document.getElementById('scan-input');
 const statusBox = document.getElementById('status-box');
 
@@ -270,7 +280,6 @@ function submitScan(){
     });
 }
 
-// REGISTER LOGIC
 document.getElementById('register-form').addEventListener('submit', function(e){
     e.preventDefault();
     const form = new FormData(this);
@@ -287,7 +296,6 @@ document.getElementById('register-form').addEventListener('submit', function(e){
     });
 });
 
-// RECORDS
 function loadRecords(){
     fetch('/records').then(r=>r.text()).then(html=>{
         document.getElementById('records-table').innerHTML = html;
@@ -295,7 +303,6 @@ function loadRecords(){
 }
 document.addEventListener('DOMContentLoaded', loadRecords);
 
-// EXPORT
 function downloadWord(){
     window.location.href = '/download-word';
 }
@@ -304,14 +311,12 @@ function downloadWord(){
 </html>
     """, depts=DEPARTMENTS, years=YEAR_LEVELS)
 
-# ===================== LOGOUT =====================
 @app.route('/logout')
 def logout():
     resp = make_response("""<script>window.location='/login';</script>""")
     resp.set_cookie('logged_in', '', expires=0)
     return resp
 
-# ===================== SCAN ENDPOINT =====================
 @app.route('/scan', methods=['POST'])
 def scan():
     if not is_logged_in():
@@ -319,7 +324,7 @@ def scan():
     code = request.form.get('code', '').strip()
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    today = datetime.date.today().isoformat()
+    today = ph_date()
     
     c.execute("SELECT id,full_name,department,year_level FROM users WHERE student_number=?", (code,))
     user = c.fetchone()
@@ -333,19 +338,18 @@ def scan():
     
     if active:
         c.execute("UPDATE attendance SET time_out=? WHERE id=?", 
-                 (datetime.datetime.now().isoformat(timespec="seconds"), active[0]))
+                 (ph_datetime_str(), active[0]))
         msg = f"⏰ TIME OUT — {name} ({dept} | {year})"
         style = "info"
     else:
         c.execute("INSERT INTO attendance (user_id,time_in,scan_date) VALUES (?,?,?)",
-                 (uid, datetime.datetime.now().isoformat(timespec="seconds"), today))
+                 (uid, ph_datetime_str(), today))
         msg = f"✅ TIME IN — {name} ({dept} | {year})"
         style = "success"
     conn.commit()
     conn.close()
     return jsonify({"message":msg,"style":style})
 
-# ===================== REGISTER ENDPOINT =====================
 @app.route('/register', methods=['POST'])
 def register():
     if not is_logged_in():
@@ -364,8 +368,7 @@ def register():
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
         c.execute("INSERT INTO users (full_name,department,contact_number,year_level,student_number,registered_at) VALUES (?,?,?,?,?,?)",
-                 (full_name, department, contact_number, year_level, student_number,
-                  datetime.datetime.now().isoformat(timespec="seconds")))
+                 (full_name, department, contact_number, year_level, student_number, ph_datetime_str()))
         conn.commit()
         conn.close()
         
@@ -376,7 +379,6 @@ def register():
     except sqlite3.IntegrityError:
         return jsonify({"success":False,"error":"Student Number already exists!"})
 
-# ===================== RECORDS ENDPOINT =====================
 @app.route('/records')
 def records():
     if not is_logged_in():
@@ -394,7 +396,6 @@ def records():
     html += "</table>"
     return html
 
-# ===================== DOWNLOAD WORD ENDPOINT =====================
 @app.route('/download-word')
 def download_word():
     if not is_logged_in():
@@ -402,12 +403,10 @@ def download_word():
     
     try:
         from docx import Document
-        from docx.shared import Pt
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
     except ImportError:
-        return "⚠️ python-docx not installed. Please install it first."
+        return "⚠️ python-docx not installed."
     
-    today = datetime.date.today().isoformat()
+    today = ph_date()
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("""SELECT users.full_name, users.department, attendance.time_in, attendance.time_out
@@ -418,7 +417,7 @@ def download_word():
     
     doc = Document()
     doc.add_heading(f'Library Attendance Report — {today}', 0)
-    doc.add_paragraph(f'Generated on: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+    doc.add_paragraph(f'Generated on: {ph_datetime_str()}')
     doc.add_paragraph('=' * 50)
     
     table = doc.add_table(rows=1, cols=4)
@@ -447,11 +446,6 @@ def download_word():
     response.headers['Content-Disposition'] = f'attachment; filename={filename}'
     return response
 
-# ===================== RUN =====================
 if __name__ == '__main__':
     init_db()
-    print("="*50)
-    print("✅ SERVER RUNNING!")
-    print("📌 Login: slsu / jge")
-    print("="*50)
     app.run(host='0.0.0.0', port=5000)
