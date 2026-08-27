@@ -17,6 +17,9 @@ def ph_now():
 def ph_date():
     return ph_now().date().isoformat()
 
+def ph_time_str():
+    return ph_now().strftime("%H:%M:%S")
+
 def ph_datetime_str():
     return ph_now().isoformat(timespec="seconds")
 
@@ -338,12 +341,12 @@ def scan():
     
     if active:
         c.execute("UPDATE attendance SET time_out=? WHERE id=?", 
-                 (ph_datetime_str(), active[0]))
+                 (ph_time_str(), active[0]))
         msg = f"⏰ TIME OUT — {name} ({dept} | {year})"
         style = "info"
     else:
         c.execute("INSERT INTO attendance (user_id,time_in,scan_date) VALUES (?,?,?)",
-                 (uid, ph_datetime_str(), today))
+                 (uid, ph_time_str(), today))
         msg = f"✅ TIME IN — {name} ({dept} | {year})"
         style = "success"
     conn.commit()
@@ -417,7 +420,7 @@ def download_word():
     
     doc = Document()
     doc.add_heading(f'Library Attendance Report — {today}', 0)
-    doc.add_paragraph(f'Generated on: {ph_datetime_str()}')
+    doc.add_paragraph(f'Generated on: {ph_time_str()}')
     doc.add_paragraph('=' * 50)
     
     table = doc.add_table(rows=1, cols=4)
