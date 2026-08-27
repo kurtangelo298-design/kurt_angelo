@@ -1,5 +1,5 @@
 from flask import Flask, render_template_string, request, jsonify, session, redirect, url_for
-import psycopg2
+import psycopg2cffi as psycopg2
 from psycopg2.extras import RealDictCursor
 import datetime
 import os
