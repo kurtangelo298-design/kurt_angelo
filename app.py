@@ -214,6 +214,13 @@ def dashboard():
     
     conn.close()
     
+    html_rows = ""
+    for r in records:
+        date_str = r[4][:10] if r[4] else "-"
+        html_rows += f"<tr><td>{r[1]}</td><td>{r[2] or '-'}</td><td>{r[3] or '-'}</td><td>{date_str}</td></tr>"
+    if len(records) == 0:
+        html_rows = "<tr><td colspan='4' style='text-align:center;'>No records yet.</td></tr>"
+    
     return render_template_string("""
 <!DOCTYPE html>
 <html>
@@ -244,33 +251,21 @@ def dashboard():
     <div class="container">
         <a href='/logout' class='btn btn-logout'>🚪 Logout</a>
         <h1>📚 Library Attendance</h1>
-        
         <div class="info">
             <h3>Welcome, """ + session['full_name'] + """! 🎓</h3>
             <p><strong>Department:</strong> """ + session['department'] + """</p>
             <p><strong>Total Visits:</strong> """ + str(total_visits) + """</p>
         </div>
-        
         <div class="btn-group">
             <a href='/scan-in' class='btn btn-in'>✅ Time IN</a>
             <a href='/scan-out' class='btn btn-out'>🚪 Time OUT</a>
             <a href='/user-list' class='btn btn-list'>👥 All Users</a>
             <a href='/edit-profile' class='btn btn-edit'>✏️ Edit My Info</a>
         </div>
-        
         <h3>📋 Recent Records</h3>
         <table>
             <tr><th>Barcode ID</th><th>Time IN</th><th>Time OUT</th><th>Date</th></tr>
-    """) + "".join([f"""
-            <tr>
-                <td>{r[1]}</td>
-                <td>{r[2] or '-'}</td>
-                <td>{r[3] or '-'}</td>
-                <td>{r[4][:10] if r[4] else '-'}</td>
-            </tr>
-    """ for r in records]) + ("""
-            <tr><td colspan="4" style="text-align:center;">No records yet.</td></tr>
-    """ if len(records) == 0 else "") + ("""
+            """ + html_rows + """
         </table>
     </div>
 </body>
@@ -287,6 +282,13 @@ def user_list():
     c.execute("SELECT id, full_name, username, department, year_level, student_number, contact_number FROM users ORDER BY full_name")
     users = c.fetchall()
     conn.close()
+    
+    html_rows = ""
+    for u in users:
+        contact = u[6] if u[6] else "-"
+        html_rows += f"<tr><td>{u[1]}</td><td>{u[2]}</td><td>{u[3]}</td><td>{u[4]}</td><td>{u[5]}</td><td>{contact}</td><td><a href='/edit-user/{u[0]}' class='btn btn-edit'>Edit</a></td></tr>"
+    if len(users) == 0:
+        html_rows = "<tr><td colspan='7' style='text-align:center;'>No users registered yet.</td></tr>"
     
     return render_template_string("""
 <!DOCTYPE html>
@@ -320,19 +322,7 @@ def user_list():
                 <th>Contact</th>
                 <th>Action</th>
             </tr>
-    """) + "".join([f"""
-            <tr>
-                <td>{u[1]}</td>
-                <td>{u[2]}</td>
-                <td>{u[3]}</td>
-                <td>{u[4]}</td>
-                <td>{u[5]}</td>
-                <td>{u[6] or '-'}</td>
-                <td><a href='/edit-user/{u[0]}' class='btn btn-edit'>Edit</a></td>
-            </tr>
-    """ for u in users]) + ("""
-            <tr><td colspan="7" style="text-align:center;">No users registered yet.</td></tr>
-    """ if len(users) == 0 else "") + """
+            """ + html_rows + """
         </table>
     </div>
 </body>
@@ -361,6 +351,10 @@ def edit_profile():
     user = c.fetchone()
     conn.close()
     
+    dept_selected = {}
+    for dept in ['CT', 'FBT', 'BSED', 'BEED', 'BSFI', 'BSBA']:
+        dept_selected[dept] = "selected" if user[2] == dept else ""
+    
     return render_template_string("""
 <!DOCTYPE html>
 <html>
@@ -387,12 +381,12 @@ def edit_profile():
             <input type="password" name="password" placeholder="New Password" required>
             <select name="department" required>
                 <option value="">-- Select Department --</option>
-                <option """ + ("selected" if user[2] == 'CT' else "") + """>CT</option>
-                <option """ + ("selected" if user[2] == 'FBT' else "") + """>FBT</option>
-                <option """ + ("selected" if user[2] == 'BSED' else "") + """>BSED</option>
-                <option """ + ("selected" if user[2] == 'BEED' else "") + """>BEED</option>
-                <option """ + ("selected" if user[2] == 'BSFI' else "") + """>BSFI</option>
-                <option """ + ("selected" if user[2] == 'BSBA' else "") + """>BSBA</option>
+                <option """ + dept_selected['CT'] + """>CT</option>
+                <option """ + dept_selected['FBT'] + """>FBT</option>
+                <option """ + dept_selected['BSED'] + """>BSED</option>
+                <option """ + dept_selected['BEED'] + """>BEED</option>
+                <option """ + dept_selected['BSFI'] + """>BSFI</option>
+                <option """ + dept_selected['BSBA'] + """>BSBA</option>
             </select>
             <input type="text" name="year_level" value='""" + user[3] + """' required>
             <input type="text" name="contact_number" value='""" + (user[4] or "") + """'>
@@ -425,6 +419,10 @@ def edit_user(user_id):
     user = c.fetchone()
     conn.close()
     
+    dept_selected = {}
+    for dept in ['CT', 'FBT', 'BSED', 'BEED', 'BSFI', 'BSBA']:
+        dept_selected[dept] = "selected" if user[2] == dept else ""
+    
     return render_template_string("""
 <!DOCTYPE html>
 <html>
@@ -451,12 +449,12 @@ def edit_user(user_id):
             <input type="text" name="student_number" value='""" + user[5] + """' disabled>
             <select name="department" required>
                 <option value="">-- Select Department --</option>
-                <option """ + ("selected" if user[2] == 'CT' else "") + """>CT</option>
-                <option """ + ("selected" if user[2] == 'FBT' else "") + """>FBT</option>
-                <option """ + ("selected" if user[2] == 'BSED' else "") + """>BSED</option>
-                <option """ + ("selected" if user[2] == 'BEED' else "") + """>BEED</option>
-                <option """ + ("selected" if user[2] == 'BSFI' else "") + """>BSFI</option>
-                <option """ + ("selected" if user[2] == 'BSBA' else "") + """>BSBA</option>
+                <option """ + dept_selected['CT'] + """>CT</option>
+                <option """ + dept_selected['FBT'] + """>FBT</option>
+                <option """ + dept_selected['BSED'] + """>BSED</option>
+                <option """ + dept_selected['BEED'] + """>BEED</option>
+                <option """ + dept_selected['BSFI'] + """>BSFI</option>
+                <option """ + dept_selected['BSBA'] + """>BSBA</option>
             </select>
             <input type="text" name="year_level" value='""" + user[3] + """' required>
             <input type="text" name="contact_number" value='""" + (user[4] or "") + """'>
