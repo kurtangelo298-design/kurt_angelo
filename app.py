@@ -270,7 +270,7 @@ def dashboard():
             </tr>
     """ for r in records]) + ("""
             <tr><td colspan="4" style="text-align:center;">No records yet.</td></tr>
-    """ if len(records) == 0 else "") + """
+    """ if len(records) == 0 else "") + ("""
         </table>
     </div>
 </body>
