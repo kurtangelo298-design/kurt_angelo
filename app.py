@@ -5,15 +5,19 @@ import barcode
 from barcode.writer import ImageWriter
 import base64
 from io import BytesIO
+import os
 
 app = Flask(__name__)
-DB_FILE = "library_attendance.db"
+
+# ===================== PERMANENT DATABASE PATH =====================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.path.join(BASE_DIR, "library_attendance.db")
 
 # ===================== LOGIN CREDENTIALS =====================
 USERNAME = "slsu"
 PASSWORD = "jge"
 
-# ===================== DATABASE INIT =====================
+# ===================== DATABASE INIT — PERMANENT! =====================
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -36,6 +40,9 @@ def init_db():
     conn.commit()
     conn.close()
 
+# Auto-create database on first run
+init_db()
+
 DEPARTMENTS = ["CT", "FBT", "BSED", "BEED", "BSFI", "BSBA", "EMPLOYEE"]
 YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "N/A"]
 
@@ -48,13 +55,11 @@ def generate_barcode_b64(student_number):
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
-# ===================== HELPER: NORMALIZE TEXT =====================
 def normalize_text(text):
     if text:
         return text.strip().lower()
     return ""
 
-# ===================== LOGIN CHECK =====================
 def is_logged_in():
     return request.cookies.get('logged_in') == 'true'
 
@@ -64,12 +69,10 @@ def login():
     if request.method == 'POST':
         uname = normalize_text(request.form.get('username', ''))
         pword = request.form.get('password', '').strip()
-        
         if uname == normalize_text(USERNAME) and pword == PASSWORD:
             resp = make_response("""<script>window.location='/';</script>""")
-            resp.set_cookie('logged_in', 'true', max_age=86400)
+            resp.set_cookie('logged_in', 'true', max_age=31536000)
             return resp
-        
         return """
         <html><body style="font-family:Arial;text-align:center;padding-top:100px;background:#f5f5f5;">
             <h2 style="color:red;">❌ Wrong Username or Password!</h2>
@@ -173,7 +176,6 @@ def home():
             <button class="tab" onclick="showTab('export')">📄 Export</button>
         </div>
 
-        <!-- === SCAN TAB === -->
         <div id="scan" class="tab-content active">
             <div class="card">
                 <h2>📱 Scan Student Number Barcode</h2>
@@ -184,7 +186,6 @@ def home():
             </div>
         </div>
 
-        <!-- === REGISTER TAB === -->
         <div id="register" class="tab-content">
             <div class="card">
                 <h2>📇 Register New Student — NO LIMIT!</h2>
@@ -229,7 +230,6 @@ def home():
             </div>
         </div>
 
-        <!-- === STUDENTS LIST TAB === -->
         <div id="students" class="tab-content">
             <div class="card">
                 <h2>👥 Registered Students — Edit Any Info</h2>
@@ -275,7 +275,6 @@ def home():
             </div>
         </div>
 
-        <!-- === RECORDS TAB === -->
         <div id="records" class="tab-content">
             <div class="card">
                 <h2>📋 Attendance Records</h2>
@@ -284,7 +283,6 @@ def home():
             </div>
         </div>
 
-        <!-- === EXPORT TAB === -->
         <div id="export" class="tab-content">
             <div class="card">
                 <h2>📄 Download / Export Reports</h2>
@@ -309,14 +307,11 @@ function showTab(name){
     if(name==='students') loadStudents();
 }
 
-// SCAN LOGIC
 const scanInput = document.getElementById('scan-input');
 const statusBox = document.getElementById('status-box');
-
 scanInput.addEventListener('keypress', function(e){
     if(e.key==='Enter') submitScan();
 });
-
 function submitScan(){
     const code = scanInput.value.trim();
     if(!code) return;
@@ -332,7 +327,6 @@ function submitScan(){
     });
 }
 
-// REGISTER LOGIC
 document.getElementById('register-form').addEventListener('submit', function(e){
     e.preventDefault();
     const form = new FormData(this);
@@ -349,7 +343,6 @@ document.getElementById('register-form').addEventListener('submit', function(e){
     });
 });
 
-// STUDENTS LIST + EDIT
 function loadStudents(){
     fetch('/students').then(r=>r.text()).then(html=>{
         document.getElementById('students-table').innerHTML = html;
@@ -389,7 +382,6 @@ document.getElementById('edit-form').addEventListener('submit', function(e){
     });
 });
 
-// RECORDS
 function loadRecords(){
     fetch('/records').then(r=>r.text()).then(html=>{
         document.getElementById('records-table').innerHTML = html;
@@ -397,7 +389,6 @@ function loadRecords(){
 }
 document.addEventListener('DOMContentLoaded', ()=>{ loadRecords(); loadStudents(); });
 
-// EXPORT
 function downloadWord(){
     window.location.href = '/download-word';
 }
@@ -465,58 +456,52 @@ def register():
         
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
-        c.execute("INSERT INTO users (full_name,department,contact_number,year_level,student_number,registered_at) VALUES (?,?,?,?,?,?)",
-                 (full_name, department, contact_number, year_level, student_number,
-                  datetime.datetime.now().isoformat(timespec="seconds")))
+        c.execute("SELECT id FROM users WHERE student_number=?", (student_number,))
+        if c.fetchone():
+            conn.close()
+            return jsonify({"success":False,"error":"Student Number already registered!"})
+        
+        c.execute("""INSERT INTO users 
+            (full_name, department, contact_number, year_level, student_number, registered_at)
+            VALUES (?, ?, ?, ?, ?, ?)""",
+            (full_name, department, contact_number, year_level, student_number, 
+             datetime.datetime.now().isoformat(timespec="seconds")))
         conn.commit()
-        conn.close()
         
         barcode_b64 = generate_barcode_b64(student_number)
-        return jsonify({"success":True,
-                       "info":f"{full_name} | {department} | {year_level} | ID: {student_number}",
-                       "barcode":barcode_b64})
-    except sqlite3.IntegrityError:
-        return jsonify({"success":False,"error":"Student Number already exists!"})
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "info": f"{full_name} | {student_number} | {department} — {year_level}",
+            "barcode": barcode_b64
+        })
+    except Exception as e:
+        return jsonify({"success":False,"error":str(e)})
 
 # ===================== STUDENTS LIST ENDPOINT =====================
 @app.route('/students')
 def students_list():
     if not is_logged_in():
-        return "<h2>Unauthorized</h2>"
+        return "<p>Please login first.</p>"
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("SELECT id, full_name, student_number, department, year_level, contact_number FROM users ORDER BY full_name")
-    rows = c.fetchall()
+    students = c.fetchall()
     conn.close()
     
-    html = """
-    <table>
-        <tr>
-            <th>Full Name</th>
-            <th>Student Number</th>
-            <th>Department</th>
-            <th>Year Level</th>
-            <th>Contact</th>
-            <th>Action</th>
-        </tr>
-    """
-    for r in rows:
-        contact = r[5] if r[5] else "-"
-        html += f"""
-        <tr>
-            <td>{r[1]}</td>
-            <td>{r[2]}</td>
-            <td>{r[3]}</td>
-            <td>{r[4]}</td>
-            <td>{contact}</td>
-            <td>
-                <button class="btn-edit" onclick="showEditForm({r[0]}, '{r[1]}', '{r[2]}', '{r[3]}', '{r[4]}', '{r[5] or ''}')">✏️ Edit</button>
-            </td>
-        </tr>
-        """
+    if not students:
+        return "<p style='text-align:center;color:#888;'>No registered students yet.</p>"
+    
+    html = "<table><tr><th>Name</th><th>Student #</th><th>Dept</th><th>Year</th><th>Contact</th><th>Action</th></tr>"
+    for s in students:
+        sid, name, num, dept, year, contact = s
+        html += f"""<tr>
+            <td>{name}</td><td>{num}</td><td>{dept}</td><td>{year}</td>
+            <td>{contact or '-'}</td>
+            <td><button class='btn-edit' onclick="showEditForm({sid}, '{name}', '{num}', '{dept}', '{year}', '{contact or ''}')">✏️ Edit</button></td>
+        </tr>"""
     html += "</table>"
-    if not rows:
-        html = "<p style='text-align:center;color:#666;padding:20px;'>No students registered yet.</p>"
     return html
 
 # ===================== UPDATE STUDENT ENDPOINT =====================
@@ -526,26 +511,30 @@ def update_student():
         return jsonify({"success":False,"error":"Unauthorized"})
     try:
         data = request.form
-        student_id = data.get('id', '').strip()
-        full_name = data.get('full_name', '').strip()
-        student_number = data.get('student_number', '').strip()
-        department = data.get('department', '')
-        year_level = data.get('year_level', '')
-        contact_number = data.get('contact_number', '')
+        sid = data.get('id')
+        full_name = data.get('full_name','').strip()
+        student_number = data.get('student_number','').strip()
+        department = data.get('department','')
+        year_level = data.get('year_level','')
+        contact_number = data.get('contact_number','')
         
-        if not student_id or not full_name or not student_number:
+        if not sid or not full_name or not student_number:
             return jsonify({"success":False,"error":"Missing required fields"})
         
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
-        c.execute("""UPDATE users SET full_name=?, student_number=?, department=?, year_level=?, contact_number=?
-                     WHERE id = ?""",
-                  (full_name, student_number, department, year_level, contact_number, student_id))
+        c.execute("SELECT id FROM users WHERE student_number=? AND id!=?", (student_number, sid))
+        if c.fetchone():
+            conn.close()
+            return jsonify({"success":False,"error":"Student Number already used by another!"})
+        
+        c.execute("""UPDATE users SET 
+            full_name=?, student_number=?, department=?, year_level=?, contact_number=?
+            WHERE id=?""",
+            (full_name, student_number, department, year_level, contact_number, sid))
         conn.commit()
         conn.close()
         return jsonify({"success":True})
-    except sqlite3.IntegrityError:
-        return jsonify({"success":False,"error":"Student Number already exists!"})
     except Exception as e:
         return jsonify({"success":False,"error":str(e)})
 
@@ -553,78 +542,79 @@ def update_student():
 @app.route('/records')
 def records():
     if not is_logged_in():
-        return "<h2>Unauthorized</h2>"
+        return "<p>Please login first.</p>"
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("""SELECT users.full_name, users.department, attendance.time_in, attendance.time_out, attendance.scan_date
-                 FROM attendance JOIN users ON users.id = attendance.user_id
-                 ORDER BY attendance.id DESC LIMIT 100""")
-    rows = c.fetchall()
+    c.execute("""SELECT u.full_name, a.scan_date, a.time_in, a.time_out, u.department
+                 FROM attendance a JOIN users u ON a.user_id = u.id
+                 ORDER BY a.scan_date DESC, a.time_in DESC LIMIT 200""")
+    records = c.fetchall()
     conn.close()
-    html = "<table><tr><th>Name</th><th>Dept</th><th>Time In</th><th>Time Out</th><th>Date</th></tr>"
-    for r in rows:
-        html += f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2] or '-'}</td><td>{r[3] or '-'}</td><td>{r[4]}</td></tr>"
+    
+    if not records:
+        return "<p style='text-align:center;color:#888;'>No attendance records yet.</p>"
+    
+    html = "<table><tr><th>Name</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Dept</th></tr>"
+    for r in records:
+        name, date, tin, tout, dept = r
+        tin_short = tin.split('T')[1][:8] if tin else '-'
+        tout_short = tout.split('T')[1][:8] if tout else '-'
+        html += f"<tr><td>{name}</td><td>{date}</td><td>{tin_short}</td><td>{tout_short}</td><td>{dept}</td></tr>"
     html += "</table>"
-    if not rows:
-        html = "<p style='text-align:center;color:#666;padding:20px;'>No attendance records yet.</p>"
     return html
 
 # ===================== DOWNLOAD WORD ENDPOINT =====================
 @app.route('/download-word')
 def download_word():
     if not is_logged_in():
-        return "Unauthorized"
-    
+        return "Unauthorized", 401
     try:
         from docx import Document
+        from docx.shared import Pt
+        
+        today = datetime.date.today().isoformat()
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("""SELECT u.full_name, a.time_in, a.time_out, u.department
+                     FROM attendance a JOIN users u ON a.user_id = u.id
+                     WHERE a.scan_date = ? ORDER BY a.time_in""", (today,))
+        records = c.fetchall()
+        conn.close()
+        
+        doc = Document()
+        doc.add_heading(f'Library Attendance — {today}', 0)
+        doc.add_paragraph(f'Generated: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+        doc.add_paragraph('')
+        
+        table = doc.add_table(rows=1, cols=5)
+        table.style = 'Table Grid'
+        hdr = table.rows[0].cells
+        hdr[0].text = '#'
+        hdr[1].text = 'Name'
+        hdr[2].text = 'Time In'
+        hdr[3].text = 'Time Out'
+        hdr[4].text = 'Department'
+        
+        for i, r in enumerate(records, 1):
+            name, tin, tout, dept = r
+            row = table.add_row().cells
+            row[0].text = str(i)
+            row[1].text = name
+            row[2].text = tin.split('T')[1][:8] if tin else '-'
+            row[3].text = tout.split('T')[1][:8] if tout else '-'
+            row[4].text = dept
+        
+        buffer = BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+        
+        resp = make_response(buffer.read())
+        resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        resp.headers['Content-Disposition'] = f'attachment; filename=attendance_{today}.docx'
+        return resp
     except ImportError:
-        return "⚠️ python-docx not installed. Please install it first."
-    
-    today = datetime.date.today().isoformat()
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("""SELECT users.full_name, users.department, attendance.time_in, attendance.time_out
-                 FROM attendance JOIN users ON users.id = attendance.user_id
-                 WHERE attendance.scan_date = ? ORDER BY attendance.id DESC""", (today,))
-    rows = c.fetchall()
-    conn.close()
-    
-    doc = Document()
-    doc.add_heading(f'Library Attendance Report — {today}', 0)
-    doc.add_paragraph(f'Generated on: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
-    doc.add_paragraph('=' * 50)
-    
-    table = doc.add_table(rows=1, cols=4)
-    table.style = 'Table Grid'
-    hdr_cells = table.rows[0].cells
-    hdr_cells[0].text = 'Name'
-    hdr_cells[1].text = 'Department'
-    hdr_cells[2].text = 'Time In'
-    hdr_cells[3].text = 'Time Out'
-    
-    for r in rows:
-        row_cells = table.add_row().cells
-        row_cells[0].text = r[0]
-        row_cells[1].text = r[1]
-        row_cells[2].text = r[2] or '-'
-        row_cells[3].text = r[3] or '-'
-    
-    filename = f"attendance_{today}.docx"
-    from io import BytesIO
-    buffer = BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
-    
-    response = make_response(buffer.getvalue())
-    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
-    return response
+        return "python-docx not installed. Add 'python-docx' to requirements.txt", 500
 
-# ===================== RUN =====================
+# ===================== RUN — FOR RENDER =====================
 if __name__ == '__main__':
-    init_db()
-    print("="*50)
-    print("✅ SERVER RUNNING!")
-    print("📌 Login: slsu / jge")
-    print("="*50)
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=False)
