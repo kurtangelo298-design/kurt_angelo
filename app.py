@@ -1,5 +1,5 @@
 from flask import Flask, render_template_string, request, jsonify, make_response
-import psycopg2-binary as psycopg2
+import psycopg2
 import os
 import datetime
 import barcode
