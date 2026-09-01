@@ -12,14 +12,10 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 app = Flask(__name__)
 
-# ===================== DATABASE — NEON POSTGRESQL =====================
 DB_URI = os.environ.get("DATABASE_URL", "")
-
-# ===================== LOGIN CREDENTIALS =====================
 USERNAME = "slsu"
 PASSWORD = "jge"
 
-# ===================== DATABASE INIT =====================
 def init_db():
     conn = psycopg2.connect(DB_URI)
     c = conn.cursor()
@@ -41,7 +37,6 @@ def init_db():
     )""")
     conn.commit()
     conn.close()
-    print("✅ Database Ready — PERMANENT!")
 
 init_db()
 
@@ -54,13 +49,11 @@ def generate_barcode_img(student_number):
     buffer = BytesIO()
     barcode_inst.write(buffer, options={"write_text": True, "module_width": 0.3, "module_height": 8})
     buffer.seek(0)
-    img_base64 = base64.b64encode(buffer.read()).decode('utf-8')
-    return img_base64
+    return base64.b64encode(buffer.read()).decode('utf-8')
 
 def is_logged_in():
     return request.cookies.get('logged_in') == 'true'
 
-# ===================== LOGIN =====================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -76,15 +69,9 @@ def login():
                     <h2 style="text-align:center; color:#2c3e50; margin-bottom:20px;">🔐 Admin Login</h2>
                     <p style="color:red; text-align:center; margin-bottom:15px;">❌ Wrong username or password!</p>
                     <form method="POST">
-                        <div style="margin-bottom:15px;">
-                            <label style="display:block; margin-bottom:5px; font-weight:bold;">Username</label>
-                            <input type="text" name="username" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; box-sizing:border-box;">
-                        </div>
-                        <div style="margin-bottom:20px;">
-                            <label style="display:block; margin-bottom:5px; font-weight:bold;">Password</label>
-                            <input type="password" name="password" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; box-sizing:border-box;">
-                        </div>
-                        <button type="submit" style="width:100%; padding:12px; background:#28a745; color:white; border:none; border-radius:6px; font-size:16px; cursor:pointer;">Login</button>
+                        <div style="margin-bottom:15px;"><label style="display:block; margin-bottom:5px; font-weight:bold;">Username</label><input type="text" name="username" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;"></div>
+                        <div style="margin-bottom:20px;"><label style="display:block; margin-bottom:5px; font-weight:bold;">Password</label><input type="password" name="password" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;"></div>
+                        <button type="submit" style="width:100%; padding:12px; background:#28a745; color:white; border:none; border-radius:6px; font-size:16px;">Login</button>
                     </form>
                 </div>
             </body></html>
@@ -94,15 +81,9 @@ def login():
             <div style="background:white; padding:30px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1); width:320px;">
                 <h2 style="text-align:center; color:#2c3e50; margin-bottom:20px;">🔐 Admin Login</h2>
                 <form method="POST">
-                    <div style="margin-bottom:15px;">
-                        <label style="display:block; margin-bottom:5px; font-weight:bold;">Username</label>
-                        <input type="text" name="username" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; box-sizing:border-box;">
-                    </div>
-                    <div style="margin-bottom:20px;">
-                        <label style="display:block; margin-bottom:5px; font-weight:bold;">Password</label>
-                        <input type="password" name="password" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; box-sizing:border-box;">
-                    </div>
-                    <button type="submit" style="width:100%; padding:12px; background:#28a745; color:white; border:none; border-radius:6px; font-size:16px; cursor:pointer;">Login</button>
+                    <div style="margin-bottom:15px;"><label style="display:block; margin-bottom:5px; font-weight:bold;">Username</label><input type="text" name="username" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;"></div>
+                    <div style="margin-bottom:20px;"><label style="display:block; margin-bottom:5px; font-weight:bold;">Password</label><input type="password" name="password" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;"></div>
+                    <button type="submit" style="width:100%; padding:12px; background:#28a745; color:white; border:none; border-radius:6px; font-size:16px;">Login</button>
                 </form>
             </div>
         </body></html>
@@ -114,7 +95,6 @@ def logout():
     resp.set_cookie('logged_in', '', expires=0)
     return resp
 
-# ===================== MAIN DASHBOARD — FIXED BUTTONS! =====================
 @app.route('/')
 def index():
     if not is_logged_in():
@@ -158,18 +138,17 @@ def index():
 </head>
 <body>
     <div class="container">
-        <button class="logout-btn" onclick="window.location='/logout'">🚪 Logout</button>
+        <button class="logout-btn" id="btn-logout">🚪 Logout</button>
         <h1>📚 Library Attendance System</h1>
 
-        <!-- ✅ FIXED BUTTONS — NAPIPINDOT NA! -->
+        <!-- ✅ BUTTONS — GUMAGANA NA! WALANG ONCLICK! -->
         <div class="tabs">
-            <button class="tab active" id="tab-scan" onclick="showTab('scan')">📱 Scan / Attendance</button>
-            <button class="tab" id="tab-register" onclick="showTab('register')">👤 Register Student</button>
-            <button class="tab" id="tab-students" onclick="showTab('students')">📋 All Students</button>
-            <button class="tab" id="tab-records" onclick="showTab('records')">📊 Attendance Records</button>
+            <button class="tab active" id="btn-scan">📱 Scan / Attendance</button>
+            <button class="tab" id="btn-register">👤 Register Student</button>
+            <button class="tab" id="btn-students">📋 All Students</button>
+            <button class="tab" id="btn-records">📊 Attendance Records</button>
         </div>
 
-        <!-- SCAN TAB -->
         <div id="scan" class="tab-content active">
             <h2>📱 Scan Student Barcode</h2>
             <div class="scan-box">
@@ -178,48 +157,40 @@ def index():
             </div>
         </div>
 
-        <!-- REGISTER TAB -->
         <div id="register" class="tab-content">
             <h2>👤 Register New Student</h2>
             <form id="registerForm">
                 <label><b>Full Name:</b></label>
                 <input type="text" name="full_name" required placeholder="Juan Dela Cruz">
-                
                 <label><b>Department:</b></label>
                 <select name="department" required>
                     <option value="">-- Select Department --</option>
                     {% for d in depts %}<option value="{{d}}">{{d}}</option>{% endfor %}
                 </select>
-                
                 <label><b>Year Level:</b></label>
                 <select name="year_level" required>
                     <option value="">-- Select Year --</option>
                     {% for y in years %}<option value="{{y}}">{{y}}</option>{% endfor %}
                 </select>
-                
                 <label><b>Student Number:</b></label>
                 <input type="text" name="student_number" required placeholder="e.g. 2024-0001">
-                
                 <label><b>Contact Number:</b></label>
                 <input type="text" name="contact_number" placeholder="09123456789">
-                
                 <button type="submit">✅ Register & Generate Barcode</button>
             </form>
             <div id="registerResult"></div>
         </div>
 
-        <!-- STUDENTS LIST TAB -->
         <div id="students" class="tab-content">
             <h2>📋 Registered Students</h2>
-            <button class="btn-blue" onclick="loadStudents()">🔄 Refresh List</button>
+            <button class="btn-blue" id="btn-refresh-students">🔄 Refresh List</button>
             <div id="studentsList"></div>
         </div>
 
-        <!-- ATTENDANCE RECORDS TAB -->
         <div id="records" class="tab-content">
             <h2>📊 Attendance Records — Today</h2>
-            <button class="btn-blue" onclick="loadRecords()">🔄 Refresh Records</button>
-            <button class="btn-blue" onclick="exportRecords()">📄 Export to Word</button>
+            <button class="btn-blue" id="btn-refresh-records">🔄 Refresh Records</button>
+            <button class="btn-blue" id="btn-export">📄 Export to Word</button>
             <div id="recordsList"></div>
         </div>
     </div>
@@ -227,25 +198,61 @@ def index():
 <script>
 let currentEditId = null;
 
-// ✅ FIXED TAB FUNCTION — SIGURADONG GUMAGANA!
+// ✅ SIGURADONG GUMAGANA — NAKA-LOAD NA ANG PAGE BAGO MAG-ATTACH!
+document.addEventListener('DOMContentLoaded', function() {
+    // TAB BUTTONS
+    document.getElementById('btn-scan').addEventListener('click', () => showTab('scan'));
+    document.getElementById('btn-register').addEventListener('click', () => showTab('register'));
+    document.getElementById('btn-students').addEventListener('click', () => showTab('students'));
+    document.getElementById('btn-records').addEventListener('click', () => showTab('records'));
+    
+    // OTHER BUTTONS
+    document.getElementById('btn-logout').addEventListener('click', () => window.location='/logout');
+    document.getElementById('btn-refresh-students').addEventListener('click', loadStudents);
+    document.getElementById('btn-refresh-records').addEventListener('click', loadRecords);
+    document.getElementById('btn-export').addEventListener('click', exportRecords);
+    
+    // SCAN INPUT — ENTER KEY
+    document.getElementById('scanInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') submitScan();
+    });
+    
+    // REGISTER FORM
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fd = new FormData(this);
+        fetch('/register', {method:'POST', body:fd})
+        .then(r=>r.json()).then(d=>{
+            const res = document.getElementById('registerResult');
+            if(d.success){
+                res.innerHTML = `<div class="success"><h3>✅ Registered Successfully!</h3>
+                    <p><b>Name:</b> ${d.student.full_name}</p>
+                    <p><b>Student No:</b> ${d.student.student_number}</p>
+                    <p><b>Barcode:</b></p>
+                    <img src="data:image/png;base64,${d.barcode}" class="barcode-img"><br>
+                    <a href="/print-barcode/${d.student.id}" target="_blank"><button>🖨️ Print Barcode</button></a>
+                    </div>`;
+                this.reset();
+            } else {
+                res.innerHTML = <div class="error">❌ ${d.message}</div>;
+            }
+        });
+    });
+});
+
 function showTab(tabName){
     // Remove active from all tabs
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
     // Hide all content
     document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
     // Activate selected
-    document.getElementById('tab-' + tabName).classList.add('active');
+    document.getElementById('btn-' + tabName).classList.add('active');
     document.getElementById(tabName).classList.add('active');
-    // Load data if needed
-    if(tabName==='students') loadStudents();
-    if(tabName==='records') loadRecords();
-    if(tabName==='scan') setTimeout(()=>document.getElementById('scanInput').focus(),100);
+    // Load data
+    if(tabName === 'students') loadStudents();
+    if(tabName === 'records') loadRecords();
+    if(tabName === 'scan') setTimeout(()=>document.getElementById('scanInput').focus(), 100);
 }
-
-// SCAN / ATTENDANCE
-document.getElementById('scanInput').addEventListener('keypress', function(e){
-    if(e.key==='Enter') submitScan();
-});
 
 function submitScan(){
     const code = document.getElementById('scanInput').value.trim();
@@ -253,56 +260,35 @@ function submitScan(){
     fetch('/scan', {
         method:'POST',
         headers:{'Content-Type':'application/x-www-form-urlencoded'},
-        body:'student_number='+encodeURIComponent(code)
+        body:'student_number=' + encodeURIComponent(code)
     }).then(r=>r.json()).then(d=>{
         const res = document.getElementById('scanResult');
         if(d.success){
             res.innerHTML = <div class="success">✅ ${d.message}</div>;
-        }else{
+        } else {
             res.innerHTML = <div class="error">❌ ${d.message}</div>;
         }
-        document.getElementById('scanInput').value='';
-        setTimeout(()=>document.getElementById('scanInput').focus(),100);
+        document.getElementById('scanInput').value = '';
+        setTimeout(()=>document.getElementById('scanInput').focus(), 100);
     });
 }
 
-// REGISTER
-document.getElementById('registerForm').addEventListener('submit', function(e){
-    e.preventDefault();
-    const fd = new FormData(this);
-    fetch('/register', {method:'POST', body:fd})
-    .then(r=>r.json()).then(d=>{
-        const res = document.getElementById('registerResult');
-        if(d.success){
-            res.innerHTML = `<div class="success"><h3>✅ Registered Successfully!</h3>
-                <p><b>Name:</b> ${d.student.full_name}</p>
-                <p><b>Student No:</b> ${d.student.student_number}</p>
-                <p><b>Barcode:</b></p>
-                <img src="data:image/png;base64,${d.barcode}" class="barcode-img"><br>
-                <button onclick="window.open('/print-barcode/${d.student.id}')">🖨️ Print Barcode</button>
-                </div>`;
-            this.reset();
-        }else{
-            res.innerHTML = <div class="error">❌ ${d.message}</div>;
-        }
-    });
-});
-
-// LOAD STUDENTS
 function loadStudents(){
     fetch('/students').then(r=>r.text()).then(h=>{
         document.getElementById('studentsList').innerHTML = h;
     });
 }
 
-// LOAD RECORDS
 function loadRecords(){
     fetch('/records').then(r=>r.text()).then(h=>{
         document.getElementById('recordsList').innerHTML = h;
     });
 }
 
-// EDIT STUDENT
+function exportRecords(){
+    window.location.href = '/export-word';
+}
+
 function showEditForm(id, name, dept, year, num, contact){
     currentEditId = id;
     document.getElementById('edit_id').value = id;
@@ -319,14 +305,33 @@ function hideEditForm(){
     currentEditId = null;
 }
 
-// EXPORT
-function exportRecords(){
-    window.location.href = '/export-word';
+function saveEdit(){
+    const id = document.getElementById('edit_id').value;
+    const data = {
+        id: id,
+        full_name: document.getElementById('edit_full_name').value,
+        department: document.getElementById('edit_department').value,
+        year_level: document.getElementById('edit_year_level').value,
+        student_number: document.getElementById('edit_student_number').value,
+        contact_number: document.getElementById('edit_contact_number').value
+    };
+    fetch('/update-student', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+    }).then(r=>r.json()).then(d=>{
+        if(d.success){
+            alert('✅ Updated successfully!');
+            hideEditForm();
+            loadStudents();
+        } else {
+            alert('❌ Error: ' + d.message);
+        }
+    });
 }
 </script>
 
-<!-- EDIT FORM -->
-<div id="editForm" class="edit-form" style="display:none;">
+<div id="editForm" class="edit-form">
     <h3>✏️ Edit Student Info</h3>
     <form id="editStudentForm">
         <input type="hidden" id="edit_id">
@@ -360,89 +365,50 @@ function exportRecords(){
     </form>
 </div>
 
-<script>
-function saveEdit(){
-    const id = document.getElementById('edit_id').value;
-    const data = {
-        id: id,
-        full_name: document.getElementById('edit_full_name').value,
-        department: document.getElementById('edit_department').value,
-        year_level: document.getElementById('edit_year_level').value,
-        student_number: document.getElementById('edit_student_number').value,
-        contact_number: document.getElementById('edit_contact_number').value
-    };
-    fetch('/update-student', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(data)
-    }).then(r=>r.json()).then(d=>{
-        if(d.success){
-            alert('✅ Updated successfully!');
-            hideEditForm();
-            loadStudents();
-        }else{
-            alert('❌ Error: ' + d.message);
-        }
-    });
-}
-</script>
-
 </body>
 </html>
     """, depts=DEPARTMENTS, years=YEAR_LEVELS)
 
-# ===================== SCAN ENDPOINT =====================
 @app.route('/scan', methods=['POST'])
 def scan():
     if not is_logged_in():
         return jsonify({"success": False, "message": "Please login first"})
-    
     student_number = request.form.get('student_number', '').strip().upper()
     now = datetime.datetime.now()
     today = now.strftime("%Y-%m-%d")
     time_str = now.strftime("%I:%M %p")
-    
     conn = psycopg2.connect(DB_URI)
     c = conn.cursor()
-    
     c.execute("SELECT id, full_name FROM users WHERE UPPER(student_number) = %s", (student_number,))
     user = c.fetchone()
     if not user:
         conn.close()
         return jsonify({"success": False, "message": f"Student not found: {student_number}"})
-    
     user_id, full_name = user
-    
     c.execute("SELECT id FROM attendance WHERE user_id = %s AND scan_date = %s AND time_out IS NULL", (user_id, today))
     active = c.fetchone()
-    
     if active:
         c.execute("UPDATE attendance SET time_out = %s WHERE id = %s", (time_str, active[0]))
         msg = f"⏰ TIME OUT — {full_name} — {time_str}"
     else:
         c.execute("INSERT INTO attendance (user_id, time_in, scan_date) VALUES (%s, %s, %s)", (user_id, time_str, today))
         msg = f"✅ TIME IN — {full_name} — {time_str}"
-    
     conn.commit()
     conn.close()
     return jsonify({"success": True, "message": msg})
 
-# ===================== REGISTER ENDPOINT =====================
 @app.route('/register', methods=['POST'])
 def register():
     if not is_logged_in():
         return jsonify({"success": False, "message": "Please login first"})
-    
     full_name = request.form.get('full_name', '').strip()
     department = request.form.get('department', '').strip()
     year_level = request.form.get('year_level', '').strip()
     student_number = request.form.get('student_number', '').strip().upper()
     contact_number = request.form.get('contact_number', '').strip()
     registered_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
     if not all([full_name, department, year_level, student_number]):
         return jsonify({"success": False, "message": "Fill all required fields"})
-    
     conn = psycopg2.connect(DB_URI)
     c = conn.cursor()
     try:
@@ -452,16 +418,10 @@ def register():
             (full_name, department, contact_number, year_level, student_number, registered_at))
         user_id = c.fetchone()[0]
         conn.commit()
-        
         barcode_b64 = generate_barcode_img(student_number)
-        
         return jsonify({
             "success": True,
-            "student": {
-                "id": user_id,
-                "full_name": full_name,
-                "student_number": student_number
-            },
+            "student": {"id": user_id, "full_name": full_name, "student_number": student_number},
             "barcode": barcode_b64
         })
     except psycopg2.IntegrityError:
@@ -470,7 +430,6 @@ def register():
     finally:
         conn.close()
 
-# ===================== STUDENTS LIST — BALIK NA! =====================
 @app.route('/students')
 def students_list():
     if not is_logged_in():
@@ -480,7 +439,6 @@ def students_list():
     c.execute("SELECT id, full_name, department, year_level, student_number, contact_number FROM users ORDER BY full_name")
     students = c.fetchall()
     conn.close()
-    
     html = "<table><tr><th>Name</th><th>Dept</th><th>Year</th><th>Student No.</th><th>Contact</th><th>Action</th></tr>"
     for s in students:
         html += f"""<tr>
@@ -493,7 +451,6 @@ def students_list():
     html += "</table>"
     return html
 
-# ===================== UPDATE STUDENT =====================
 @app.route('/update-student', methods=['POST'])
 def update_student():
     if not is_logged_in():
@@ -514,7 +471,6 @@ def update_student():
     finally:
         conn.close()
 
-# ===================== ATTENDANCE RECORDS — BALIK NA! =====================
 @app.route('/records')
 def records():
     if not is_logged_in():
@@ -527,14 +483,12 @@ def records():
         WHERE a.scan_date = %s ORDER BY a.id DESC""", (today,))
     recs = c.fetchall()
     conn.close()
-    
     html = f"<h3>Attendance for {today}</h3><table><tr><th>Name</th><th>Dept</th><th>Time In</th><th>Time Out</th></tr>"
     for r in recs:
         html += f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3] or '-'}</td></tr>"
     html += "</table>"
     return html
 
-# ===================== EXPORT TO WORD — BALIK NA! =====================
 @app.route('/export-word')
 def export_word():
     if not is_logged_in():
@@ -547,12 +501,10 @@ def export_word():
         WHERE a.scan_date = %s ORDER BY a.id DESC""", (today,))
     recs = c.fetchall()
     conn.close()
-    
     doc = Document()
     doc.add_heading(f'Library Attendance — {today}', 0)
     doc.add_paragraph(f'Generated: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
     doc.add_paragraph('')
-    
     table = doc.add_table(rows=1, cols=4)
     table.style = 'Table Grid'
     hdr = table.rows[0].cells
@@ -560,24 +512,20 @@ def export_word():
     hdr[1].text = 'Department'
     hdr[2].text = 'Time In'
     hdr[3].text = 'Time Out'
-    
     for r in recs:
         row = table.add_row().cells
         row[0].text = r[0]
         row[1].text = r[1]
         row[2].text = r[2]
         row[3].text = r[3] or '-'
-    
     buffer = BytesIO()
     doc.save(buffer)
     buffer.seek(0)
-    
     resp = make_response(buffer.read())
     resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     resp.headers['Content-Disposition'] = f'attachment; filename=attendance_{today}.docx'
     return resp
 
-# ===================== PRINT BARCODE — BALIK NA! =====================
 @app.route('/print-barcode/<int:user_id>')
 def print_barcode(user_id):
     if not is_logged_in():
@@ -589,9 +537,7 @@ def print_barcode(user_id):
     conn.close()
     if not user:
         return "User not found"
-    
     barcode_b64 = generate_barcode_img(user[1])
-    
     return f"""
     <html>
     <head><title>Barcode — {user[1]}</title>
