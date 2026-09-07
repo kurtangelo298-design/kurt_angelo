@@ -61,12 +61,12 @@ init_db()
 
 ID_TYPES = ["Student", "Employee", "Visitor"]
 DEPARTMENTS = ["CT", "FBT", "BSED", "BEED", "BSFI", "BSBA", "EMPLOYEE"]
-YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "N/A"]
+YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "N/A"]
 
 MAJORS = {
-    "BSBA": ["Marketing Management", "Financial Management"],
-    "BSED": ["English", "Mathematics", "Science"],
-    "CT": ["Computer Technology", "Food technology"]
+    "BSBA": ["Marketing Management", "Financial Management", "Human Resource Development", "Business Management", "Economics"],
+    "BSED": ["English", "Mathematics", "Science", "Filipino", "Social Studies", "Values Education"],
+    "CT": ["Computer Technology", "Electronics Technology", "Drafting Technology"]
 }
 
 def generate_barcode_b64(id_number):
@@ -124,7 +124,7 @@ def login():
 </body>
 </html>"""
 
-# ===================== MAIN PAGE =====================
+# ===================== MAIN PAGE — FIXED BUTTONS! =====================
 @app.route('/')
 def home():
     if not is_logged_in():
@@ -140,7 +140,8 @@ def home():
         body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px;}
         .container{max-width:1200px;margin:0 auto;}
         .tabs{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
-        .tab{padding:12px 20px;background:rgba(255,255,255,0.3);color:white;border:none;border-radius:10px;cursor:pointer;font-weight:bold;transition:0.3s;}
+        .tab{padding:12px 20px;background:rgba(255,255,255,0.3);color:white;border:none;border-radius:10px;cursor:pointer;font-weight:bold;transition:0.3s;font-size:16px;}
+        .tab:hover{background:rgba(255,255,255,0.5);}
         .tab.active{background:white;color:#667eea;box-shadow:0 4px 15px rgba(0,0,0,0.2);}
         .card{background:white;padding:30px;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,0.2);margin-bottom:20px;}
         h1{text-align:center;color:white;text-shadow:0 2px 10px rgba(0,0,0,0.2);margin-bottom:20px;}
@@ -173,6 +174,7 @@ def home():
         .hidden{display:none !important;}
         .dept-tabs{display:flex;gap:8px;margin:20px 0;flex-wrap:wrap;}
         .dept-tab{padding:8px 15px;background:#eee;color:#333;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:0.2s;font-size:14px;}
+        .dept-tab:hover{background:#ddd;}
         .dept-tab.active{background:#667eea;color:white;}
         .search-box{margin-bottom:15px;}
         #search-input{max-width:400px;}
@@ -183,12 +185,13 @@ def home():
         <h1>📚 Library Attendance — SLSU-JGE</h1>
         <div style="text-align:right;margin-bottom:15px;"><button class="logout" id="logout-btn">🚪 Logout</button></div>
         
+        <!-- ✅ TABS — FIXED CLICK EVENT -->
         <div class="tabs">
-            <button class="tab active" data-tab="scan">📱 Scan / Attendance</button>
-            <button class="tab" data-tab="register">📇 Register</button>
-            <button class="tab" data-tab="students">👥 Students List</button>
-            <button class="tab" data-tab="records">📋 Records</button>
-            <button class="tab" data-tab="export">📄 Export</button>
+            <button class="tab active" data-tab="scan" onclick="switchTab('scan')">📱 Scan / Attendance</button>
+            <button class="tab" data-tab="register" onclick="switchTab('register')">📇 Register</button>
+            <button class="tab" data-tab="students" onclick="switchTab('students')">👥 Students List</button>
+            <button class="tab" data-tab="records" onclick="switchTab('records')">📋 Records</button>
+            <button class="tab" data-tab="export" onclick="switchTab('export')">📄 Export</button>
         </div>
 
         <!-- SCAN TAB -->
@@ -263,11 +266,11 @@ def home():
                     <input type="text" id="search-input" placeholder="🔍 Search Name or ID..." oninput="filterStudents()">
                 </div>
                 <div class="dept-tabs">
-                    <button class="dept-tab active" data-dept="ALL">📋 ALL</button>
-                    {% for d in depts %}<button class="dept-tab" data-dept="{{d}}">{{d}}</button>{% endfor %}
-                    <button class="dept-tab" data-dept="Visitor">👤 VISITOR</button>
+                    <button class="dept-tab active" data-dept="ALL" onclick="switchDept('ALL')">📋 ALL</button>
+                    {% for d in depts %}<button class="dept-tab" data-dept="{{d}}" onclick="switchDept('{{d}}')">{{d}}</button>{% endfor %}
+                    <button class="dept-tab" data-dept="Visitor" onclick="switchDept('Visitor')">👤 VISITOR</button>
                 </div>
-                <button id="refresh-students">🔄 Refresh</button>
+                <button id="refresh-students" onclick="loadStudents()">🔄 Refresh</button>
                 <div id="students-table"></div>
                 <div id="edit-form-container" class="edit-form" style="display:none;">
                     <h3>✏️ Edit Info</h3>
@@ -301,7 +304,7 @@ def home():
                             <div class="form-group"><label>Address</label><input type="text" id="edit-address" name="address"></div>
                         </div>
                         <button type="submit" class="btn-save">💾 Save</button>
-                        <button type="button" class="btn-cancel" id="cancel-edit">❌ Cancel</button>
+                        <button type="button" class="btn-cancel" id="cancel-edit" onclick="hideEditForm()">❌ Cancel</button>
                     </form>
                 </div>
             </div>
@@ -311,7 +314,7 @@ def home():
         <div id="records" class="tab-content">
             <div class="card">
                 <h2>📋 Attendance Records</h2>
-                <button id="refresh-records">🔄 Refresh</button>
+                <button id="refresh-records" onclick="loadRecords()">🔄 Refresh</button>
                 <div id="records-table"></div>
             </div>
         </div>
@@ -321,7 +324,7 @@ def home():
             <div class="card">
                 <h2>📄 Export Reports</h2>
                 <p>Download today's attendance as Word Document</p>
-                <button class="btn-download" id="download-btn">📄 Download Word File</button><br><br>
+                <button class="btn-download" id="download-btn" onclick="window.location.href='/download-word'">📄 Download Word File</button><br><br>
                 <button class="btn-print" onclick="window.print()">🖨️ Print Page</button>
             </div>
         </div>
@@ -337,85 +340,96 @@ const MAJORS = {
 let editingStudentId = null;
 let currentDept = "ALL";
 
-// ========== TAB SWITCH — FIXED ==========
+// ✅ SIMPLE & DIRECT TAB SWITCH — WALANG ERROR!
+function switchTab(tabId){
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector([data-tab="${tabId}"]).classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+    
+    if(tabId === 'scan') setTimeout(()=>document.getElementById('scan-input')?.focus(), 100);
+    if(tabId === 'students') loadStudents();
+    if(tabId === 'records') loadRecords();
+}
+
+// ✅ DEPARTMENT SWITCH
+function switchDept(dept){
+    document.querySelectorAll('.dept-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector([data-dept="${dept}"]).classList.add('active');
+    currentDept = dept;
+    filterStudents();
+}
+
+// ========== SCAN ==========
 document.addEventListener('DOMContentLoaded', function(){
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', function(){
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            this.classList.add('active');
-            const tabId = this.getAttribute('data-tab');
-            document.getElementById(tabId).classList.add('active');
-            if(tabId === 'scan') setTimeout(()=>document.getElementById('scan-input').focus(), 100);
-            if(tabId === 'students') loadStudents();
-            if(tabId === 'records') loadRecords();
-        });
-    });
-
-    // ========== DEPT TABS ==========
-    document.querySelectorAll('.dept-tab').forEach(tab => {
-        tab.addEventListener('click', function(){
-            document.querySelectorAll('.dept-tab').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            currentDept = this.getAttribute('data-dept');
-            filterStudents();
-        });
-    });
-
-    // ========== SCAN ==========
     const scanInput = document.getElementById('scan-input');
-    scanInput.addEventListener('keypress', function(e){
-        if(e.key === 'Enter') submitScan();
-    });
+    if(scanInput){
+        scanInput.addEventListener('keypress', function(e){
+            if(e.key === 'Enter') submitScan();
+        });
+    }
 
     // ========== REGISTER FORM ==========
-    document.getElementById('register-form').addEventListener('submit', function(e){
-        e.preventDefault();
-        const form = new FormData(this);
-        fetch('/register', {method: 'POST', body: form})
-        .then(r => r.json())
-        .then(data => {
-            if(data.success){
-                document.getElementById('barcode-result').style.display = 'block';
-                document.getElementById('student-info').textContent = data.info;
-                document.getElementById('barcode-img').src = 'data:image/png;base64,' + data.barcode;
-                e.target.reset();
-                updateFormFields();
-            } else {
-                alert('Error: ' + data.error);
-            }
-        })
-        .catch(err => alert('Error: ' + err));
-    });
+    const regForm = document.getElementById('register-form');
+    if(regForm){
+        regForm.addEventListener('submit', function(e){
+            e.preventDefault();
+            const form = new FormData(this);
+            fetch('/register', {method: 'POST', body: form})
+            .then(r => r.json())
+            .then(data => {
+                if(data.success){
+                    document.getElementById('barcode-result').style.display = 'block';
+                    document.getElementById('student-info').textContent = data.info;
+                    document.getElementById('barcode-img').src = 'data:image/png;base64,' + data.barcode;
+                    e.target.reset();
+                    updateFormFields();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(err => alert('Error: ' + err));
+        });
+    }
 
     // ========== EDIT FORM ==========
-    document.getElementById('edit-form').addEventListener('submit', function(e){
-        e.preventDefault();
-        const form = new FormData(this);
-        fetch('/update-student', {method: 'POST', body: form})
-        .then(r => r.json())
-        .then(d => {
-            if(d.success){
-                alert('✅ Updated!');
-                hideEditForm();
-                loadStudents();
-            } else {
-                alert('❌ Error: ' + d.error);
-            }
+    const editForm = document.getElementById('edit-form');
+    if(editForm){
+        editForm.addEventListener('submit', function(e){
+            e.preventDefault();
+            const form = new FormData(this);
+            fetch('/update-student', {method: 'POST', body: form})
+            .then(r => r.json())
+            .then(d => {
+                if(d.success){
+                    alert('✅ Updated!');
+                    hideEditForm();
+                    loadStudents();
+                } else {
+                    alert('❌ Error: ' + d.error);
+                }
+            });
         });
-    });
+    }
 
-    document.getElementById('cancel-edit').addEventListener('click', hideEditForm);
-    document.getElementById('refresh-students').addEventListener('click', loadStudents);
-    document.getElementById('refresh-records').addEventListener('click', loadRecords);
-    document.getElementById('download-btn').addEventListener('click', ()=>window.location.href='/download-word');
-    document.getElementById('logout-btn').addEventListener('click', ()=>window.location.href='/logout');
+    // ========== LOGOUT ==========
+    const logoutBtn = document.getElementById('logout-btn');
+    if(logoutBtn){
+        logoutBtn.addEventListener('click', ()=>window.location.href='/logout');
+    }
 
     // ========== DROPDOWN LOGIC ==========
-    document.getElementById('id-type-select').addEventListener('change', updateFormFields);
-    document.getElementById('dept-select').addEventListener('change', updateMajorOptions);
-    document.getElementById('edit-id-type').addEventListener('change', updateEditFormFields);
-    document.getElementById('edit-dept').addEventListener('change', updateEditMajorOptions);
+    const idTypeSelect = document.getElementById('id-type-select');
+    if(idTypeSelect) idTypeSelect.addEventListener('change', updateFormFields);
+    
+    const deptSelect = document.getElementById('dept-select');
+    if(deptSelect) deptSelect.addEventListener('change', updateMajorOptions);
+    
+    const editIdType = document.getElementById('edit-id-type');
+    if(editIdType) editIdType.addEventListener('change', updateEditFormFields);
+    
+    const editDept = document.getElementById('edit-dept');
+    if(editDept) editDept.addEventListener('change', updateEditMajorOptions);
 
     // INIT
     updateFormFields();
