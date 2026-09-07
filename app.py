@@ -13,7 +13,6 @@ app = Flask(__name__)
 
 # ===================== DATABASE URL =====================
 DATABASE_URL = os.environ.get("DATABASE_URL")
-# DATABASE_URL = "postgresql://postgres:kurt_velila1234@db.owcrlvqbkatfjnmxoqke.supabase.co:5432/postgres"
 
 # ===================== LOGIN CREDENTIALS =====================
 USERNAME = "slsu"
@@ -25,14 +24,14 @@ def get_db_connection():
         conn = psycopg2.connect(DATABASE_URL)
         return conn
     except OperationalError as e:
-        print(f"Database connection error: {e}")
+        print(f"DB Error: {e}")
         return None
 
 # ===================== DATABASE INIT =====================
 def init_db():
     conn = get_db_connection()
     if not conn:
-        print("❌ Cannot connect to database!")
+        print("❌ No DB connection")
         return
     c = conn.cursor()
     c.execute("""CREATE TABLE IF NOT EXISTS users (
@@ -56,18 +55,18 @@ def init_db():
     )""")
     conn.commit()
     conn.close()
-    print("✅ Database initialized successfully!")
+    print("✅ DB Ready")
 
 init_db()
 
 ID_TYPES = ["Student", "Employee", "Visitor"]
 DEPARTMENTS = ["CT", "FBT", "BSED", "BEED", "BSFI", "BSBA", "EMPLOYEE"]
-YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "N/A"]
+YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "N/A"]
 
 MAJORS = {
-    "BSBA": ["Marketing Management", "Financial Management", "Human Resource Development", "Business Management", "Economics"],
-    "BSED": ["English", "Mathematics", "Science", "Filipino", "Social Studies", "Values Education"],
-    "CT": ["Computer Technology", "Electronics Technology", "Drafting Technology"]
+    "BSBA": ["Marketing Management", "Financial Management"],
+    "BSED": ["English", "Mathematics", "Science"],
+    "CT": ["Computer Technology", "Food technology"]
 }
 
 def generate_barcode_b64(id_number):
@@ -80,23 +79,22 @@ def generate_barcode_b64(id_number):
     return base64.b64encode(buffered.getvalue()).decode()
 
 def normalize_text(text):
-    if text: return text.strip().lower()
-    return ""
+    return text.strip().lower() if text else ""
 
 def is_logged_in():
     return request.cookies.get('logged_in') == 'true'
 
-# ===================== LOGIN PAGE =====================
+# ===================== LOGIN =====================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         uname = normalize_text(request.form.get('username', ''))
         pword = request.form.get('password', '').strip()
         if uname == normalize_text(USERNAME) and pword == PASSWORD:
-            resp = make_response("""<script>window.location='/';</script>""")
+            resp = make_response("<script>window.location='/';</script>")
             resp.set_cookie('logged_in', 'true', max_age=31536000)
             return resp
-        return """<html><body style="font-family:Arial;text-align:center;padding-top:100px;background:#f5f5f5;"><h2 style="color:red;">❌ Wrong Username or Password!</h2><a href="/login" style="font-size:18px;">Try Again</a></body></html>"""
+        return """<html><body style="font-family:Arial;text-align:center;padding-top:100px;background:#f5f5f5;"><h2 style="color:red;">❌ Wrong Credentials!</h2><a href="/login" style="font-size:18px;">Try Again</a></body></html>"""
     return """
 <!DOCTYPE html>
 <html>
@@ -130,12 +128,12 @@ def login():
 @app.route('/')
 def home():
     if not is_logged_in():
-        return """<script>window.location='/login';</script>"""
+        return "<script>window.location='/login';</script>"
     return render_template_string("""
 <!DOCTYPE html>
 <html>
 <head>
-    <title>📚 Library Attendance System — SLSU-JGE</title>
+    <title>📚 Library Attendance — SLSU-JGE</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
@@ -153,7 +151,6 @@ def home():
         input,select{width:100%;padding:12px;border:2px solid #eee;border-radius:8px;font-size:15px;}
         button{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;padding:13px 25px;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;transition:0.3s;margin:5px;}
         button:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(102,126,234,0.4);}
-        button:disabled{opacity:0.6;cursor:not-allowed;}
         .scan-area{text-align:center;padding:30px;background:#f8f9fa;border-radius:15px;margin-bottom:20px;}
         #scan-input{font-size:22px;text-align:center;padding:15px;width:100%;max-width:400px;}
         .status{font-size:20px;font-weight:bold;margin-top:15px;padding:15px;border-radius:10px;}
@@ -174,8 +171,6 @@ def home():
         .logout{background:#dc3545;}
         .edit-form{background:#f8f9fa;padding:20px;border-radius:12px;margin-top:15px;}
         .hidden{display:none !important;}
-        
-        /* DEPARTMENT TABS */
         .dept-tabs{display:flex;gap:8px;margin:20px 0;flex-wrap:wrap;}
         .dept-tab{padding:8px 15px;background:#eee;color:#333;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:0.2s;font-size:14px;}
         .dept-tab.active{background:#667eea;color:white;}
@@ -185,7 +180,7 @@ def home():
 </head>
 <body>
     <div class="container">
-        <h1>📚 Library Attendance System — SLSU-JGE</h1>
+        <h1>📚 Library Attendance — SLSU-JGE</h1>
         <div style="text-align:right;margin-bottom:15px;"><button class="logout" id="logout-btn">🚪 Logout</button></div>
         
         <div class="tabs">
@@ -199,10 +194,10 @@ def home():
         <!-- SCAN TAB -->
         <div id="scan" class="tab-content active">
             <div class="card">
-                <h2>📱 Scan ID Number Barcode</h2>
+                <h2>📱 Scan Barcode</h2>
                 <div class="scan-area">
-                    <input type="text" id="scan-input" placeholder="Scan barcode or type ID number..." autofocus>
-                    <div id="status-box" class="status info">Waiting for scan...</div>
+                    <input type="text" id="scan-input" placeholder="Scan or type ID..." autofocus>
+                    <div id="status-box" class="status info">Waiting...</div>
                 </div>
             </div>
         </div>
@@ -210,7 +205,7 @@ def home():
         <!-- REGISTER TAB -->
         <div id="register" class="tab-content">
             <div class="card">
-                <h2>📇 Register New — NO LIMIT!</h2>
+                <h2>📇 Register New Student/Visitor</h2>
                 <form id="register-form">
                     <div class="form-row">
                         <div class="form-group">
@@ -221,7 +216,7 @@ def home():
                         </div>
                         <div class="form-group">
                             <label>ID Number</label>
-                            <input type="text" name="id_number" required placeholder="Student No. / Employee No. / Visitor ID">
+                            <input type="text" name="id_number" required placeholder="ID Number">
                         </div>
                     </div>
                     <div class="form-row">
@@ -235,10 +230,8 @@ def home():
                     </div>
                     <div class="form-row" id="major-row">
                         <div class="form-group">
-                            <label>Major / Specialization</label>
-                            <select name="major" id="major-select">
-                                <option value="">-- Select Department First --</option>
-                            </select>
+                            <label>Major</label>
+                            <select name="major" id="major-select"><option value="">-- Select Dept First --</option></select>
                         </div>
                         <div class="form-group" id="year-group">
                             <label>Year Level</label>
@@ -254,7 +247,7 @@ def home():
                     <button type="submit">✅ Register & Generate Barcode</button>
                 </form>
                 <div id="barcode-result" style="display:none;margin-top:25px;text-align:center;padding:20px;background:#f0f4ff;border-radius:15px;">
-                    <h3>✅ Registered Successfully!</h3>
+                    <h3>✅ Registered!</h3>
                     <p><strong id="student-info"></strong></p>
                     <img id="barcode-img" class="barcode-img"><br>
                     <button class="btn-print" onclick="window.print()">🖨️ Print Barcode</button>
@@ -262,34 +255,26 @@ def home():
             </div>
         </div>
 
-        <!-- STUDENTS LIST TAB — WITH DEPT TABS + SEARCH -->
+        <!-- STUDENTS LIST TAB -->
         <div id="students" class="tab-content">
             <div class="card">
                 <h2>👥 Students List — By Department</h2>
-                
-                <!-- SEARCH BAR -->
                 <div class="search-box">
-                    <input type="text" id="search-input" placeholder="🔍 Search by Name or ID Number..." oninput="filterStudents()">
+                    <input type="text" id="search-input" placeholder="🔍 Search Name or ID..." oninput="filterStudents()">
                 </div>
-                
-                <!-- DEPARTMENT TABS -->
                 <div class="dept-tabs">
                     <button class="dept-tab active" data-dept="ALL">📋 ALL</button>
                     {% for d in depts %}<button class="dept-tab" data-dept="{{d}}">{{d}}</button>{% endfor %}
                     <button class="dept-tab" data-dept="Visitor">👤 VISITOR</button>
                 </div>
-                
-                <button id="refresh-students">🔄 Refresh List</button>
+                <button id="refresh-students">🔄 Refresh</button>
                 <div id="students-table"></div>
-                
-                <!-- EDIT FORM -->
                 <div id="edit-form-container" class="edit-form" style="display:none;">
                     <h3>✏️ Edit Info</h3>
                     <form id="edit-form">
                         <input type="hidden" id="edit-id" name="id">
                         <div class="form-row">
-                            <div class="form-group">
-                                <label>ID Type</label>
+                            <div class="form-group"><label>ID Type</label>
                                 <select id="edit-id-type" name="id_type">
                                     {% for t in id_types %}<option value="{{t}}">{{t}}</option>{% endfor %}
                                 </select>
@@ -306,17 +291,16 @@ def home():
                             </div>
                         </div>
                         <div class="form-row" id="edit-major-row">
-                            <div class="form-group">
-                                <label>Major / Specialization</label>
-                                <select id="edit-major" name="major"></select>
+                            <div class="form-group"><label>Major</label><select id="edit-major" name="major"></select></div>
+                            <div class="form-group"><label>Year Level</label>
+                                <select id="edit-year" name="year_level">{% for y in years %}<option>{{y}}</option>{% endfor %}</select>
                             </div>
-                            <div class="form-group"><label>Year Level</label><select id="edit-year" name="year_level">{% for y in years %}<option>{{y}}</option>{% endfor %}</select></div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group"><label>Contact Number</label><input type="text" id="edit-contact" name="contact_number"></div>
+                            <div class="form-group"><label>Contact</label><input type="text" id="edit-contact" name="contact_number"></div>
                             <div class="form-group"><label>Address</label><input type="text" id="edit-address" name="address"></div>
                         </div>
-                        <button type="submit" class="btn-save">💾 Save Changes</button>
+                        <button type="submit" class="btn-save">💾 Save</button>
                         <button type="button" class="btn-cancel" id="cancel-edit">❌ Cancel</button>
                     </form>
                 </div>
@@ -335,10 +319,9 @@ def home():
         <!-- EXPORT TAB -->
         <div id="export" class="tab-content">
             <div class="card">
-                <h2>📄 Download / Export Reports</h2>
-                <p>Download today's attendance as Word Document (.docx)</p>
-                <button class="btn-download" id="download-btn">📄 Download Today's Attendance</button><br><br>
-                <p>Print all records directly</p>
+                <h2>📄 Export Reports</h2>
+                <p>Download today's attendance as Word Document</p>
+                <button class="btn-download" id="download-btn">📄 Download Word File</button><br><br>
                 <button class="btn-print" onclick="window.print()">🖨️ Print Page</button>
             </div>
         </div>
@@ -346,120 +329,102 @@ def home():
 
 <script>
 const MAJORS = {
-    "BSBA": ["Marketing Management", "Financial Management", "Human Resource Development", "Business Management", "Economics"],
-    "BSED": ["English", "Mathematics", "Science", "Filipino", "Social Studies", "Values Education"],
-    "CT": ["Computer Technology", "Electronics Technology", "Drafting Technology"]
+    "BSBA": ["Marketing Management", "Financial Management", "HRD", "Business Management", "Economics"],
+    "BSED": ["English", "Math", "Science", "Filipino", "Social Studies", "Values Ed"],
+    "CT": ["Computer Tech", "Electronics Tech", "Drafting Tech"]
 };
 
 let editingStudentId = null;
-let allStudents = [];
 let currentDept = "ALL";
 
-// ========== MAIN TAB SWITCHING ==========
-document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', function() {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        this.classList.add('active');
-        const tabId = this.getAttribute('data-tab');
-        document.getElementById(tabId).classList.add('active');
-        if(tabId === 'scan') setTimeout(() => document.getElementById('scan-input').focus(), 100);
-        if(tabId === 'students') loadStudents();
+// ========== TAB SWITCH — FIXED ==========
+document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function(){
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            const tabId = this.getAttribute('data-tab');
+            document.getElementById(tabId).classList.add('active');
+            if(tabId === 'scan') setTimeout(()=>document.getElementById('scan-input').focus(), 100);
+            if(tabId === 'students') loadStudents();
+            if(tabId === 'records') loadRecords();
+        });
     });
-});
 
-// ========== DEPARTMENT TABS SWITCHING ==========
-document.querySelectorAll('.dept-tab').forEach(tab => {
-    tab.addEventListener('click', function() {
-        document.querySelectorAll('.dept-tab').forEach(t => t.classList.remove('active'));
-        this.classList.add('active');
-        currentDept = this.getAttribute('data-dept');
-        filterStudents();
+    // ========== DEPT TABS ==========
+    document.querySelectorAll('.dept-tab').forEach(tab => {
+        tab.addEventListener('click', function(){
+            document.querySelectorAll('.dept-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            currentDept = this.getAttribute('data-dept');
+            filterStudents();
+        });
     });
-});
 
-// ========== SEARCH + FILTER FUNCTION ==========
-function filterStudents(){
-    const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
-    const tableBody = document.getElementById('students-table').querySelector('table')?.tBodies[0];
-    if(!tableBody || allStudents.length === 0) return;
-    
-    for(let row of tableBody.rows){
-        const nameCell = row.cells[1]?.textContent?.toLowerCase() || '';
-        const idCell = row.cells[4]?.textContent?.toLowerCase() || '';
-        const deptCell = row.cells[2]?.textContent?.toUpperCase() || '';
-        const typeCell = row.cells[0]?.textContent || '';
-        
-        const matchesSearch = searchTerm === '' || nameCell.includes(searchTerm) || idCell.includes(searchTerm);
-        const matchesDept = currentDept === "ALL" || deptCell.includes(currentDept) || typeCell === currentDept;
-        
-        row.style.display = (matchesSearch && matchesDept) ? '' : 'none';
-    }
-}
+    // ========== SCAN ==========
+    const scanInput = document.getElementById('scan-input');
+    scanInput.addEventListener('keypress', function(e){
+        if(e.key === 'Enter') submitScan();
+    });
 
-// ========== FORM FIELDS UPDATE ==========
-function updateFormFields(){
-    const type = document.getElementById('id-type-select').value;
-    const deptGroup = document.getElementById('dept-group');
-    const majorRow = document.getElementById('major-row');
-    const yearGroup = document.getElementById('year-group');
-    if(type === 'Student'){
-        deptGroup.classList.remove('hidden');
-        majorRow.classList.remove('hidden');
-        yearGroup.classList.remove('hidden');
-    } else {
-        deptGroup.classList.add('hidden');
-        majorRow.classList.add('hidden');
-        yearGroup.classList.add('hidden');
-    }
-    updateMajorOptions();
-}
+    // ========== REGISTER FORM ==========
+    document.getElementById('register-form').addEventListener('submit', function(e){
+        e.preventDefault();
+        const form = new FormData(this);
+        fetch('/register', {method: 'POST', body: form})
+        .then(r => r.json())
+        .then(data => {
+            if(data.success){
+                document.getElementById('barcode-result').style.display = 'block';
+                document.getElementById('student-info').textContent = data.info;
+                document.getElementById('barcode-img').src = 'data:image/png;base64,' + data.barcode;
+                e.target.reset();
+                updateFormFields();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(err => alert('Error: ' + err));
+    });
 
-function updateMajorOptions(){
-    const dept = document.getElementById('dept-select').value;
-    const majorSelect = document.getElementById('major-select');
-    majorSelect.innerHTML = "";
-    if(MAJORS[dept]){
-        majorSelect.innerHTML = <option value="">-- Select Major --</option> + MAJORS[dept].map(m=>`<option value="${m}">${m}</option>`).join('');
-    }else{
-        majorSelect.innerHTML = <option value="">N/A</option>;
-    }
-}
+    // ========== EDIT FORM ==========
+    document.getElementById('edit-form').addEventListener('submit', function(e){
+        e.preventDefault();
+        const form = new FormData(this);
+        fetch('/update-student', {method: 'POST', body: form})
+        .then(r => r.json())
+        .then(d => {
+            if(d.success){
+                alert('✅ Updated!');
+                hideEditForm();
+                loadStudents();
+            } else {
+                alert('❌ Error: ' + d.error);
+            }
+        });
+    });
 
-function updateEditFormFields(){
-    const type = document.getElementById('edit-id-type').value;
-    const deptGroup = document.getElementById('edit-dept-group');
-    const majorRow = document.getElementById('edit-major-row');
-    if(type === 'Student'){
-        deptGroup.classList.remove('hidden');
-        majorRow.classList.remove('hidden');
-    } else {
-        deptGroup.classList.add('hidden');
-        majorRow.classList.add('hidden');
-    }
-    updateEditMajorOptions();
-}
+    document.getElementById('cancel-edit').addEventListener('click', hideEditForm);
+    document.getElementById('refresh-students').addEventListener('click', loadStudents);
+    document.getElementById('refresh-records').addEventListener('click', loadRecords);
+    document.getElementById('download-btn').addEventListener('click', ()=>window.location.href='/download-word');
+    document.getElementById('logout-btn').addEventListener('click', ()=>window.location.href='/logout');
 
-function updateEditMajorOptions(){
-    const dept = document.getElementById('edit-dept').value;
-    const majorSelect = document.getElementById('edit-major');
-    majorSelect.innerHTML = "";
-    if(MAJORS[dept]){
-        majorSelect.innerHTML = <option value="">-- Select Major --</option> + MAJORS[dept].map(m=>`<option value="${m}">${m}</option>`).join('');
-    }else{
-        majorSelect.innerHTML = <option value="">N/A</option>;
-    }
-}
+    // ========== DROPDOWN LOGIC ==========
+    document.getElementById('id-type-select').addEventListener('change', updateFormFields);
+    document.getElementById('dept-select').addEventListener('change', updateMajorOptions);
+    document.getElementById('edit-id-type').addEventListener('change', updateEditFormFields);
+    document.getElementById('edit-dept').addEventListener('change', updateEditMajorOptions);
 
-// ========== SCAN FUNCTION ==========
-const scanInput = document.getElementById('scan-input');
-const statusBox = document.getElementById('status-box');
-scanInput.addEventListener('keypress', e => {
-    if(e.key === 'Enter') submitScan();
+    // INIT
+    updateFormFields();
+    loadRecords();
+    loadStudents();
 });
 
 function submitScan(){
-    const code = scanInput.value.trim();
+    const code = document.getElementById('scan-input').value.trim();
     if(!code) return;
     fetch('/scan', {
         method: 'POST',
@@ -468,62 +433,86 @@ function submitScan(){
     })
     .then(r => r.json())
     .then(data => {
-        scanInput.value = '';
-        scanInput.focus();
-        statusBox.className = 'status ' + data.style;
-        statusBox.textContent = data.message;
-    })
-    .catch(err => {
-        statusBox.className = 'status error';
-        statusBox.textContent = '❌ Error: ' + err;
+        document.getElementById('scan-input').value = '';
+        document.getElementById('scan-input').focus();
+        const box = document.getElementById('status-box');
+        box.className = 'status ' + data.style;
+        box.textContent = data.message;
     });
 }
 
-// ========== REGISTER FORM ==========
-document.getElementById('register-form').addEventListener('submit', e => {
-    e.preventDefault();
-    const form = new FormData(e.target);
-    fetch('/register', {method: 'POST', body: form})
-    .then(r => r.json())
-    .then(data => {
-        if(data.success){
-            document.getElementById('barcode-result').style.display = 'block';
-            document.getElementById('student-info').textContent = data.info;
-            document.getElementById('barcode-img').src = 'data:image/png;base64,' + data.barcode;
-            e.target.reset();
-            updateFormFields();
-        } else {
-            alert('Error: ' + data.error);
-        }
-    })
-    .catch(err => alert('❌ Error: ' + err));
-});
+function updateFormFields(){
+    const type = document.getElementById('id-type-select').value;
+    if(type === 'Student'){
+        document.getElementById('dept-group').classList.remove('hidden');
+        document.getElementById('major-row').classList.remove('hidden');
+        document.getElementById('year-group').classList.remove('hidden');
+    } else {
+        document.getElementById('dept-group').classList.add('hidden');
+        document.getElementById('major-row').classList.add('hidden');
+        document.getElementById('year-group').classList.add('hidden');
+    }
+    updateMajorOptions();
+}
 
-// ========== STUDENTS LIST — LOAD & STORE DATA ==========
+function updateMajorOptions(){
+    const dept = document.getElementById('dept-select').value;
+    const sel = document.getElementById('major-select');
+    sel.innerHTML = '<option value="">-- Select --</option>';
+    if(MAJORS[dept]){
+        MAJORS[dept].forEach(m => {
+            sel.innerHTML += <option value="${m}">${m}</option>;
+        });
+    }
+}
+
+function updateEditFormFields(){
+    const type = document.getElementById('edit-id-type').value;
+    if(type === 'Student'){
+        document.getElementById('edit-dept-group').classList.remove('hidden');
+        document.getElementById('edit-major-row').classList.remove('hidden');
+    } else {
+        document.getElementById('edit-dept-group').classList.add('hidden');
+        document.getElementById('edit-major-row').classList.add('hidden');
+    }
+    updateEditMajorOptions();
+}
+
+function updateEditMajorOptions(){
+    const dept = document.getElementById('edit-dept').value;
+    const sel = document.getElementById('edit-major');
+    sel.innerHTML = '<option value="">-- Select --</option>';
+    if(MAJORS[dept]){
+        MAJORS[dept].forEach(m => {
+            sel.innerHTML += <option value="${m}">${m}</option>;
+        });
+    }
+}
+
 function loadStudents(){
     fetch('/students')
     .then(r => r.text())
     .then(h => {
         document.getElementById('students-table').innerHTML = h;
-        allStudents = [];
-        const table = document.getElementById('students-table').querySelector('table');
-        if(table){
-            const rows = table.tBodies[0]?.rows || [];
-            for(let row of rows){
-                allStudents.push({
-                    type: row.cells[0]?.textContent || '',
-                    name: row.cells[1]?.textContent || '',
-                    dept: row.cells[2]?.textContent || '',
-                    id: row.cells[4]?.textContent || ''
-                });
-            }
-        }
         filterStudents();
-    })
-    .catch(err => document.getElementById('students-table').innerHTML = '<p>Error loading students</p>');
+    });
 }
 
-// ========== EDIT FUNCTIONS ==========
+function filterStudents(){
+    const search = document.getElementById('search-input').value.toLowerCase().trim();
+    const table = document.getElementById('students-table').querySelector('table');
+    if(!table) return;
+    const rows = table.tBodies[0]?.rows || [];
+    for(let row of rows){
+        const name = (row.cells[1]?.textContent || '').toLowerCase();
+        const id = (row.cells[4]?.textContent || '').toLowerCase();
+        const dept = row.getAttribute('data-dept') || '';
+        const matchSearch = !search || name.includes(search) || id.includes(search);
+        const matchDept = currentDept === 'ALL' || dept.includes(currentDept);
+        row.style.display = (matchSearch && matchDept) ? '' : 'none';
+    }
+}
+
 function showEditForm(id, type, name, num, dept, major, year, contact, addr){
     editingStudentId = id;
     document.getElementById('edit-id').value = id;
@@ -537,7 +526,6 @@ function showEditForm(id, type, name, num, dept, major, year, contact, addr){
     document.getElementById('edit-address').value = addr || '';
     updateEditFormFields();
     document.getElementById('edit-form-container').style.display = 'block';
-    window.scrollTo({top: document.getElementById('edit-form-container').offsetTop - 20, behavior: 'smooth'});
 }
 
 function hideEditForm(){
@@ -545,50 +533,11 @@ function hideEditForm(){
     document.getElementById('edit-form-container').style.display = 'none';
 }
 
-document.getElementById('edit-form').addEventListener('submit', e => {
-    e.preventDefault();
-    const form = new FormData(e.target);
-    fetch('/update-student', {method: 'POST', body: form})
-    .then(r => r.json())
-    .then(d => {
-        if(d.success){
-            alert('✅ Updated!');
-            hideEditForm();
-            loadStudents();
-        } else {
-            alert('❌ Error: ' + d.error);
-        }
-    })
-    .catch(err => alert('❌ Error: ' + err));
-});
-
-document.getElementById('cancel-edit').addEventListener('click', hideEditForm);
-document.getElementById('refresh-students').addEventListener('click', loadStudents);
-
-// ========== RECORDS & EXPORT ==========
 function loadRecords(){
     fetch('/records')
     .then(r => r.text())
-    .then(h => document.getElementById('records-table').innerHTML = h)
-    .catch(err => document.getElementById('records-table').innerHTML = '<p>Error loading records</p>');
+    .then(h => document.getElementById('records-table').innerHTML = h);
 }
-document.getElementById('refresh-records').addEventListener('click', loadRecords);
-document.getElementById('download-btn').addEventListener('click', () => window.location.href = '/download-word');
-
-// ========== LOGOUT ==========
-document.getElementById('logout-btn').addEventListener('click', () => window.location.href = '/logout');
-
-// ========== INITIALIZE ==========
-document.getElementById('id-type-select').addEventListener('change', updateFormFields);
-document.getElementById('dept-select').addEventListener('change', updateMajorOptions);
-document.getElementById('edit-id-type').addEventListener('change', updateEditFormFields);
-document.getElementById('edit-dept').addEventListener('change', updateEditMajorOptions);
-
-document.addEventListener('DOMContentLoaded', () => {
-    updateFormFields();
-    loadRecords();
-    loadStudents();
-});
 </script>
 </body>
 </html>
@@ -597,11 +546,11 @@ document.addEventListener('DOMContentLoaded', () => {
 # ===================== LOGOUT =====================
 @app.route('/logout')
 def logout():
-    resp = make_response("""<script>window.location='/login';</script>""")
+    resp = make_response("<script>window.location='/login';</script>")
     resp.set_cookie('logged_in', '', expires=0)
     return resp
 
-# ===================== SCAN — TIME IN / TIME OUT =====================
+# ===================== SCAN — TIME IN / OUT =====================
 @app.route('/scan', methods=['POST'])
 def scan():
     if not is_logged_in():
@@ -609,7 +558,7 @@ def scan():
     code = request.form.get('code', '').strip()
     conn = get_db_connection()
     if not conn:
-        return jsonify({"message":"❌ Database connection failed","style":"error"})
+        return jsonify({"message":"❌ DB Error","style":"error"})
     c = conn.cursor()
     today = datetime.date.today().isoformat()
     c.execute("SELECT id,id_type,full_name,department FROM users WHERE LOWER(id_number) = LOWER(%s)", (code,))
@@ -654,7 +603,7 @@ def register():
         
         conn = get_db_connection()
         if not conn:
-            return jsonify({"success":False,"error":"Database connection failed!"})
+            return jsonify({"success":False,"error":"DB Connection Failed!"})
         c = conn.cursor()
         c.execute("""INSERT INTO users 
             (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at) 
@@ -674,7 +623,7 @@ def register():
 def students_list():
     if not is_logged_in(): return "Unauthorized"
     conn = get_db_connection()
-    if not conn: return "Database connection failed"
+    if not conn: return "DB Connection Failed"
     c = conn.cursor()
     c.execute("SELECT id, id_type, full_name, department, major, year_level, id_number, contact_number, address FROM users ORDER BY full_name")
     students = c.fetchall()
@@ -712,7 +661,7 @@ def update_student():
         
         conn = get_db_connection()
         if not conn:
-            return jsonify({"success":False,"error":"Database connection failed!"})
+            return jsonify({"success":False,"error":"DB Connection Failed!"})
         c = conn.cursor()
         c.execute("""UPDATE users SET id_type = %s, full_name = %s, id_number = %s, department = %s, major = %s, year_level = %s, contact_number = %s, address = %s WHERE id = %s""",
                   (id_type, full_name, id_number, department, major, year_level, contact_number, address, sid))
@@ -730,7 +679,7 @@ def records():
     if not is_logged_in(): return "Unauthorized"
     today = datetime.date.today().isoformat()
     conn = get_db_connection()
-    if not conn: return "Database connection failed"
+    if not conn: return "DB Connection Failed"
     c = conn.cursor()
     c.execute("""SELECT u.full_name, u.id_type, u.department, a.time_in, a.time_out 
         FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.scan_date = %s ORDER BY a.id DESC""", (today,))
@@ -748,7 +697,7 @@ def download_word():
     if not is_logged_in(): return "Unauthorized"
     today = datetime.date.today().isoformat()
     conn = get_db_connection()
-    if not conn: return "Database connection failed"
+    if not conn: return "DB Connection Failed"
     c = conn.cursor()
     c.execute("""SELECT u.full_name, u.id_type, u.department, a.time_in, a.time_out 
         FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.scan_date = %s ORDER BY a.id DESC""", (today,))
