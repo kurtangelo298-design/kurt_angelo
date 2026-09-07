@@ -61,16 +61,6 @@ def init_db():
 
 init_db()
 
-ID_TYPES = ["Student", "Employee", "Visitor"]
-DEPARTMENTS = ["CT", "FBT", "BSED", "BEED", "BSFI", "BSBA", "EMPLOYEE"]
-YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "N/A"]
-
-MAJORS = {
-    "BSBA": ["Marketing Management", "Financial Management", "Human Resource Development", "Business Management", "Economics"],
-    "BSED": ["English", "Mathematics", "Science", "Filipino", "Social Studies", "Values Education"],
-    "CT": ["Computer Technology", "Electronics Technology", "Drafting Technology"]
-}
-
 def generate_barcode_b64(id_number):
     code128 = barcode.get_barcode_class("code128")
     writer = ImageWriter()
@@ -126,7 +116,7 @@ def login():
 </body>
 </html>"""
 
-# ===================== MAIN DASHBOARD =====================
+# ===================== MAIN DASHBOARD — NO JSON ERROR! =====================
 @app.route('/')
 def home():
     if not is_logged_in():
@@ -188,7 +178,6 @@ def home():
             <button class="logout-btn" onclick="logout()">🚪 Logout</button>
         </div>
         
-        <!-- ✅ TABS — ALL WORKING -->
         <div class="tabs">
             <button class="tab active" id="tab-scan" onclick="switchTab('scan')">📱 Scan / Attendance</button>
             <button class="tab" id="tab-register" onclick="switchTab('register')">📇 Register</button>
@@ -197,7 +186,6 @@ def home():
             <button class="tab" id="tab-export" onclick="switchTab('export')">📄 Export</button>
         </div>
 
-        <!-- SCAN TAB -->
         <div id="scan" class="tab-content active">
             <div class="card">
                 <h2>📱 Scan Barcode</h2>
@@ -208,7 +196,6 @@ def home():
             </div>
         </div>
 
-        <!-- REGISTER TAB -->
         <div id="register" class="tab-content">
             <div class="card">
                 <h2>📇 Register New Student/Visitor</h2>
@@ -217,7 +204,9 @@ def home():
                         <div class="form-group">
                             <label>ID Type</label>
                             <select name="id_type" id="id-type-select">
-                                {% for t in id_types %}<option value="{{t}}">{{t}}</option>{% endfor %}
+                                <option value="Student">Student</option>
+                                <option value="Employee">Employee</option>
+                                <option value="Visitor">Visitor</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -227,10 +216,17 @@ def home():
                     </div>
                     <div class="form-row">
                         <div class="form-group"><label>Full Name</label><input type="text" name="full_name" required></div>
-                        <div class="form-group" id="dept-group">
+                        <div class="form-group">
                             <label>Department</label>
                             <select name="department" id="dept-select">
-                                {% for d in depts %}<option value="{{d}}">{{d}}</option>{% endfor %}
+                                <option value="">-- Select --</option>
+                                <option value="CT">CT</option>
+                                <option value="FBT">FBT</option>
+                                <option value="BSED">BSED</option>
+                                <option value="BEED">BEED</option>
+                                <option value="BSFI">BSFI</option>
+                                <option value="BSBA">BSBA</option>
+                                <option value="EMPLOYEE">EMPLOYEE</option>
                             </select>
                         </div>
                     </div>
@@ -239,10 +235,15 @@ def home():
                             <label>Major</label>
                             <select name="major" id="major-select"><option value="">-- Select Dept First --</option></select>
                         </div>
-                        <div class="form-group" id="year-group">
+                        <div class="form-group">
                             <label>Year Level</label>
                             <select name="year_level" id="year-select">
-                                {% for y in years %}<option>{{y}}</option>{% endfor %}
+                                <option value="1st Year">1st Year</option>
+                                <option value="2nd Year">2nd Year</option>
+                                <option value="3rd Year">3rd Year</option>
+                                <option value="4th Year">4th Year</option>
+                                <option value="5th Year">5th Year</option>
+                                <option value="N/A">N/A</option>
                             </select>
                         </div>
                     </div>
@@ -261,7 +262,6 @@ def home():
             </div>
         </div>
 
-        <!-- STUDENTS LIST TAB -->
         <div id="students" class="tab-content">
             <div class="card">
                 <h2>👥 Students List — By Department</h2>
@@ -270,7 +270,13 @@ def home():
                 </div>
                 <div class="dept-tabs">
                     <button class="dept-tab active" id="dept-ALL" onclick="switchDept('ALL')">📋 ALL</button>
-                    {% for d in depts %}<button class="dept-tab" id="dept-{{d}}" onclick="switchDept('{{d}}')">{{d}}</button>{% endfor %}
+                    <button class="dept-tab" id="dept-CT" onclick="switchDept('CT')">CT</button>
+                    <button class="dept-tab" id="dept-FBT" onclick="switchDept('FBT')">FBT</button>
+                    <button class="dept-tab" id="dept-BSED" onclick="switchDept('BSED')">BSED</button>
+                    <button class="dept-tab" id="dept-BEED" onclick="switchDept('BEED')">BEED</button>
+                    <button class="dept-tab" id="dept-BSFI" onclick="switchDept('BSFI')">BSFI</button>
+                    <button class="dept-tab" id="dept-BSBA" onclick="switchDept('BSBA')">BSBA</button>
+                    <button class="dept-tab" id="dept-EMPLOYEE" onclick="switchDept('EMPLOYEE')">EMPLOYEE</button>
                     <button class="dept-tab" id="dept-Visitor" onclick="switchDept('Visitor')">👤 VISITOR</button>
                 </div>
                 <button onclick="loadStudents()">🔄 Refresh</button>
@@ -282,24 +288,40 @@ def home():
                         <div class="form-row">
                             <div class="form-group"><label>ID Type</label>
                                 <select id="edit-id-type" name="id_type">
-                                    {% for t in id_types %}<option value="{{t}}">{{t}}</option>{% endfor %}
+                                    <option value="Student">Student</option>
+                                    <option value="Employee">Employee</option>
+                                    <option value="Visitor">Visitor</option>
                                 </select>
                             </div>
                             <div class="form-group"><label>ID Number</label><input type="text" id="edit-idnum" name="id_number" required></div>
                         </div>
                         <div class="form-row">
                             <div class="form-group"><label>Full Name</label><input type="text" id="edit-fullname" name="full_name" required></div>
-                            <div class="form-group" id="edit-dept-group">
+                            <div class="form-group">
                                 <label>Department</label>
                                 <select id="edit-dept" name="department">
-                                    {% for d in depts %}<option value="{{d}}">{{d}}</option>{% endfor %}
+                                    <option value="">-- Select --</option>
+                                    <option value="CT">CT</option>
+                                    <option value="FBT">FBT</option>
+                                    <option value="BSED">BSED</option>
+                                    <option value="BEED">BEED</option>
+                                    <option value="BSFI">BSFI</option>
+                                    <option value="BSBA">BSBA</option>
+                                    <option value="EMPLOYEE">EMPLOYEE</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="form-row" id="edit-major-row">
+                        <div class="form-row">
                             <div class="form-group"><label>Major</label><select id="edit-major" name="major"></select></div>
                             <div class="form-group"><label>Year Level</label>
-                                <select id="edit-year" name="year_level">{% for y in years %}<option>{{y}}</option>{% endfor %}</select>
+                                <select id="edit-year" name="year_level">
+                                    <option value="1st Year">1st Year</option>
+                                    <option value="2nd Year">2nd Year</option>
+                                    <option value="3rd Year">3rd Year</option>
+                                    <option value="4th Year">4th Year</option>
+                                    <option value="5th Year">5th Year</option>
+                                    <option value="N/A">N/A</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-row">
@@ -313,7 +335,6 @@ def home():
             </div>
         </div>
 
-        <!-- RECORDS TAB -->
         <div id="records" class="tab-content">
             <div class="card">
                 <h2>📋 Attendance Records</h2>
@@ -322,7 +343,6 @@ def home():
             </div>
         </div>
 
-        <!-- EXPORT TAB -->
         <div id="export" class="tab-content">
             <div class="card">
                 <h2>📄 Export Reports</h2>
@@ -334,9 +354,6 @@ def home():
     </div>
 
 <script>
-const ID_TYPES = {{ id_types|tojson }};
-const DEPARTMENTS = {{ depts|tojson }};
-const YEAR_LEVELS = {{ years|tojson }};
 const MAJORS = {
     "BSBA": ["Marketing Management", "Financial Management", "Human Resource Development", "Business Management", "Economics"],
     "BSED": ["English", "Mathematics", "Science", "Filipino", "Social Studies", "Values Education"],
@@ -347,13 +364,11 @@ let editingStudentId = null;
 let currentDept = "ALL";
 let allStudents = [];
 
-// ✅ LOGOUT FUNCTION
 function logout(){
     document.cookie = "logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     window.location.href = "/login";
 }
 
-// ✅ TAB SWITCH — FULLY FIXED!
 function switchTab(tabId){
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -365,7 +380,6 @@ function switchTab(tabId){
     if(tabId === 'records') loadRecords();
 }
 
-// ✅ DEPARTMENT SWITCH
 function switchDept(dept){
     document.querySelectorAll('.dept-tab').forEach(t => t.classList.remove('active'));
     document.getElementById('dept-' + dept).classList.add('active');
@@ -373,18 +387,17 @@ function switchDept(dept){
     filterStudents();
 }
 
-// ✅ UPDATE MAJOR OPTIONS
 function updateMajorOptions(deptSelectId, majorSelectId, yearSelectId){
     const dept = document.getElementById(deptSelectId).value;
     const majorSelect = document.getElementById(majorSelectId);
     const yearSelect = document.getElementById(yearSelectId);
     majorSelect.innerHTML = '<option value="">-- Select --</option>';
     
-    if(dept === 'Visitor' || dept === 'EMPLOYEE'){
-        yearSelect.value = 'N/A';
-        yearSelect.disabled = true;
+    if(dept === 'Visitor' || dept === 'EMPLOYEE' || dept === ''){
+        if(yearSelect) yearSelect.value = 'N/A';
+        if(yearSelect) yearSelect.disabled = true;
     } else {
-        yearSelect.disabled = false;
+        if(yearSelect) yearSelect.disabled = false;
         if(MAJORS[dept]){
             MAJORS[dept].forEach(m => {
                 const opt = document.createElement('option');
@@ -395,7 +408,6 @@ function updateMajorOptions(deptSelectId, majorSelectId, yearSelectId){
     }
 }
 
-// ✅ SCAN FUNCTIONS
 function submitScan(){
     const idNumber = document.getElementById('scan-input').value.trim();
     if(!idNumber) return;
@@ -405,7 +417,10 @@ function submitScan(){
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({id_number: idNumber})
     })
-    .then(r => r.json())
+    .then(r => {
+        if(!r.ok) throw new Error('Server error');
+        return r.json();
+    })
     .then(data => {
         const box = document.getElementById('status-box');
         box.className = 'status ' + (data.success ? 'success' : 'error');
@@ -418,17 +433,19 @@ function submitScan(){
     });
 }
 
-// ✅ LOAD STUDENTS
 function loadStudents(){
     fetch('/get-students')
-    .then(r => r.json())
+    .then(r => {
+        if(!r.ok) throw new Error('Server error');
+        return r.json();
+    })
     .then(data => {
         allStudents = data.students || [];
         filterStudents();
-    });
+    })
+    .catch(err => alert('Load error: ' + err));
 }
 
-// ✅ FILTER STUDENTS
 function filterStudents(){
     const search = document.getElementById('search-input')?.value.toLowerCase() || '';
     let filtered = allStudents;
@@ -461,7 +478,6 @@ function filterStudents(){
         `).join('') + '</table>';
 }
 
-// ✅ EDIT STUDENT
 function editStudent(id){
     const student = allStudents.find(s => s.id === id);
     if(!student) return;
@@ -481,17 +497,18 @@ function editStudent(id){
     window.scrollTo(0, document.getElementById('edit-form-container').offsetTop);
 }
 
-// ✅ HIDE EDIT FORM
 function hideEditForm(){
     document.getElementById('edit-form-container').classList.add('hidden');
     editingStudentId = null;
     document.getElementById('edit-form').reset();
 }
 
-// ✅ LOAD RECORDS
 function loadRecords(){
     fetch('/get-records')
-    .then(r => r.json())
+    .then(r => {
+        if(!r.ok) throw new Error('Server error');
+        return r.json();
+    })
     .then(data => {
         const records = data.records || [];
         const table = document.getElementById('records-table');
@@ -509,12 +526,11 @@ function loadRecords(){
                     <td>${r.time_out || '-'}</td>
                 </tr>
             `).join('') + '</table>';
-    });
+    })
+    .catch(err => alert('Load error: ' + err));
 }
 
-// ✅ INITIALIZE EVERYTHING ON PAGE LOAD
 document.addEventListener('DOMContentLoaded', function(){
-    // Scan input Enter key
     const scanInput = document.getElementById('scan-input');
     if(scanInput){
         scanInput.addEventListener('keypress', function(e){
@@ -522,18 +538,30 @@ document.addEventListener('DOMContentLoaded', function(){
         });
     }
 
-    // Register form submit
-    const regForm = document.getElementById('register-form');
-    if(regForm){
-        document.getElementById('dept-select').addEventListener('change', function(){
+    const deptSelect = document.getElementById('dept-select');
+    if(deptSelect){
+        deptSelect.addEventListener('change', function(){
             updateMajorOptions('dept-select', 'major-select', 'year-select');
         });
-        
+    }
+
+    const editDeptSelect = document.getElementById('edit-dept');
+    if(editDeptSelect){
+        editDeptSelect.addEventListener('change', function(){
+            updateMajorOptions('edit-dept', 'edit-major', 'edit-year');
+        });
+    }
+
+    const regForm = document.getElementById('register-form');
+    if(regForm){
         regForm.addEventListener('submit', function(e){
             e.preventDefault();
             const form = new FormData(this);
             fetch('/register', {method: 'POST', body: form})
-            .then(r => r.json())
+            .then(r => {
+                if(!r.ok) return r.text().then(t => { throw new Error(t || 'Server error'); });
+                return r.json();
+            })
             .then(data => {
                 if(data.success){
                     document.getElementById('barcode-result').style.display = 'block';
@@ -549,18 +577,16 @@ document.addEventListener('DOMContentLoaded', function(){
         });
     }
 
-    // Edit form submit
     const editForm = document.getElementById('edit-form');
     if(editForm){
-        document.getElementById('edit-dept').addEventListener('change', function(){
-            updateMajorOptions('edit-dept', 'edit-major', 'edit-year');
-        });
-        
         editForm.addEventListener('submit', function(e){
             e.preventDefault();
             const form = new FormData(this);
             fetch('/update-student', {method: 'POST', body: form})
-            .then(r => r.json())
+            .then(r => {
+                if(!r.ok) return r.text().then(t => { throw new Error(t || 'Server error'); });
+                return r.json();
+            })
             .then(d => {
                 if(d.success){
                     alert('✅ Updated successfully!');
@@ -577,7 +603,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 </body>
 </html>
-    """, id_types=ID_TYPES, depts=DEPARTMENTS, years=YEAR_LEVELS)
+    """)
 
 # ===================== SCAN ENDPOINT =====================
 @app.route('/scan', methods=['POST'])
@@ -805,4 +831,4 @@ def download_word():
     return response
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000, debug=False)
+    app.run(host='0.0.0.0', port=10000)
