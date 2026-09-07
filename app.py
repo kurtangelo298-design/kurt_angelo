@@ -140,7 +140,7 @@ def home():
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
         body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px;}
-        .container{max-width:1000px;margin:0 auto;}
+        .container{max-width:1200px;margin:0 auto;}
         .tabs{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
         .tab{padding:12px 20px;background:rgba(255,255,255,0.3);color:white;border:none;border-radius:10px;cursor:pointer;font-weight:bold;transition:0.3s;}
         .tab.active{background:white;color:#667eea;box-shadow:0 4px 15px rgba(0,0,0,0.2);}
@@ -153,14 +153,15 @@ def home():
         input,select{width:100%;padding:12px;border:2px solid #eee;border-radius:8px;font-size:15px;}
         button{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;padding:13px 25px;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;transition:0.3s;margin:5px;}
         button:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(102,126,234,0.4);}
+        button:disabled{opacity:0.6;cursor:not-allowed;}
         .scan-area{text-align:center;padding:30px;background:#f8f9fa;border-radius:15px;margin-bottom:20px;}
         #scan-input{font-size:22px;text-align:center;padding:15px;width:100%;max-width:400px;}
         .status{font-size:20px;font-weight:bold;margin-top:15px;padding:15px;border-radius:10px;}
         .success{background:#d4edda;color:#155724;}
         .info{background:#d1ecf1;color:#0c5460;}
         .error{background:#f8d7da;color:#721c24;}
-        table{width:100%;border-collapse:collapse;margin-top:20px;}
-        th,td{padding:12px;text-align:left;border-bottom:1px solid #eee;}
+        table{width:100%;border-collapse:collapse;margin-top:15px;}
+        th,td{padding:10px;text-align:left;border-bottom:1px solid #eee;font-size:14px;}
         th{background:#f8f9fa;font-weight:bold;color:#667eea;}
         .tab-content{display:none;}
         .tab-content.active{display:block;}
@@ -173,21 +174,29 @@ def home():
         .logout{background:#dc3545;}
         .edit-form{background:#f8f9fa;padding:20px;border-radius:12px;margin-top:15px;}
         .hidden{display:none !important;}
+        
+        /* DEPARTMENT TABS */
+        .dept-tabs{display:flex;gap:8px;margin:20px 0;flex-wrap:wrap;}
+        .dept-tab{padding:8px 15px;background:#eee;color:#333;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:0.2s;font-size:14px;}
+        .dept-tab.active{background:#667eea;color:white;}
+        .search-box{margin-bottom:15px;}
+        #search-input{max-width:400px;}
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📚 Library Attendance System — SLSU-JGE</h1>
-        <div style="text-align:right;margin-bottom:15px;"><button class="logout" onclick="window.location='/logout'">🚪 Logout</button></div>
+        <div style="text-align:right;margin-bottom:15px;"><button class="logout" id="logout-btn">🚪 Logout</button></div>
         
         <div class="tabs">
-            <button class="tab active" onclick="showTab('scan')">📱 Scan / Attendance</button>
-            <button class="tab" onclick="showTab('register')">📇 Register</button>
-            <button class="tab" onclick="showTab('students')">👥 Students List</button>
-            <button class="tab" onclick="showTab('records')">📋 Records</button>
-            <button class="tab" onclick="showTab('export')">📄 Export</button>
+            <button class="tab active" data-tab="scan">📱 Scan / Attendance</button>
+            <button class="tab" data-tab="register">📇 Register</button>
+            <button class="tab" data-tab="students">👥 Students List</button>
+            <button class="tab" data-tab="records">📋 Records</button>
+            <button class="tab" data-tab="export">📄 Export</button>
         </div>
 
+        <!-- SCAN TAB -->
         <div id="scan" class="tab-content active">
             <div class="card">
                 <h2>📱 Scan ID Number Barcode</h2>
@@ -198,6 +207,7 @@ def home():
             </div>
         </div>
 
+        <!-- REGISTER TAB -->
         <div id="register" class="tab-content">
             <div class="card">
                 <h2>📇 Register New — NO LIMIT!</h2>
@@ -205,7 +215,7 @@ def home():
                     <div class="form-row">
                         <div class="form-group">
                             <label>ID Type</label>
-                            <select name="id_type" id="id-type-select" onchange="updateFormFields()">
+                            <select name="id_type" id="id-type-select">
                                 {% for t in id_types %}<option value="{{t}}">{{t}}</option>{% endfor %}
                             </select>
                         </div>
@@ -218,7 +228,7 @@ def home():
                         <div class="form-group"><label>Full Name</label><input type="text" name="full_name" required></div>
                         <div class="form-group" id="dept-group">
                             <label>Department</label>
-                            <select name="department" id="dept-select" onchange="updateMajorOptions()">
+                            <select name="department" id="dept-select">
                                 {% for d in depts %}<option value="{{d}}">{{d}}</option>{% endfor %}
                             </select>
                         </div>
@@ -252,11 +262,27 @@ def home():
             </div>
         </div>
 
+        <!-- STUDENTS LIST TAB — WITH DEPT TABS + SEARCH -->
         <div id="students" class="tab-content">
             <div class="card">
-                <h2>👥 Registered — Edit Any Info</h2>
-                <button onclick="loadStudents()">🔄 Refresh List</button>
+                <h2>👥 Students List — By Department</h2>
+                
+                <!-- SEARCH BAR -->
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="🔍 Search by Name or ID Number..." oninput="filterStudents()">
+                </div>
+                
+                <!-- DEPARTMENT TABS -->
+                <div class="dept-tabs">
+                    <button class="dept-tab active" data-dept="ALL">📋 ALL</button>
+                    {% for d in depts %}<button class="dept-tab" data-dept="{{d}}">{{d}}</button>{% endfor %}
+                    <button class="dept-tab" data-dept="Visitor">👤 VISITOR</button>
+                </div>
+                
+                <button id="refresh-students">🔄 Refresh List</button>
                 <div id="students-table"></div>
+                
+                <!-- EDIT FORM -->
                 <div id="edit-form-container" class="edit-form" style="display:none;">
                     <h3>✏️ Edit Info</h3>
                     <form id="edit-form">
@@ -264,7 +290,7 @@ def home():
                         <div class="form-row">
                             <div class="form-group">
                                 <label>ID Type</label>
-                                <select id="edit-id-type" name="id_type" onchange="updateEditFormFields()">
+                                <select id="edit-id-type" name="id_type">
                                     {% for t in id_types %}<option value="{{t}}">{{t}}</option>{% endfor %}
                                 </select>
                             </div>
@@ -274,7 +300,7 @@ def home():
                             <div class="form-group"><label>Full Name</label><input type="text" id="edit-fullname" name="full_name" required></div>
                             <div class="form-group" id="edit-dept-group">
                                 <label>Department</label>
-                                <select id="edit-dept" name="department" onchange="updateEditMajorOptions()">
+                                <select id="edit-dept" name="department">
                                     {% for d in depts %}<option value="{{d}}">{{d}}</option>{% endfor %}
                                 </select>
                             </div>
@@ -291,25 +317,27 @@ def home():
                             <div class="form-group"><label>Address</label><input type="text" id="edit-address" name="address"></div>
                         </div>
                         <button type="submit" class="btn-save">💾 Save Changes</button>
-                        <button type="button" class="btn-cancel" onclick="hideEditForm()">❌ Cancel</button>
+                        <button type="button" class="btn-cancel" id="cancel-edit">❌ Cancel</button>
                     </form>
                 </div>
             </div>
         </div>
 
+        <!-- RECORDS TAB -->
         <div id="records" class="tab-content">
             <div class="card">
                 <h2>📋 Attendance Records</h2>
-                <button onclick="loadRecords()">🔄 Refresh</button>
+                <button id="refresh-records">🔄 Refresh</button>
                 <div id="records-table"></div>
             </div>
         </div>
 
+        <!-- EXPORT TAB -->
         <div id="export" class="tab-content">
             <div class="card">
                 <h2>📄 Download / Export Reports</h2>
                 <p>Download today's attendance as Word Document (.docx)</p>
-                <button class="btn-download" onclick="downloadWord()">📄 Download Today's Attendance</button><br><br>
+                <button class="btn-download" id="download-btn">📄 Download Today's Attendance</button><br><br>
                 <p>Print all records directly</p>
                 <button class="btn-print" onclick="window.print()">🖨️ Print Page</button>
             </div>
@@ -323,6 +351,53 @@ const MAJORS = {
     "CT": ["Computer Technology", "Electronics Technology", "Drafting Technology"]
 };
 
+let editingStudentId = null;
+let allStudents = [];
+let currentDept = "ALL";
+
+// ========== MAIN TAB SWITCHING ==========
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        const tabId = this.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
+        if(tabId === 'scan') setTimeout(() => document.getElementById('scan-input').focus(), 100);
+        if(tabId === 'students') loadStudents();
+    });
+});
+
+// ========== DEPARTMENT TABS SWITCHING ==========
+document.querySelectorAll('.dept-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.dept-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        currentDept = this.getAttribute('data-dept');
+        filterStudents();
+    });
+});
+
+// ========== SEARCH + FILTER FUNCTION ==========
+function filterStudents(){
+    const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
+    const tableBody = document.getElementById('students-table').querySelector('table')?.tBodies[0];
+    if(!tableBody || allStudents.length === 0) return;
+    
+    for(let row of tableBody.rows){
+        const nameCell = row.cells[1]?.textContent?.toLowerCase() || '';
+        const idCell = row.cells[4]?.textContent?.toLowerCase() || '';
+        const deptCell = row.cells[2]?.textContent?.toUpperCase() || '';
+        const typeCell = row.cells[0]?.textContent || '';
+        
+        const matchesSearch = searchTerm === '' || nameCell.includes(searchTerm) || idCell.includes(searchTerm);
+        const matchesDept = currentDept === "ALL" || deptCell.includes(currentDept) || typeCell === currentDept;
+        
+        row.style.display = (matchesSearch && matchesDept) ? '' : 'none';
+    }
+}
+
+// ========== FORM FIELDS UPDATE ==========
 function updateFormFields(){
     const type = document.getElementById('id-type-select').value;
     const deptGroup = document.getElementById('dept-group');
@@ -376,71 +451,145 @@ function updateEditMajorOptions(){
     }
 }
 
-let editingStudentId = null;
-function showTab(name){
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-    event.target.classList.add('active');
-    document.getElementById(name).classList.add('active');
-    if(name==='scan') setTimeout(()=>document.getElementById('scan-input').focus(),100);
-    if(name==='students') loadStudents();
-}
-
+// ========== SCAN FUNCTION ==========
 const scanInput = document.getElementById('scan-input');
 const statusBox = document.getElementById('status-box');
-scanInput.addEventListener('keypress', e=>{if(e.key==='Enter') submitScan();});
+scanInput.addEventListener('keypress', e => {
+    if(e.key === 'Enter') submitScan();
+});
+
 function submitScan(){
     const code = scanInput.value.trim();
     if(!code) return;
-    fetch('/scan', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'code='+encodeURIComponent(code)})
-    .then(r=>r.json()).then(data=>{
-        scanInput.value=''; scanInput.focus();
+    fetch('/scan', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'code=' + encodeURIComponent(code)
+    })
+    .then(r => r.json())
+    .then(data => {
+        scanInput.value = '';
+        scanInput.focus();
         statusBox.className = 'status ' + data.style;
         statusBox.textContent = data.message;
+    })
+    .catch(err => {
+        statusBox.className = 'status error';
+        statusBox.textContent = '❌ Error: ' + err;
     });
 }
 
-document.getElementById('register-form').addEventListener('submit', e=>{
-    e.preventDefault(); const form = new FormData(e.target);
-    fetch('/register', {method:'POST',body:form}).then(r=>r.json()).then(data=>{
+// ========== REGISTER FORM ==========
+document.getElementById('register-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const form = new FormData(e.target);
+    fetch('/register', {method: 'POST', body: form})
+    .then(r => r.json())
+    .then(data => {
         if(data.success){
-            document.getElementById('barcode-result').style.display='block';
+            document.getElementById('barcode-result').style.display = 'block';
             document.getElementById('student-info').textContent = data.info;
             document.getElementById('barcode-img').src = 'data:image/png;base64,' + data.barcode;
             e.target.reset();
             updateFormFields();
-        }else alert('Error: ' + data.error);
-    });
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => alert('❌ Error: ' + err));
 });
 
-function loadStudents(){ fetch('/students').then(r=>r.text()).then(h=>document.getElementById('students-table').innerHTML=h); }
-function showEditForm(id,type,name,num,dept,major,year,contact,addr){
-    editingStudentId=id;
-    document.getElementById('edit-id').value=id;
-    document.getElementById('edit-id-type').value=type;
-    document.getElementById('edit-fullname').value=name;
-    document.getElementById('edit-idnum').value=num;
-    document.getElementById('edit-dept').value=dept||'';
-    document.getElementById('edit-major').value=major||'';
-    document.getElementById('edit-year').value=year||'';
-    document.getElementById('edit-contact').value=contact||'';
-    document.getElementById('edit-address').value=addr||'';
-    updateEditFormFields();
-    document.getElementById('edit-form-container').style.display='block';
+// ========== STUDENTS LIST — LOAD & STORE DATA ==========
+function loadStudents(){
+    fetch('/students')
+    .then(r => r.text())
+    .then(h => {
+        document.getElementById('students-table').innerHTML = h;
+        allStudents = [];
+        const table = document.getElementById('students-table').querySelector('table');
+        if(table){
+            const rows = table.tBodies[0]?.rows || [];
+            for(let row of rows){
+                allStudents.push({
+                    type: row.cells[0]?.textContent || '',
+                    name: row.cells[1]?.textContent || '',
+                    dept: row.cells[2]?.textContent || '',
+                    id: row.cells[4]?.textContent || ''
+                });
+            }
+        }
+        filterStudents();
+    })
+    .catch(err => document.getElementById('students-table').innerHTML = '<p>Error loading students</p>');
 }
-function hideEditForm(){ editingStudentId=null; document.getElementById('edit-form-container').style.display='none'; }
-document.getElementById('edit-form').addEventListener('submit', e=>{
-    e.preventDefault(); const form=new FormData(e.target);
-    fetch('/update-student',{method:'POST',body:form}).then(r=>r.json()).then(d=>{
-        if(d.success){alert('✅ Updated!');hideEditForm();loadStudents();}
-        else alert('❌ Error: '+d.error);
-    });
+
+// ========== EDIT FUNCTIONS ==========
+function showEditForm(id, type, name, num, dept, major, year, contact, addr){
+    editingStudentId = id;
+    document.getElementById('edit-id').value = id;
+    document.getElementById('edit-id-type').value = type;
+    document.getElementById('edit-fullname').value = name;
+    document.getElementById('edit-idnum').value = num;
+    document.getElementById('edit-dept').value = dept || '';
+    document.getElementById('edit-major').value = major || '';
+    document.getElementById('edit-year').value = year || '';
+    document.getElementById('edit-contact').value = contact || '';
+    document.getElementById('edit-address').value = addr || '';
+    updateEditFormFields();
+    document.getElementById('edit-form-container').style.display = 'block';
+    window.scrollTo({top: document.getElementById('edit-form-container').offsetTop - 20, behavior: 'smooth'});
+}
+
+function hideEditForm(){
+    editingStudentId = null;
+    document.getElementById('edit-form-container').style.display = 'none';
+}
+
+document.getElementById('edit-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const form = new FormData(e.target);
+    fetch('/update-student', {method: 'POST', body: form})
+    .then(r => r.json())
+    .then(d => {
+        if(d.success){
+            alert('✅ Updated!');
+            hideEditForm();
+            loadStudents();
+        } else {
+            alert('❌ Error: ' + d.error);
+        }
+    })
+    .catch(err => alert('❌ Error: ' + err));
 });
-function loadRecords(){ fetch('/records').then(r=>r.text()).then(h=>document.getElementById('records-table').innerHTML=h); }
-document.addEventListener('DOMContentLoaded', ()=>{loadRecords();loadStudents();});
-function downloadWord(){ window.location.href='/download-word'; }
+
+document.getElementById('cancel-edit').addEventListener('click', hideEditForm);
+document.getElementById('refresh-students').addEventListener('click', loadStudents);
+
+// ========== RECORDS & EXPORT ==========
+function loadRecords(){
+    fetch('/records')
+    .then(r => r.text())
+    .then(h => document.getElementById('records-table').innerHTML = h)
+    .catch(err => document.getElementById('records-table').innerHTML = '<p>Error loading records</p>');
+}
+document.getElementById('refresh-records').addEventListener('click', loadRecords);
+document.getElementById('download-btn').addEventListener('click', () => window.location.href = '/download-word');
+
+// ========== LOGOUT ==========
+document.getElementById('logout-btn').addEventListener('click', () => window.location.href = '/logout');
+
+// ========== INITIALIZE ==========
+document.getElementById('id-type-select').addEventListener('change', updateFormFields);
+document.getElementById('dept-select').addEventListener('change', updateMajorOptions);
+document.getElementById('edit-id-type').addEventListener('change', updateEditFormFields);
+document.getElementById('edit-dept').addEventListener('change', updateEditMajorOptions);
+
+document.addEventListener('DOMContentLoaded', () => {
+    updateFormFields();
+    loadRecords();
+    loadStudents();
+});
 </script>
-<script>updateFormFields();</script>
 </body>
 </html>
     """, id_types=ID_TYPES, depts=DEPARTMENTS, years=YEAR_LEVELS)
@@ -530,12 +679,19 @@ def students_list():
     c.execute("SELECT id, id_type, full_name, department, major, year_level, id_number, contact_number, address FROM users ORDER BY full_name")
     students = c.fetchall()
     conn.close()
-    html = """<table><tr><th>Type</th><th>Name</th><th>Dept/Major</th><th>Year</th><th>ID No.</th><th>Contact</th><th>Action</th></tr>"""
+    html = """<table><thead><tr><th>Type</th><th>Name</th><th>Dept/Major</th><th>Year</th><th>ID No.</th><th>Contact</th><th>Action</th></tr></thead><tbody>"""
     for s in students:
         dept_major = f"{s[3]} — {s[4]}" if s[4] else (s[3] or '-')
-        html += f"""<tr><td>{s[1]}</td><td>{s[2]}</td><td>{dept_major}</td><td>{s[5] or '-'}</td><td>{s[6]}</td><td>{s[7] or '-'}</td>
-            <td><button class="btn-edit" onclick="showEditForm({s[0]}, '{s[1]}', '{s[2].replace("'","\\'")}', '{s[6]}', '{s[3] or ""}', '{s[4] or ""}', '{s[5] or ""}', '{s[7] or ""}', '{s[8] or ""}')">✏️ Edit</button></td></tr>"""
-    html += "</table>"
+        html += f"""<tr data-dept="{s[3] or s[1]}">
+            <td>{s[1]}</td>
+            <td>{s[2]}</td>
+            <td>{dept_major}</td>
+            <td>{s[5] or '-'}</td>
+            <td>{s[6]}</td>
+            <td>{s[7] or '-'}</td>
+            <td><button class="btn-edit" onclick="showEditForm({s[0]}, '{s[1]}', '{s[2].replace("'","\\'")}', '{s[6]}', '{s[3] or ""}', '{s[4] or ""}', '{s[5] or ""}', '{s[7] or ""}', '{s[8] or ""}')">✏️ Edit</button></td>
+            </tr>"""
+    html += "</tbody></table>"
     return html
 
 # ===================== UPDATE STUDENT =====================
