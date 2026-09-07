@@ -11,7 +11,7 @@ from docx import Document
 
 app = Flask(__name__)
 
-# ===================== KUNIN ANG DATABASE_URL MULA SA RENDER =====================
+# ===================== DATABASE URL =====================
 DATABASE_URL = os.environ.get("DATABASE_URL")
 # DATABASE_URL = "postgresql://postgres:kurt_velila1234@db.owcrlvqbkatfjnmxoqke.supabase.co:5432/postgres"
 
@@ -37,11 +37,14 @@ def init_db():
     c = conn.cursor()
     c.execute("""CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
+        id_type TEXT NOT NULL,
         full_name TEXT NOT NULL,
-        department TEXT NOT NULL,
+        department TEXT,
+        major TEXT,
         contact_number TEXT,
-        year_level TEXT NOT NULL,
-        student_number TEXT NOT NULL UNIQUE,
+        address TEXT,
+        year_level TEXT,
+        id_number TEXT NOT NULL UNIQUE,
         registered_at TEXT NOT NULL
     )""")
     c.execute("""CREATE TABLE IF NOT EXISTS attendance (
@@ -57,14 +60,21 @@ def init_db():
 
 init_db()
 
+ID_TYPES = ["Student", "Employee", "Visitor"]
 DEPARTMENTS = ["CT", "FBT", "BSED", "BEED", "BSFI", "BSBA", "EMPLOYEE"]
 YEAR_LEVELS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "N/A"]
 
-def generate_barcode_b64(student_number):
+MAJORS = {
+    "BSBA": ["Marketing Management", "Financial Management", "Human Resource Development", "Business Management", "Economics"],
+    "BSED": ["English", "Mathematics", "Science", "Filipino", "Social Studies", "Values Education"],
+    "CT": ["Computer Technology", "Electronics Technology", "Drafting Technology"]
+}
+
+def generate_barcode_b64(id_number):
     code128 = barcode.get_barcode_class("code128")
     writer = ImageWriter()
     writer.set_options({"module_width":0.3, "module_height":10, "font_size":8, "text_distance":2})
-    img = code128(student_number, writer=writer).render()
+    img = code128(id_number, writer=writer).render()
     buffered = BytesIO()
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
@@ -100,7 +110,7 @@ def login():
         h1{text-align:center;color:#2c3e50;margin-bottom:30px;}
         .form-group{margin-bottom:20px;}
         label{display:block;margin-bottom:8px;color:#555;font-weight:600;}
-        input{width:100%;padding:14px;border:2px solid #eee;border-radius:10px;font-size:16px;}
+        input,select{width:100%;padding:14px;border:2px solid #eee;border-radius:10px;font-size:16px;}
         button{width:100%;padding:14px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;border-radius:10px;font-size:18px;font-weight:bold;cursor:pointer;}
     </style>
 </head>
@@ -162,6 +172,7 @@ def home():
         .btn-cancel{background:#95a5a6;color:white;}
         .logout{background:#dc3545;}
         .edit-form{background:#f8f9fa;padding:20px;border-radius:12px;margin-top:15px;}
+        .hidden{display:none !important;}
     </style>
 </head>
 <body>
@@ -179,9 +190,9 @@ def home():
 
         <div id="scan" class="tab-content active">
             <div class="card">
-                <h2>📱 Scan Student Number Barcode</h2>
+                <h2>📱 Scan ID Number Barcode</h2>
                 <div class="scan-area">
-                    <input type="text" id="scan-input" placeholder="Scan barcode or type student number..." autofocus>
+                    <input type="text" id="scan-input" placeholder="Scan barcode or type ID number..." autofocus>
                     <div id="status-box" class="status info">Waiting for scan...</div>
                 </div>
             </div>
@@ -189,17 +200,47 @@ def home():
 
         <div id="register" class="tab-content">
             <div class="card">
-                <h2>📇 Register New Student — NO LIMIT!</h2>
+                <h2>📇 Register New — NO LIMIT!</h2>
                 <form id="register-form">
                     <div class="form-row">
-                        <div class="form-group"><label>Full Name</label><input type="text" name="full_name" required></div>
-                        <div class="form-group"><label>Student Number</label><input type="text" name="student_number" required></div>
+                        <div class="form-group">
+                            <label>ID Type</label>
+                            <select name="id_type" id="id-type-select" onchange="updateFormFields()">
+                                {% for t in id_types %}<option value="{{t}}">{{t}}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>ID Number</label>
+                            <input type="text" name="id_number" required placeholder="Student No. / Employee No. / Visitor ID">
+                        </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label>Department</label><select name="department">{% for d in depts %}<option>{{d}}</option>{% endfor %}</select></div>
-                        <div class="form-group"><label>Year Level</label><select name="year_level">{% for y in years %}<option>{{y}}</option>{% endfor %}</select></div>
+                        <div class="form-group"><label>Full Name</label><input type="text" name="full_name" required></div>
+                        <div class="form-group" id="dept-group">
+                            <label>Department</label>
+                            <select name="department" id="dept-select" onchange="updateMajorOptions()">
+                                {% for d in depts %}<option value="{{d}}">{{d}}</option>{% endfor %}
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group"><label>Contact Number</label><input type="text" name="contact_number"></div>
+                    <div class="form-row" id="major-row">
+                        <div class="form-group">
+                            <label>Major / Specialization</label>
+                            <select name="major" id="major-select">
+                                <option value="">-- Select Department First --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="year-group">
+                            <label>Year Level</label>
+                            <select name="year_level" id="year-select">
+                                {% for y in years %}<option>{{y}}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Contact Number</label><input type="text" name="contact_number"></div>
+                        <div class="form-group"><label>Address</label><input type="text" name="address"></div>
+                    </div>
                     <button type="submit">✅ Register & Generate Barcode</button>
                 </form>
                 <div id="barcode-result" style="display:none;margin-top:25px;text-align:center;padding:20px;background:#f0f4ff;border-radius:15px;">
@@ -213,22 +254,42 @@ def home():
 
         <div id="students" class="tab-content">
             <div class="card">
-                <h2>👥 Registered Students — Edit Any Info</h2>
+                <h2>👥 Registered — Edit Any Info</h2>
                 <button onclick="loadStudents()">🔄 Refresh List</button>
                 <div id="students-table"></div>
                 <div id="edit-form-container" class="edit-form" style="display:none;">
-                    <h3>✏️ Edit Student Info</h3>
+                    <h3>✏️ Edit Info</h3>
                     <form id="edit-form">
                         <input type="hidden" id="edit-id" name="id">
                         <div class="form-row">
-                            <div class="form-group"><label>Full Name</label><input type="text" id="edit-fullname" name="full_name" required></div>
-                            <div class="form-group"><label>Student Number</label><input type="text" id="edit-studentnum" name="student_number" required></div>
+                            <div class="form-group">
+                                <label>ID Type</label>
+                                <select id="edit-id-type" name="id_type" onchange="updateEditFormFields()">
+                                    {% for t in id_types %}<option value="{{t}}">{{t}}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group"><label>ID Number</label><input type="text" id="edit-idnum" name="id_number" required></div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group"><label>Department</label><select id="edit-dept" name="department">{% for d in depts %}<option>{{d}}</option>{% endfor %}</select></div>
+                            <div class="form-group"><label>Full Name</label><input type="text" id="edit-fullname" name="full_name" required></div>
+                            <div class="form-group" id="edit-dept-group">
+                                <label>Department</label>
+                                <select id="edit-dept" name="department" onchange="updateEditMajorOptions()">
+                                    {% for d in depts %}<option value="{{d}}">{{d}}</option>{% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row" id="edit-major-row">
+                            <div class="form-group">
+                                <label>Major / Specialization</label>
+                                <select id="edit-major" name="major"></select>
+                            </div>
                             <div class="form-group"><label>Year Level</label><select id="edit-year" name="year_level">{% for y in years %}<option>{{y}}</option>{% endfor %}</select></div>
                         </div>
-                        <div class="form-group"><label>Contact Number</label><input type="text" id="edit-contact" name="contact_number"></div>
+                        <div class="form-row">
+                            <div class="form-group"><label>Contact Number</label><input type="text" id="edit-contact" name="contact_number"></div>
+                            <div class="form-group"><label>Address</label><input type="text" id="edit-address" name="address"></div>
+                        </div>
                         <button type="submit" class="btn-save">💾 Save Changes</button>
                         <button type="button" class="btn-cancel" onclick="hideEditForm()">❌ Cancel</button>
                     </form>
@@ -256,6 +317,65 @@ def home():
     </div>
 
 <script>
+const MAJORS = {
+    "BSBA": ["Marketing Management", "Financial Management", "Human Resource Development", "Business Management", "Economics"],
+    "BSED": ["English", "Mathematics", "Science", "Filipino", "Social Studies", "Values Education"],
+    "CT": ["Computer Technology", "Electronics Technology", "Drafting Technology"]
+};
+
+function updateFormFields(){
+    const type = document.getElementById('id-type-select').value;
+    const deptGroup = document.getElementById('dept-group');
+    const majorRow = document.getElementById('major-row');
+    const yearGroup = document.getElementById('year-group');
+    if(type === 'Student'){
+        deptGroup.classList.remove('hidden');
+        majorRow.classList.remove('hidden');
+        yearGroup.classList.remove('hidden');
+    } else {
+        deptGroup.classList.add('hidden');
+        majorRow.classList.add('hidden');
+        yearGroup.classList.add('hidden');
+    }
+    updateMajorOptions();
+}
+
+function updateMajorOptions(){
+    const dept = document.getElementById('dept-select').value;
+    const majorSelect = document.getElementById('major-select');
+    majorSelect.innerHTML = "";
+    if(MAJORS[dept]){
+        majorSelect.innerHTML = <option value="">-- Select Major --</option> + MAJORS[dept].map(m=>`<option value="${m}">${m}</option>`).join('');
+    }else{
+        majorSelect.innerHTML = <option value="">N/A</option>;
+    }
+}
+
+function updateEditFormFields(){
+    const type = document.getElementById('edit-id-type').value;
+    const deptGroup = document.getElementById('edit-dept-group');
+    const majorRow = document.getElementById('edit-major-row');
+    if(type === 'Student'){
+        deptGroup.classList.remove('hidden');
+        majorRow.classList.remove('hidden');
+    } else {
+        deptGroup.classList.add('hidden');
+        majorRow.classList.add('hidden');
+    }
+    updateEditMajorOptions();
+}
+
+function updateEditMajorOptions(){
+    const dept = document.getElementById('edit-dept').value;
+    const majorSelect = document.getElementById('edit-major');
+    majorSelect.innerHTML = "";
+    if(MAJORS[dept]){
+        majorSelect.innerHTML = <option value="">-- Select Major --</option> + MAJORS[dept].map(m=>`<option value="${m}">${m}</option>`).join('');
+    }else{
+        majorSelect.innerHTML = <option value="">N/A</option>;
+    }
+}
+
 let editingStudentId = null;
 function showTab(name){
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -288,19 +408,24 @@ document.getElementById('register-form').addEventListener('submit', e=>{
             document.getElementById('student-info').textContent = data.info;
             document.getElementById('barcode-img').src = 'data:image/png;base64,' + data.barcode;
             e.target.reset();
+            updateFormFields();
         }else alert('Error: ' + data.error);
     });
 });
 
 function loadStudents(){ fetch('/students').then(r=>r.text()).then(h=>document.getElementById('students-table').innerHTML=h); }
-function showEditForm(id,name,num,dept,year,contact){
+function showEditForm(id,type,name,num,dept,major,year,contact,addr){
     editingStudentId=id;
     document.getElementById('edit-id').value=id;
+    document.getElementById('edit-id-type').value=type;
     document.getElementById('edit-fullname').value=name;
-    document.getElementById('edit-studentnum').value=num;
-    document.getElementById('edit-dept').value=dept;
-    document.getElementById('edit-year').value=year;
+    document.getElementById('edit-idnum').value=num;
+    document.getElementById('edit-dept').value=dept||'';
+    document.getElementById('edit-major').value=major||'';
+    document.getElementById('edit-year').value=year||'';
     document.getElementById('edit-contact').value=contact||'';
+    document.getElementById('edit-address').value=addr||'';
+    updateEditFormFields();
     document.getElementById('edit-form-container').style.display='block';
 }
 function hideEditForm(){ editingStudentId=null; document.getElementById('edit-form-container').style.display='none'; }
@@ -315,9 +440,10 @@ function loadRecords(){ fetch('/records').then(r=>r.text()).then(h=>document.get
 document.addEventListener('DOMContentLoaded', ()=>{loadRecords();loadStudents();});
 function downloadWord(){ window.location.href='/download-word'; }
 </script>
+<script>updateFormFields();</script>
 </body>
 </html>
-    """, depts=DEPARTMENTS, years=YEAR_LEVELS)
+    """, id_types=ID_TYPES, depts=DEPARTMENTS, years=YEAR_LEVELS)
 
 # ===================== LOGOUT =====================
 @app.route('/logout')
@@ -337,22 +463,22 @@ def scan():
         return jsonify({"message":"❌ Database connection failed","style":"error"})
     c = conn.cursor()
     today = datetime.date.today().isoformat()
-    c.execute("SELECT id,full_name,department,year_level FROM users WHERE student_number = %s", (code,))
+    c.execute("SELECT id,id_type,full_name,department FROM users WHERE LOWER(id_number) = LOWER(%s)", (code,))
     user = c.fetchone()
     if not user:
         conn.close()
         return jsonify({"message":f"❌ Not Found: {code}","style":"error"})
-    uid, name, dept, year = user
+    uid, id_type, name, dept = user
     c.execute("SELECT id FROM attendance WHERE user_id = %s AND scan_date = %s AND time_out IS NULL", (uid, today))
     active = c.fetchone()
     now_time = datetime.datetime.now().strftime("%I:%M %p")
     if active:
         c.execute("UPDATE attendance SET time_out = %s WHERE id = %s", (now_time, active[0]))
-        msg = f"⏰ TIME OUT — {name} ({dept}) at {now_time}"
+        msg = f"⏰ TIME OUT — {name} ({dept or id_type}) at {now_time}"
         style = "info"
     else:
         c.execute("INSERT INTO attendance (user_id, time_in, scan_date) VALUES (%s, %s, %s)", (uid, now_time, today))
-        msg = f"✅ TIME IN — {name} ({dept}) at {now_time}"
+        msg = f"✅ TIME IN — {name} ({dept or id_type}) at {now_time}"
         style = "success"
     conn.commit()
     conn.close()
@@ -364,26 +490,33 @@ def register():
     if not is_logged_in():
         return jsonify({"success":False,"error":"Unauthorized"})
     try:
+        id_type = request.form.get('id_type','')
+        id_number = request.form.get('id_number','').strip()
         full_name = request.form.get('full_name','').strip()
-        student_number = request.form.get('student_number','').strip()
-        department = request.form.get('department','')
-        year_level = request.form.get('year_level','')
+        department = request.form.get('department','') if id_type == 'Student' else None
+        major = request.form.get('major','') if id_type == 'Student' else None
+        year_level = request.form.get('year_level','') if id_type == 'Student' else None
         contact_number = request.form.get('contact_number','')
+        address = request.form.get('address','')
         registered_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        if not full_name or not student_number:
+        
+        if not full_name or not id_number or not id_type:
             return jsonify({"success":False,"error":"Fill all required fields!"})
+        
         conn = get_db_connection()
         if not conn:
             return jsonify({"success":False,"error":"Database connection failed!"})
         c = conn.cursor()
-        c.execute("INSERT INTO users (full_name, department, contact_number, year_level, student_number, registered_at) VALUES (%s, %s, %s, %s, %s, %s)",
-                  (full_name, department, contact_number, year_level, student_number, registered_at))
+        c.execute("""INSERT INTO users 
+            (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                  (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at))
         conn.commit()
         conn.close()
-        barcode_b64 = generate_barcode_b64(student_number)
-        return jsonify({"success":True,"info":f"{full_name} | {student_number}","barcode":barcode_b64})
+        barcode_b64 = generate_barcode_b64(id_number)
+        return jsonify({"success":True,"info":f"{full_name} | {id_type} | {id_number}","barcode":barcode_b64})
     except psycopg2.IntegrityError:
-        return jsonify({"success":False,"error":"Student Number already exists!"})
+        return jsonify({"success":False,"error":"ID Number already exists!"})
     except Exception as e:
         return jsonify({"success":False,"error":str(e)})
 
@@ -394,13 +527,14 @@ def students_list():
     conn = get_db_connection()
     if not conn: return "Database connection failed"
     c = conn.cursor()
-    c.execute("SELECT id, full_name, department, year_level, student_number, contact_number FROM users ORDER BY full_name")
+    c.execute("SELECT id, id_type, full_name, department, major, year_level, id_number, contact_number, address FROM users ORDER BY full_name")
     students = c.fetchall()
     conn.close()
-    html = "<table><tr><th>Name</th><th>Dept</th><th>Year</th><th>Student No.</th><th>Contact</th><th>Action</th></tr>"
+    html = """<table><tr><th>Type</th><th>Name</th><th>Dept/Major</th><th>Year</th><th>ID No.</th><th>Contact</th><th>Action</th></tr>"""
     for s in students:
-        html += f"""<tr><td>{s[1]}</td><td>{s[2]}</td><td>{s[3]}</td><td>{s[4]}</td><td>{s[5] or '-'}</td>
-            <td><button class="btn-edit" onclick="showEditForm({s[0]}, '{s[1].replace("'","\\'")}', '{s[4]}', '{s[2]}', '{s[3]}', '{s[5] or ""}')">✏️ Edit</button></td></tr>"""
+        dept_major = f"{s[3]} — {s[4]}" if s[4] else (s[3] or '-')
+        html += f"""<tr><td>{s[1]}</td><td>{s[2]}</td><td>{dept_major}</td><td>{s[5] or '-'}</td><td>{s[6]}</td><td>{s[7] or '-'}</td>
+            <td><button class="btn-edit" onclick="showEditForm({s[0]}, '{s[1]}', '{s[2].replace("'","\\'")}', '{s[6]}', '{s[3] or ""}', '{s[4] or ""}', '{s[5] or ""}', '{s[7] or ""}', '{s[8] or ""}')">✏️ Edit</button></td></tr>"""
     html += "</table>"
     return html
 
@@ -411,22 +545,26 @@ def update_student():
         return jsonify({"success":False,"error":"Unauthorized"})
     try:
         sid = request.form.get('id')
+        id_type = request.form.get('id_type','')
+        id_number = request.form.get('id_number','').strip()
         full_name = request.form.get('full_name','').strip()
-        student_number = request.form.get('student_number','').strip()
-        department = request.form.get('department','')
-        year_level = request.form.get('year_level','')
+        department = request.form.get('department','') if id_type == 'Student' else None
+        major = request.form.get('major','') if id_type == 'Student' else None
+        year_level = request.form.get('year_level','') if id_type == 'Student' else None
         contact_number = request.form.get('contact_number','')
+        address = request.form.get('address','')
+        
         conn = get_db_connection()
         if not conn:
             return jsonify({"success":False,"error":"Database connection failed!"})
         c = conn.cursor()
-        c.execute("UPDATE users SET full_name = %s, student_number = %s, department = %s, year_level = %s, contact_number = %s WHERE id = %s",
-                  (full_name, student_number, department, year_level, contact_number, sid))
+        c.execute("""UPDATE users SET id_type = %s, full_name = %s, id_number = %s, department = %s, major = %s, year_level = %s, contact_number = %s, address = %s WHERE id = %s""",
+                  (id_type, full_name, id_number, department, major, year_level, contact_number, address, sid))
         conn.commit()
         conn.close()
         return jsonify({"success":True})
     except psycopg2.IntegrityError:
-        return jsonify({"success":False,"error":"Student Number already exists!"})
+        return jsonify({"success":False,"error":"ID Number already exists!"})
     except Exception as e:
         return jsonify({"success":False,"error":str(e)})
 
@@ -438,13 +576,13 @@ def records():
     conn = get_db_connection()
     if not conn: return "Database connection failed"
     c = conn.cursor()
-    c.execute("""SELECT u.full_name, u.department, a.time_in, a.time_out 
+    c.execute("""SELECT u.full_name, u.id_type, u.department, a.time_in, a.time_out 
         FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.scan_date = %s ORDER BY a.id DESC""", (today,))
     recs = c.fetchall()
     conn.close()
-    html = f"<h3>Today: {today}</h3><table><tr><th>Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>"
+    html = f"<h3>Today: {today}</h3><table><tr><th>Name</th><th>Type</th><th>Dept</th><th>Time In</th><th>Time Out</th></tr>"
     for r in recs:
-        html += f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3] or '-'}</td></tr>"
+        html += f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2] or '-'}</td><td>{r[3]}</td><td>{r[4] or '-'}</td></tr>"
     html += "</table>"
     return html
 
@@ -456,7 +594,7 @@ def download_word():
     conn = get_db_connection()
     if not conn: return "Database connection failed"
     c = conn.cursor()
-    c.execute("""SELECT u.full_name, u.department, a.time_in, a.time_out 
+    c.execute("""SELECT u.full_name, u.id_type, u.department, a.time_in, a.time_out 
         FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.scan_date = %s ORDER BY a.id DESC""", (today,))
     recs = c.fetchall()
     conn.close()
@@ -464,13 +602,13 @@ def download_word():
     doc.add_heading(f'Library Attendance — {today}', 0)
     doc.add_paragraph(f'Generated: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
     doc.add_paragraph('')
-    table = doc.add_table(rows=1, cols=4)
+    table = doc.add_table(rows=1, cols=5)
     table.style = 'Table Grid'
     hdr = table.rows[0].cells
-    hdr[0].text='Name';hdr[1].text='Department';hdr[2].text='Time In';hdr[3].text='Time Out'
+    hdr[0].text='Name';hdr[1].text='Type';hdr[2].text='Department';hdr[3].text='Time In';hdr[4].text='Time Out'
     for r in recs:
         row = table.add_row().cells
-        row[0].text=r[0];row[1].text=r[1];row[2].text=r[2];row[3].text=r[3] or '-'
+        row[0].text=r[0];row[1].text=r[1];row[2].text=r[2] or '-';row[3].text=r[3];row[4].text=r[4] or '-'
     buffer = BytesIO()
     doc.save(buffer); buffer.seek(0)
     resp = make_response(buffer.read())
