@@ -1,6 +1,6 @@
 from flask import Flask, render_template_string, request, jsonify, make_response
 import psycopg2
-from psycopg2 import OperationalError
+from psycopg2 import sql
 import os
 import datetime
 import barcode
@@ -8,32 +8,30 @@ from barcode.writer import ImageWriter
 import base64
 from io import BytesIO
 from docx import Document
-from docx.shared import Pt
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 app = Flask(__name__)
 
-# ===================== DATABASE URL =====================
+# ===================== DATABASE — POSTGRESQL =====================
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-# ===================== LOGIN CREDENTIALS =====================
+# ===================== LOGIN =====================
 USERNAME = "slsu"
 PASSWORD = "jge"
 
-# ===================== DATABASE CONNECTION =====================
-def get_db_connection():
+# ===================== DB CONNECTION =====================
+def get_db():
     try:
         conn = psycopg2.connect(DATABASE_URL)
         return conn
-    except OperationalError as e:
-        print(f"DB Error: {e}")
+    except Exception as e:
+        print(f"DB Connect Error: {e}")
         return None
 
-# ===================== DATABASE INIT =====================
+# ===================== INIT DB =====================
 def init_db():
-    conn = get_db_connection()
+    conn = get_db()
     if not conn:
-        print("❌ No DB connection")
+        print("❌ Cannot connect to DB")
         return
     c = conn.cursor()
     c.execute("""CREATE TABLE IF NOT EXISTS users (
@@ -57,7 +55,7 @@ def init_db():
     )""")
     conn.commit()
     conn.close()
-    print("✅ DB Ready")
+    print("✅ DB Ready — PostgreSQL")
 
 init_db()
 
@@ -70,19 +68,16 @@ def generate_barcode_b64(id_number):
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
-def normalize_text(text):
-    return text.strip().lower() if text else ""
-
 def is_logged_in():
     return request.cookies.get('logged_in') == 'true'
 
-# ===================== LOGIN =====================
+# ===================== LOGIN PAGE =====================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        uname = normalize_text(request.form.get('username', ''))
+        uname = request.form.get('username', '').strip()
         pword = request.form.get('password', '').strip()
-        if uname == normalize_text(USERNAME) and pword == PASSWORD:
+        if uname == USERNAME and pword == PASSWORD:
             resp = make_response("<script>window.location='/';</script>")
             resp.set_cookie('logged_in', 'true', max_age=31536000)
             return resp
@@ -100,7 +95,7 @@ def login():
         h1{text-align:center;color:#2c3e50;margin-bottom:30px;}
         .form-group{margin-bottom:20px;}
         label{display:block;margin-bottom:8px;color:#555;font-weight:600;}
-        input,select{width:100%;padding:14px;border:2px solid #eee;border-radius:10px;font-size:16px;}
+        input{width:100%;padding:14px;border:2px solid #eee;border-radius:10px;font-size:16px;}
         button{width:100%;padding:14px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;border-radius:10px;font-size:18px;font-weight:bold;cursor:pointer;}
     </style>
 </head>
@@ -116,7 +111,7 @@ def login():
 </body>
 </html>"""
 
-# ===================== MAIN DASHBOARD — NO JSON ERROR! =====================
+# ===================== MAIN DASHBOARD =====================
 @app.route('/')
 def home():
     if not is_logged_in():
@@ -614,15 +609,15 @@ def scan():
     data = request.get_json()
     id_number = data.get('id_number', '').strip()
     
-    conn = get_db_connection()
+    conn = get_db()
     if not conn:
-        return jsonify({"success": False, "message": "Database error"}), 500
+        return jsonify({"success": False, "message": "Database error — check DATABASE_URL"}), 500
     
     c = conn.cursor()
     today = datetime.date.today().strftime("%Y-%m-%d")
     now = datetime.datetime.now().strftime("%I:%M:%S %p")
     
-    c.execute("SELECT id, full_name, id_number FROM users WHERE LOWER(id_number) = LOWER(%s)", (id_number,))
+    c.execute("SELECT id, full_name, id_number FROM users WHERE UPPER(id_number) = UPPER(%s)", (id_number,))
     user = c.fetchone()
     
     if not user:
@@ -645,46 +640,54 @@ def scan():
         conn.close()
         return jsonify({"success": True, "message": f"✅ OUT: {full_name} — {now}"})
 
-# ===================== REGISTER ENDPOINT =====================
+# ===================== REGISTER ENDPOINT — FIXED ✅ =====================
 @app.route('/register', methods=['POST'])
 def register():
     if not is_logged_in():
         return jsonify({"success": False, "error": "Unauthorized"}), 401
     
-    id_type = request.form.get('id_type', '').strip()
-    full_name = request.form.get('full_name', '').strip()
-    department = request.form.get('department', '').strip() or None
-    major = request.form.get('major', '').strip() or None
-    contact_number = request.form.get('contact_number', '').strip() or None
-    address = request.form.get('address', '').strip() or None
-    year_level = request.form.get('year_level', '').strip() or None
-    id_number = request.form.get('id_number', '').strip().upper()
-    registered_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    if not all([id_type, full_name, id_number]):
-        return jsonify({"success": False, "error": "Missing required fields"}), 400
-    
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({"success": False, "error": "Database connection failed"}), 500
-    
-    c = conn.cursor()
     try:
+        id_type = request.form.get('id_type', '').strip()
+        full_name = request.form.get('full_name', '').strip()
+        department = request.form.get('department', '').strip() or None
+        major = request.form.get('major', '').strip() or None
+        contact_number = request.form.get('contact_number', '').strip() or None
+        address = request.form.get('address', '').strip() or None
+        year_level = request.form.get('year_level', '').strip() or None
+        id_number = request.form.get('id_number', '').strip().upper()
+        registered_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        if not id_type or not full_name or not id_number:
+            return jsonify({"success": False, "error": "Fill up all required fields!"}), 400
+        
+        conn = get_db()
+        if not conn:
+            return jsonify({"success": False, "error": "Database connection failed — check DATABASE_URL"}), 500
+        
+        c = conn.cursor()
+        
+        # Check existing
+        c.execute("SELECT id FROM users WHERE UPPER(id_number) = UPPER(%s)", (id_number,))
+        if c.fetchone():
+            conn.close()
+            return jsonify({"success": False, "error": "ID Number already exists!"}), 400
+        
+        # Insert
         c.execute("""INSERT INTO users 
             (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at))
         conn.commit()
+        conn.close()
         
         barcode_b64 = generate_barcode_b64(id_number)
         info = f"{full_name} | ID: {id_number} | {id_type}"
         
         return jsonify({"success": True, "info": info, "barcode": barcode_b64})
-    except psycopg2.IntegrityError:
-        conn.rollback()
-        return jsonify({"success": False, "error": "ID Number already exists!"}), 400
-    finally:
-        conn.close()
+    
+    except Exception as e:
+        print(f"REGISTER ERROR: {e}")
+        return jsonify({"success": False, "error": f"Server error: {str(e)}"}), 500
 
 # ===================== GET STUDENTS =====================
 @app.route('/get-students')
@@ -692,7 +695,7 @@ def get_students():
     if not is_logged_in():
         return jsonify({"students": []})
     
-    conn = get_db_connection()
+    conn = get_db()
     if not conn:
         return jsonify({"students": []})
     
@@ -717,37 +720,37 @@ def update_student():
     if not is_logged_in():
         return jsonify({"success": False, "error": "Unauthorized"}), 401
     
-    student_id = request.form.get('id', '').strip()
-    id_type = request.form.get('id_type', '').strip()
-    id_number = request.form.get('id_number', '').strip().upper()
-    full_name = request.form.get('full_name', '').strip()
-    department = request.form.get('department', '').strip() or None
-    major = request.form.get('major', '').strip() or None
-    contact_number = request.form.get('contact_number', '').strip() or None
-    address = request.form.get('address', '').strip() or None
-    year_level = request.form.get('year_level', '').strip() or None
-    
-    if not all([student_id, id_type, id_number, full_name]):
-        return jsonify({"success": False, "error": "Missing required fields"}), 400
-    
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({"success": False, "error": "Database error"}), 500
-    
-    c = conn.cursor()
     try:
+        student_id = request.form.get('id', '').strip()
+        id_type = request.form.get('id_type', '').strip()
+        id_number = request.form.get('id_number', '').strip().upper()
+        full_name = request.form.get('full_name', '').strip()
+        department = request.form.get('department', '').strip() or None
+        major = request.form.get('major', '').strip() or None
+        contact_number = request.form.get('contact_number', '').strip() or None
+        address = request.form.get('address', '').strip() or None
+        year_level = request.form.get('year_level', '').strip() or None
+        
+        if not all([student_id, id_type, id_number, full_name]):
+            return jsonify({"success": False, "error": "Missing required fields"}), 400
+        
+        conn = get_db()
+        if not conn:
+            return jsonify({"success": False, "error": "Database error"}), 500
+        
+        c = conn.cursor()
         c.execute("""UPDATE users SET 
             id_type = %s, id_number = %s, full_name = %s, department = %s, 
             major = %s, contact_number = %s, address = %s, year_level = %s
             WHERE id = %s""",
             (id_type, id_number, full_name, department, major, contact_number, address, year_level, student_id))
         conn.commit()
-        return jsonify({"success": True})
-    except psycopg2.IntegrityError:
-        conn.rollback()
-        return jsonify({"success": False, "error": "ID Number already exists!"}), 400
-    finally:
         conn.close()
+        return jsonify({"success": True})
+    
+    except Exception as e:
+        print(f"UPDATE ERROR: {e}")
+        return jsonify({"success": False, "error": f"Error: {str(e)}"}), 500
 
 # ===================== GET RECORDS =====================
 @app.route('/get-records')
@@ -755,7 +758,7 @@ def get_records():
     if not is_logged_in():
         return jsonify({"records": []})
     
-    conn = get_db_connection()
+    conn = get_db()
     if not conn:
         return jsonify({"records": []})
     
@@ -785,7 +788,7 @@ def download_word():
     if not is_logged_in():
         return "<script>window.location='/login';</script>"
     
-    conn = get_db_connection()
+    conn = get_db()
     if not conn:
         return "Database error"
     
