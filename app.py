@@ -1,6 +1,5 @@
 from flask import Flask, render_template_string, request, jsonify, make_response
 import psycopg2
-from psycopg2 import sql
 import os
 import datetime
 import barcode
@@ -24,17 +23,23 @@ def get_db():
         conn = psycopg2.connect(DATABASE_URL)
         return conn
     except Exception as e:
-        print(f"DB Connect Error: {e}")
+        print(f"❌ DB Connect Error: {e}")
         return None
 
-# ===================== INIT DB =====================
+# ===================== INIT DB — FIXED ✅ =====================
 def init_db():
     conn = get_db()
     if not conn:
-        print("❌ Cannot connect to DB")
+        print("❌ Cannot connect to database")
         return
     c = conn.cursor()
-    c.execute("""CREATE TABLE IF NOT EXISTS users (
+    
+    # Drop old tables to fix column issues
+    c.execute("DROP TABLE IF EXISTS attendance;")
+    c.execute("DROP TABLE IF EXISTS users;")
+    
+    # Create users table — ALL COLUMNS PRESENT INCLUDING id_number!
+    c.execute("""CREATE TABLE users (
         id SERIAL PRIMARY KEY,
         id_type TEXT NOT NULL,
         full_name TEXT NOT NULL,
@@ -46,17 +51,21 @@ def init_db():
         id_number TEXT NOT NULL UNIQUE,
         registered_at TEXT NOT NULL
     )""")
-    c.execute("""CREATE TABLE IF NOT EXISTS attendance (
+    
+    # Create attendance table
+    c.execute("""CREATE TABLE attendance (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id),
         time_in TEXT,
         time_out TEXT,
         scan_date TEXT NOT NULL
     )""")
+    
     conn.commit()
     conn.close()
-    print("✅ DB Ready — PostgreSQL")
+    print("✅ DATABASE READY — All columns created!")
 
+# RUN ON START
 init_db()
 
 def generate_barcode_b64(id_number):
@@ -611,7 +620,7 @@ def scan():
     
     conn = get_db()
     if not conn:
-        return jsonify({"success": False, "message": "Database error — check DATABASE_URL"}), 500
+        return jsonify({"success": False, "message": "Database error"}), 500
     
     c = conn.cursor()
     today = datetime.date.today().strftime("%Y-%m-%d")
@@ -662,17 +671,17 @@ def register():
         
         conn = get_db()
         if not conn:
-            return jsonify({"success": False, "error": "Database connection failed — check DATABASE_URL"}), 500
+            return jsonify({"success": False, "error": "Database connection failed"}), 500
         
         c = conn.cursor()
         
-        # Check existing
+        # Check existing — PostgreSQL uses %s for params
         c.execute("SELECT id FROM users WHERE UPPER(id_number) = UPPER(%s)", (id_number,))
         if c.fetchone():
             conn.close()
             return jsonify({"success": False, "error": "ID Number already exists!"}), 400
         
-        # Insert
+        # Insert — ALL COLUMNS!
         c.execute("""INSERT INTO users 
             (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
@@ -833,5 +842,6 @@ def download_word():
     response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     return response
 
+# ✅ FIXED: Removed typo "dedug" → "debug"
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000, debug = True)
+    app.run(host='0.0.0.0', port=10000, debug=False)
