@@ -26,7 +26,17 @@ def get_db():
         print(f"❌ DB Connect Error: {e}")
         return None
 
-# ===================== INIT DB — FIXED ✅ =====================
+# ===================== GET PHILIPPINE TIME — UTC+8 ✅ WALANG SEGUNDO =====================
+def get_ph_time():
+    """Return current Philippine Time (UTC+8) — HH:MM AM/PM only, NO SECONDS"""
+    now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+    return now.strftime("%I:%M %p")
+
+def get_ph_date():
+    """Return current date — YYYY-MM-DD"""
+    return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d")
+
+# ===================== INIT DB =====================
 def init_db():
     conn = get_db()
     if not conn:
@@ -34,11 +44,9 @@ def init_db():
         return
     c = conn.cursor()
     
-    # Drop old tables to fix column issues
     c.execute("DROP TABLE IF EXISTS attendance;")
     c.execute("DROP TABLE IF EXISTS users;")
     
-    # Create users table — ALL COLUMNS PRESENT INCLUDING id_number!
     c.execute("""CREATE TABLE users (
         id SERIAL PRIMARY KEY,
         id_type TEXT NOT NULL,
@@ -52,7 +60,6 @@ def init_db():
         registered_at TEXT NOT NULL
     )""")
     
-    # Create attendance table
     c.execute("""CREATE TABLE attendance (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id),
@@ -65,7 +72,6 @@ def init_db():
     conn.close()
     print("✅ DATABASE READY — All columns created!")
 
-# RUN ON START
 init_db()
 
 def generate_barcode_b64(id_number):
@@ -609,7 +615,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </html>
     """)
 
-# ===================== SCAN ENDPOINT =====================
+# ===================== SCAN ENDPOINT — WALANG SEGUNDO ✅ =====================
 @app.route('/scan', methods=['POST'])
 def scan():
     if not is_logged_in():
@@ -623,8 +629,8 @@ def scan():
         return jsonify({"success": False, "message": "Database error"}), 500
     
     c = conn.cursor()
-    today = datetime.date.today().strftime("%Y-%m-%d")
-    now = datetime.datetime.now().strftime("%I:%M:%S %p")
+    today = get_ph_date()
+    now = get_ph_time()  # Format: 09:30 AM — WALANG SEGUNDO! ✅
     
     c.execute("SELECT id, full_name, id_number FROM users WHERE UPPER(id_number) = UPPER(%s)", (id_number,))
     user = c.fetchone()
@@ -649,7 +655,7 @@ def scan():
         conn.close()
         return jsonify({"success": True, "message": f"✅ OUT: {full_name} — {now}"})
 
-# ===================== REGISTER ENDPOINT — FIXED ✅ =====================
+# ===================== REGISTER ENDPOINT =====================
 @app.route('/register', methods=['POST'])
 def register():
     if not is_logged_in():
@@ -664,7 +670,7 @@ def register():
         address = request.form.get('address', '').strip() or None
         year_level = request.form.get('year_level', '').strip() or None
         id_number = request.form.get('id_number', '').strip().upper()
-        registered_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        registered_at = get_ph_date() + " " + get_ph_time()
         
         if not id_type or not full_name or not id_number:
             return jsonify({"success": False, "error": "Fill up all required fields!"}), 400
@@ -675,13 +681,11 @@ def register():
         
         c = conn.cursor()
         
-        # Check existing — PostgreSQL uses %s for params
         c.execute("SELECT id FROM users WHERE UPPER(id_number) = UPPER(%s)", (id_number,))
         if c.fetchone():
             conn.close()
             return jsonify({"success": False, "error": "ID Number already exists!"}), 400
         
-        # Insert — ALL COLUMNS!
         c.execute("""INSERT INTO users 
             (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
@@ -801,7 +805,7 @@ def download_word():
     if not conn:
         return "Database error"
     
-    today = datetime.date.today().strftime("%Y-%m-%d")
+    today = get_ph_date()
     c = conn.cursor()
     c.execute("""
         SELECT u.full_name, u.id_number, a.time_in, a.time_out
@@ -815,7 +819,7 @@ def download_word():
     
     doc = Document()
     doc.add_heading(f'Library Attendance Report — {today}', 0)
-    doc.add_paragraph(f'Generated on: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+    doc.add_paragraph(f'Generated on: {get_ph_date()} {get_ph_time()}')
     doc.add_paragraph('=' * 50)
     
     table = doc.add_table(rows=1, cols=4)
@@ -842,6 +846,5 @@ def download_word():
     response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     return response
 
-# ✅ FIXED: Removed typo "dedug" → "debug"
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=False)
