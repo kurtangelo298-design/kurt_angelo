@@ -26,7 +26,7 @@ def get_db():
         print(f"❌ DB Connect Error: {e}")
         return None
 
-# ===================== GET PHILIPPINE TIME — UTC+8 ✅ =====================
+# ===================== PHILIPPINE TIME — UTC+8 =====================
 def get_ph_time():
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
     return now.strftime("%I:%M %p")
@@ -68,7 +68,7 @@ def init_db():
     
     conn.commit()
     conn.close()
-    print("✅ DATABASE READY — All columns created!")
+    print("✅ DATABASE READY!")
 
 init_db()
 
@@ -103,7 +103,7 @@ def login():
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
-        body{background:linear-gradient(135deg,#1e3a8a 0%,#312e81 100%);min-height:100vh;display:flex;justify-content:center;align-items:center;position:relative;overflow:hidden;}
+        body{background:linear-gradient(135deg,#1e3a8a 0%,#312e81 100%);min-height:100vh;display:flex;justify-content:center;align-items:center;position:relative;}
         body::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:url('https://images.unsplash.com/photo-1507842273431-48ccb61e49b?w=1920&q=80') no-repeat center center;background-size:cover;opacity:0.15;z-index:0;}
         .card{background:rgba(255,255,255,0.95);padding:45px 35px;border-radius:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);width:100%;max-width:420px;position:relative;z-index:1;backdrop-filter:blur(10px);}
         h1{text-align:center;color:#1e3a8a;margin-bottom:35px;font-size:28px;}
@@ -119,7 +119,7 @@ def login():
     <div class="card">
         <h1>🔐 Admin Login</h1>
         <form method="POST">
-            <div class="form-group"><label>Username</label><input type="text" name="username" required autocomplete="off"></div>
+            <div class="form-group"><label>Username</label><input type="text" name="username" required></div>
             <div class="form-group"><label>Password</label><input type="password" name="password" required></div>
             <button type="submit">Login</button>
         </form>
@@ -127,7 +127,7 @@ def login():
 </body>
 </html>"""
 
-# ===================== MAIN DASHBOARD =====================
+# ===================== MAIN DASHBOARD — SIDEBAR LAYOUT =====================
 @app.route('/')
 def home():
     if not is_logged_in():
@@ -140,189 +140,157 @@ def home():
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
-        body{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%);min-height:100vh;padding:20px;position:relative;}
-        body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1920&q=80') no-repeat center center;background-size:cover;opacity:0.08;z-index:0;pointer-events:none;}
-        .container{max-width:1300px;margin:0 auto;position:relative;z-index:1;}
-        .header-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;flex-wrap:wrap;gap:15px;}
-        h1{color:white;font-size:32px;text-shadow:0 2px 20px rgba(0,0,0,0.3);}
-        .tabs{display:flex;gap:10px;margin-bottom:25px;flex-wrap:wrap;}
-        .tab{padding:14px 24px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:14px;cursor:pointer;font-weight:600;transition:all 0.3s ease;font-size:15px;backdrop-filter:blur(10px);}
-        .tab:hover{background:rgba(255,255,255,0.15);color:white;transform:translateY(-2px);}
-        .tab.active{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;border:none;box-shadow:0 8px 25px rgba(59,130,246,0.3);}
-        .card{background:rgba(255,255,255,0.95);padding:35px;border-radius:20px;box-shadow:0 15px 40px rgba(0,0,0,0.25);margin-bottom:25px;position:relative;overflow:hidden;}
-        .card::before{content:'';position:absolute;top:0;right:0;width:200px;height:200px;background:linear-gradient(135deg,rgba(59,130,246,0.05),transparent);border-radius:50%;transform:translate(50px,-50px);}
-        h2{color:#1e293b;margin-bottom:25px;font-size:24px;position:relative;}
+        body{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%);min-height:100vh;position:relative;overflow:hidden;}
+        body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1920&q=80') no-repeat center center;background-size:cover;opacity:0.06;z-index:0;pointer-events:none;}
+        
+        /* ===== MAIN LAYOUT ===== */
+        .app-container{display:flex;height:100vh;position:relative;z-index:1;}
+        
+        /* ===== SIDEBAR — LEFT ===== */
+        .sidebar{width:280px;background:linear-gradient(180deg,#1e293b 0%,#0f172a 100%);display:flex;flex-direction:column;padding:25px 0;box-shadow:4px 0 20px rgba(0,0,0,0.3);border-right:1px solid rgba(255,255,255,0.05);}
+        .sidebar-header{padding:0 20px 30px 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:20px;}
+        .sidebar-header h2{color:white;font-size:20px;display:flex;align-items:center;gap:10px;}
+        .sidebar-header p{color:#94a3b8;font-size:13px;margin-top:5px;}
+        
+        .sidebar-menu{display:flex;flex-direction:column;gap:6px;padding:0 12px;flex:1;}
+        .menu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#cbd5e1;border-radius:12px;cursor:pointer;transition:all 0.3s ease;font-size:15px;font-weight:500;border:2px solid transparent;}
+        .menu-item:hover{background:rgba(59,130,246,0.1);color:#93c5fd;}
+        .menu-item.active{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;box-shadow:0 4px 15px rgba(59,130,246,0.3);border-color:transparent;}
+        .menu-item i{font-size:20px;width:24px;text-align:center;}
+        
+        .sidebar-footer{padding:20px;border-top:1px solid rgba(255,255,255,0.08);margin-top:auto;}
+        .logout-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.3s;}
+        .logout-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(220,38,38,0.35);}
+        
+        /* ===== MAIN CONTENT — CENTER DISPLAY AREA ===== */
+        .main-content{flex:1;padding:30px;overflow-y:auto;position:relative;}
+        .content-header{margin-bottom:25px;}
+        .content-header h1{color:white;font-size:28px;}
+        .content-card{background:rgba(255,255,255,0.95);border-radius:20px;padding:35px;box-shadow:0 10px 40px rgba(0,0,0,0.2);min-height:calc(100vh - 120px);animation:fadeIn 0.4s ease;}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(15px);}to{opacity:1;transform:translateY(0);}}
+        
+        /* ===== FORM & TABLE STYLES ===== */
+        h2{color:#1e293b;margin-bottom:25px;font-size:24px;}
         .form-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
         .form-group{margin-bottom:18px;}
         label{display:block;margin-bottom:7px;color:#475569;font-weight:600;font-size:14px;}
         input,select{width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;transition:0.3s;background:#fafafa;}
         input:focus,select:focus{outline:none;border-color:#3b82f6;background:white;box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
-        button{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;border:none;padding:14px 28px;border-radius:12px;font-size:16px;font-weight:bold;cursor:pointer;transition:all 0.3s ease;margin:5px;}
-        button:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(99,102,241,0.35);}
-        .scan-area{text-align:center;padding:40px;background:linear-gradient(135deg,#eff6ff 0%,#eef2ff 100%);border-radius:16px;margin-bottom:20px;border:2px solid #bfdbfe;position:relative;}
+        button{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;border:none;padding:13px 28px;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;transition:all 0.3s;margin:5px;}
+        button:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(99,102,241,0.3);}
+        
+        .scan-area{text-align:center;padding:40px;background:linear-gradient(135deg,#eff6ff 0%,#eef2ff 100%);border-radius:16px;margin-bottom:20px;border:2px solid #bfdbfe;}
         #scan-input{font-size:24px;text-align:center;padding:18px;width:100%;max-width:450px;border-radius:12px;border:2px solid #93c5fd;}
-        .status{font-size:20px;font-weight:bold;margin-top:20px;padding:18px;border-radius:12px;transition:all 0.3s;}
+        .status{font-size:20px;font-weight:bold;margin-top:20px;padding:18px;border-radius:12px;}
         .success{background:#dcfce7;color:#166534;border:2px solid #86efac;}
         .info{background:#e0f2fe;color:#075985;border:2px solid #7dd3fc;}
         .error{background:#fee2e2;color:#991b1b;border:2px solid #fca5a5;}
+        
         table{width:100%;border-collapse:collapse;margin-top:20px;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.05);}
         th,td{padding:14px;text-align:left;border-bottom:1px solid #f1f5f9;font-size:14px;}
         th{background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);font-weight:bold;color:#1e293b;}
         tr:hover{background:#f8fafc;}
-        .tab-content{display:none;animation:fadeIn 0.4s ease;}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+        
+        .tab-content{display:none;}
         .tab-content.active{display:block;}
         .barcode-img{max-width:320px;margin:20px auto;display:block;padding:15px;background:white;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.1);}
         .btn-print{background:linear-gradient(135deg,#10b981 0%,#059669 100%);}
-        .btn-print:hover{box-shadow:0 8px 20px rgba(16,185,129,0.35);}
         .btn-download{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:white;}
-        .btn-download:hover{box-shadow:0 8px 20px rgba(245,158,11,0.35);}
         .btn-edit{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);color:white;padding:7px 14px;font-size:13px;border-radius:8px;}
         .btn-save{background:linear-gradient(135deg,#10b981 0%,#059669 100%);}
         .btn-cancel{background:linear-gradient(135deg,#64748b 0%,#475569 100%);}
-        .logout-btn{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);padding:12px 24px;border-radius:10px;}
-        .logout-btn:hover{box-shadow:0 8px 20px rgba(239,68,68,0.35);}
         .edit-form{background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);padding:25px;border-radius:16px;margin-top:20px;border:2px solid #e2e8f0;}
         .hidden{display:none !important;}
         .dept-tabs{display:flex;gap:8px;margin:20px 0;flex-wrap:wrap;}
-        .dept-tab{padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:10px;cursor:pointer;font-weight:600;transition:all 0.2s ease;font-size:14px;}
+        .dept-tab{padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:10px;cursor:pointer;font-weight:600;transition:all 0.2s;font-size:14px;}
         .dept-tab:hover{background:#e2e8f0;}
         .dept-tab.active{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;box-shadow:0 4px 12px rgba(59,130,246,0.3);}
         .search-box{margin-bottom:20px;}
         .search-box input{font-size:15px;padding:12px 16px;}
-        @media(max-width:768px){.form-row{grid-template-columns:1fr;}.tabs{overflow-x:auto;}.card{padding:20px;}}
+        
+        /* ===== RESPONSIVE ===== */
+        @media(max-width:900px){
+            .sidebar{width:70px;padding:20px 0;}
+            .sidebar-header h2 span,.sidebar-header p,.menu-item span{display:none;}
+            .menu-item{justify-content:center;padding:14px;}
+            .form-row{grid-template-columns:1fr;}
+            .main-content{padding:15px;}
+            .content-card{padding:20px;}
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header-bar">
-            <h1>📚 Library Attendance — SLSU-JGE</h1>
-            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
-        </div>
-        
-        <div class="tabs">
-            <button class="tab active" id="tab-scan" onclick="switchTab('scan')">📱 Scan / Attendance</button>
-            <button class="tab" id="tab-register" onclick="switchTab('register')">📇 Register</button>
-            <button class="tab" id="tab-students" onclick="switchTab('students')">👥 Students List</button>
-            <button class="tab" id="tab-records" onclick="switchTab('records')">📋 Records</button>
-            <button class="tab" id="tab-export" onclick="switchTab('export')">📄 Export</button>
-        </div>
-
-        <div id="scan" class="tab-content active">
-            <div class="card">
-                <h2>📱 Scan Barcode — Time In / Time Out</h2>
-                <div class="scan-area">
-                    <input type="text" id="scan-input" placeholder="👉 Scan barcode or type ID number..." autofocus>
-                    <div id="status-box" class="status info">⏳ Waiting for scan...</div>
+    <div class="app-container">
+        <!-- ===== SIDEBAR — LEFT MENU ===== -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>📚 <span>Library System</span></h2>
+                <p>SLSU-JGE Attendance</p>
+            </div>
+            
+            <div class="sidebar-menu">
+                <div class="menu-item active" onclick="showContent('scan')">
+                    <span>📱</span> <span>Scan / Attendance</span>
                 </div>
+                <div class="menu-item" onclick="showContent('register')">
+                    <span>📇</span> <span>Register User</span>
+                </div>
+                <div class="menu-item" onclick="showContent('students')">
+                    <span>👥</span> <span>Students List</span>
+                </div>
+                <div class="menu-item" onclick="showContent('records')">
+                    <span>📋</span> <span>Attendance Records</span>
+                </div>
+                <div class="menu-item" onclick="showContent('export')">
+                    <span>📄</span> <span>Export Reports</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <button class="logout-btn" onclick="logout()">🚪 Logout</button>
             </div>
         </div>
 
-        <div id="register" class="tab-content">
-            <div class="card">
-                <h2>📇 Register New Student / Employee / Visitor</h2>
-                <form id="register-form">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>ID Type *</label>
-                            <select name="id_type" id="id-type-select" required>
-                                <option value="Student">🎓 Student</option>
-                                <option value="Employee">👨‍🏫 Employee</option>
-                                <option value="Visitor">👤 Visitor</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>ID Number *</label>
-                            <input type="text" name="id_number" required placeholder="e.g. 2024-0001">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Full Name *</label><input type="text" name="full_name" required placeholder="Last, First Middle"></div>
-                        <div class="form-group">
-                            <label>Department</label>
-                            <select name="department" id="dept-select">
-                                <option value="">-- Select Department --</option>
-                                <option value="CT">Computer Technology (CT)</option>
-                                <option value="FBT">Food & Beverage Technology (FBT)</option>
-                                <option value="BSED">BSED</option>
-                                <option value="BEED">BEED</option>
-                                <option value="BSFI">BSFI</option>
-                                <option value="BSBA">BSBA</option>
-                                <option value="EMPLOYEE">EMPLOYEE</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-row" id="major-row">
-                        <div class="form-group">
-                            <label>Major / Specialization</label>
-                            <select name="major" id="major-select"><option value="">-- Select Department First --</option></select>
-                        </div>
-                        <div class="form-group">
-                            <label>Year Level</label>
-                            <select name="year_level" id="year-select">
-                                <option value="1st Year">1st Year</option>
-                                <option value="2nd Year">2nd Year</option>
-                                <option value="3rd Year">3rd Year</option>
-                                <option value="4th Year">4th Year</option>
-                                <option value="5th Year">5th Year</option>
-                                <option value="N/A">N/A — Not Applicable</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Contact Number</label><input type="text" name="contact_number" placeholder="09XX-XXX-XXXX"></div>
-                        <div class="form-group"><label>Complete Address</label><input type="text" name="address" placeholder="City, Province"></div>
-                    </div>
-                    <button type="submit">✅ Register & Generate Barcode</button>
-                </form>
-                <div id="barcode-result" style="display:none;margin-top:30px;text-align:center;padding:30px;background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-radius:16px;border:2px solid #bae6fd;">
-                    <h3>✅ Registration Successful!</h3>
-                    <p style="font-size:18px;margin:15px 0;"><strong id="student-info"></strong></p>
-                    <img id="barcode-img" class="barcode-img"><br>
-                    <button class="btn-print" onclick="window.print()">🖨️ Print Barcode</button>
-                </div>
+        <!-- ===== MAIN CONTENT — CENTER DISPLAY AREA ===== -->
+        <div class="main-content">
+            <div class="content-header">
+                <h1 id="page-title">📱 Scan / Attendance</h1>
             </div>
-        </div>
+            
+            <div class="content-card">
+                <!-- === SCAN / ATTENDANCE === -->
+                <div id="scan" class="tab-content active">
+                    <h2>📱 Scan Barcode — Time In / Time Out</h2>
+                    <div class="scan-area">
+                        <input type="text" id="scan-input" placeholder="👉 Scan barcode or type ID number..." autofocus>
+                        <div id="status-box" class="status info">⏳ Waiting for scan...</div>
+                    </div>
+                </div>
 
-        <div id="students" class="tab-content">
-            <div class="card">
-                <h2>👥 Registered Users — By Department</h2>
-                <div class="search-box">
-                    <input type="text" id="search-input" placeholder="🔍 Search by Name or ID Number..." oninput="filterStudents()">
-                </div>
-                <div class="dept-tabs">
-                    <button class="dept-tab active" id="dept-ALL" onclick="switchDept('ALL')">📋 ALL</button>
-                    <button class="dept-tab" id="dept-CT" onclick="switchDept('CT')">CT</button>
-                    <button class="dept-tab" id="dept-FBT" onclick="switchDept('FBT')">FBT</button>
-                    <button class="dept-tab" id="dept-BSED" onclick="switchDept('BSED')">BSED</button>
-                    <button class="dept-tab" id="dept-BEED" onclick="switchDept('BEED')">BEED</button>
-                    <button class="dept-tab" id="dept-BSFI" onclick="switchDept('BSFI')">BSFI</button>
-                    <button class="dept-tab" id="dept-BSBA" onclick="switchDept('BSBA')">BSBA</button>
-                    <button class="dept-tab" id="dept-EMPLOYEE" onclick="switchDept('EMPLOYEE')">EMPLOYEE</button>
-                    <button class="dept-tab" id="dept-Visitor" onclick="switchDept('Visitor')">👤 VISITOR</button>
-                </div>
-                <button onclick="loadStudents()">🔄 Refresh List</button>
-                <div id="students-table"></div>
-                <div id="edit-form-container" class="edit-form hidden">
-                    <h3>✏️ Edit User Information</h3>
-                    <form id="edit-form">
-                        <input type="hidden" id="edit-id" name="id">
+                <!-- === REGISTER === -->
+                <div id="register" class="tab-content">
+                    <h2>📇 Register New User</h2>
+                    <form id="register-form">
                         <div class="form-row">
-                            <div class="form-group"><label>ID Type</label>
-                                <select id="edit-id-type" name="id_type">
+                            <div class="form-group">
+                                <label>ID Type *</label>
+                                <select name="id_type" id="id-type-select" required>
                                     <option value="Student">🎓 Student</option>
                                     <option value="Employee">👨‍🏫 Employee</option>
                                     <option value="Visitor">👤 Visitor</option>
                                 </select>
                             </div>
-                            <div class="form-group"><label>ID Number</label><input type="text" id="edit-idnum" name="id_number" required></div>
+                            <div class="form-group">
+                                <label>ID Number *</label>
+                                <input type="text" name="id_number" required placeholder="e.g. 2024-0001">
+                            </div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group"><label>Full Name</label><input type="text" id="edit-fullname" name="full_name" required></div>
+                            <div class="form-group"><label>Full Name *</label><input type="text" name="full_name" required placeholder="Last, First Middle"></div>
                             <div class="form-group">
                                 <label>Department</label>
-                                <select id="edit-dept" name="department">
-                                    <option value="">-- Select --</option>
+                                <select name="department" id="dept-select">
+                                    <option value="">-- Select Department --</option>
                                     <option value="CT">Computer Technology (CT)</option>
                                     <option value="FBT">Food & Beverage Technology (FBT)</option>
                                     <option value="BSED">BSED</option>
@@ -333,44 +301,123 @@ def home():
                                 </select>
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group"><label>Major / Specialization</label><select id="edit-major" name="major"></select></div>
-                            <div class="form-group"><label>Year Level</label>
-                                <select id="edit-year" name="year_level">
+                        <div class="form-row" id="major-row">
+                            <div class="form-group">
+                                <label>Major / Specialization</label>
+                                <select name="major" id="major-select"><option value="">-- Select Department First --</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Year Level</label>
+                                <select name="year_level" id="year-select">
                                     <option value="1st Year">1st Year</option>
                                     <option value="2nd Year">2nd Year</option>
                                     <option value="3rd Year">3rd Year</option>
                                     <option value="4th Year">4th Year</option>
                                     <option value="5th Year">5th Year</option>
-                                    <option value="N/A">N/A</option>
+                                    <option value="N/A">N/A — Not Applicable</option>
                                 </select>
                             </div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group"><label>Contact Number</label><input type="text" id="edit-contact" name="contact_number"></div>
-                            <div class="form-group"><label>Complete Address</label><input type="text" id="edit-address" name="address"></div>
+                            <div class="form-group"><label>Contact Number</label><input type="text" name="contact_number" placeholder="09XX-XXX-XXXX"></div>
+                            <div class="form-group"><label>Complete Address</label><input type="text" name="address" placeholder="City, Province"></div>
                         </div>
-                        <button type="submit" class="btn-save">💾 Save Changes</button>
-                        <button type="button" class="btn-cancel" onclick="hideEditForm()">❌ Cancel</button>
+                        <button type="submit">✅ Register & Generate Barcode</button>
                     </form>
+                    <div id="barcode-result" style="display:none;margin-top:30px;text-align:center;padding:30px;background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-radius:16px;border:2px solid #bae6fd;">
+                        <h3>✅ Registration Successful!</h3>
+                        <p style="font-size:18px;margin:15px 0;"><strong id="student-info"></strong></p>
+                        <img id="barcode-img" class="barcode-img"><br>
+                        <button class="btn-print" onclick="window.print()">🖨️ Print Barcode</button>
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        <div id="records" class="tab-content">
-            <div class="card">
-                <h2>📋 Attendance Records — Time In / Time Out</h2>
-                <button onclick="loadRecords()">🔄 Refresh Records</button>
-                <div id="records-table"></div>
-            </div>
-        </div>
+                <!-- === STUDENTS LIST === -->
+                <div id="students" class="tab-content">
+                    <h2>👥 Registered Users — By Department</h2>
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="🔍 Search by Name or ID Number..." oninput="filterStudents()">
+                    </div>
+                    <div class="dept-tabs">
+                        <button class="dept-tab active" id="dept-ALL" onclick="switchDept('ALL')">📋 ALL</button>
+                        <button class="dept-tab" id="dept-CT" onclick="switchDept('CT')">CT</button>
+                        <button class="dept-tab" id="dept-FBT" onclick="switchDept('FBT')">FBT</button>
+                        <button class="dept-tab" id="dept-BSED" onclick="switchDept('BSED')">BSED</button>
+                        <button class="dept-tab" id="dept-BEED" onclick="switchDept('BEED')">BEED</button>
+                        <button class="dept-tab" id="dept-BSFI" onclick="switchDept('BSFI')">BSFI</button>
+                        <button class="dept-tab" id="dept-BSBA" onclick="switchDept('BSBA')">BSBA</button>
+                        <button class="dept-tab" id="dept-EMPLOYEE" onclick="switchDept('EMPLOYEE')">EMPLOYEE</button>
+                        <button class="dept-tab" id="dept-Visitor" onclick="switchDept('Visitor')">👤 VISITOR</button>
+                    </div>
+                    <button onclick="loadStudents()">🔄 Refresh List</button>
+                    <div id="students-table"></div>
+                    <div id="edit-form-container" class="edit-form hidden">
+                        <h3>✏️ Edit User Information</h3>
+                        <form id="edit-form">
+                            <input type="hidden" id="edit-id" name="id">
+                            <div class="form-row">
+                                <div class="form-group"><label>ID Type</label>
+                                    <select id="edit-id-type" name="id_type">
+                                        <option value="Student">🎓 Student</option>
+                                        <option value="Employee">👨‍🏫 Employee</option>
+                                        <option value="Visitor">👤 Visitor</option>
+                                    </select>
+                                </div>
+                                <div class="form-group"><label>ID Number</label><input type="text" id="edit-idnum" name="id_number" required></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label>Full Name</label><input type="text" id="edit-fullname" name="full_name" required></div>
+                                <div class="form-group">
+                                    <label>Department</label>
+                                    <select id="edit-dept" name="department">
+                                        <option value="">-- Select --</option>
+                                        <option value="CT">Computer Technology (CT)</option>
+                                        <option value="FBT">Food & Beverage Technology (FBT)</option>
+                                        <option value="BSED">BSED</option>
+                                        <option value="BEED">BEED</option>
+                                        <option value="BSFI">BSFI</option>
+                                        <option value="BSBA">BSBA</option>
+                                        <option value="EMPLOYEE">EMPLOYEE</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label>Major / Specialization</label><select id="edit-major" name="major"></select></div>
+                                <div class="form-group"><label>Year Level</label>
+                                    <select id="edit-year" name="year_level">
+                                        <option value="1st Year">1st Year</option>
+                                        <option value="2nd Year">2nd Year</option>
+                                        <option value="3rd Year">3rd Year</option>
+                                        <option value="4th Year">4th Year</option>
+                                        <option value="5th Year">5th Year</option>
+                                        <option value="N/A">N/A</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label>Contact Number</label><input type="text" id="edit-contact" name="contact_number"></div>
+                                <div class="form-group"><label>Complete Address</label><input type="text" id="edit-address" name="address"></div>
+                            </div>
+                            <button type="submit" class="btn-save">💾 Save Changes</button>
+                            <button type="button" class="btn-cancel" onclick="hideEditForm()">❌ Cancel</button>
+                        </form>
+                    </div>
+                </div>
 
-        <div id="export" class="tab-content">
-            <div class="card">
-                <h2>📄 Export & Print Reports</h2>
-                <p style="font-size:16px;color:#64748b;margin-bottom:25px;">Download today's complete attendance as Microsoft Word Document or print directly.</p>
-                <button class="btn-download" onclick="window.location.href='/download-word'">📄 Download Word Report</button><br><br>
-                <button class="btn-print" onclick="window.print()">🖨️ Print Report</button>
+                <!-- === RECORDS === -->
+                <div id="records" class="tab-content">
+                    <h2>📋 Attendance Records — Time In / Time Out</h2>
+                    <button onclick="loadRecords()">🔄 Refresh Records</button>
+                    <div id="records-table"></div>
+                </div>
+
+                <!-- === EXPORT === -->
+                <div id="export" class="tab-content">
+                    <h2>📄 Export & Print Reports</h2>
+                    <p style="font-size:16px;color:#64748b;margin-bottom:25px;">Download today's complete attendance as Microsoft Word Document or print directly.</p>
+                    <button class="btn-download" onclick="window.location.href='/download-word'">📄 Download Word Report</button><br><br>
+                    <button class="btn-print" onclick="window.print()">🖨️ Print Report</button>
+                </div>
             </div>
         </div>
     </div>
@@ -383,6 +430,14 @@ const MAJORS = {
     "FBT": ["Food Technology", "Baking & Pastry", "Culinary Arts"]
 };
 
+const PAGE_TITLES = {
+    scan: "📱 Scan / Attendance",
+    register: "📇 Register New User",
+    students: "👥 Registered Users",
+    records: "📋 Attendance Records",
+    export: "📄 Export & Print Reports"
+};
+
 let editingStudentId = null;
 let currentDept = "ALL";
 let allStudents = [];
@@ -392,11 +447,17 @@ function logout(){
     window.location.href = "/login";
 }
 
-function switchTab(tabId){
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+// ===== SIDEBAR MENU CLICK → SHOW IN CENTER =====
+function showContent(tabId){
+    document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.getElementById('tab-' + tabId).classList.add('active');
+    
+    const menuItems = document.querySelectorAll('.menu-item');
+    const index = ['scan','register','students','records','export'].indexOf(tabId);
+    if(index !== -1) menuItems[index].classList.add('active');
+    
     document.getElementById(tabId).classList.add('active');
+    document.getElementById('page-title').textContent = PAGE_TITLES[tabId];
     
     if(tabId === 'scan') setTimeout(()=>document.getElementById('scan-input')?.focus(), 100);
     if(tabId === 'students') loadStudents();
@@ -440,10 +501,7 @@ function submitScan(){
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({id_number: idNumber})
     })
-    .then(r => {
-        if(!r.ok) throw new Error('Server error');
-        return r.json();
-    })
+    .then(r => r.json())
     .then(data => {
         const box = document.getElementById('status-box');
         box.className = 'status ' + (data.success ? 'success' : 'error');
@@ -458,10 +516,7 @@ function submitScan(){
 
 function loadStudents(){
     fetch('/get-students')
-    .then(r => {
-        if(!r.ok) throw new Error('Server error');
-        return r.json();
-    })
+    .then(r => r.json())
     .then(data => {
         allStudents = data.students || [];
         filterStudents();
@@ -517,7 +572,7 @@ function editStudent(id){
     document.getElementById('edit-address').value = student.address || '';
     
     document.getElementById('edit-form-container').classList.remove('hidden');
-    window.scrollTo({top: document.getElementById('edit-form-container').offsetTop - 50, behavior:'smooth'});
+    document.getElementById('edit-form-container').scrollIntoView({behavior:'smooth'});
 }
 
 function hideEditForm(){
@@ -528,10 +583,7 @@ function hideEditForm(){
 
 function loadRecords(){
     fetch('/get-records')
-    .then(r => {
-        if(!r.ok) throw new Error('Server error');
-        return r.json();
-    })
+    .then(r => r.json())
     .then(data => {
         const records = data.records || [];
         const table = document.getElementById('records-table');
@@ -555,36 +607,21 @@ function loadRecords(){
 
 document.addEventListener('DOMContentLoaded', function(){
     const scanInput = document.getElementById('scan-input');
-    if(scanInput){
-        scanInput.addEventListener('keypress', function(e){
-            if(e.key === 'Enter') submitScan();
-        });
-    }
+    if(scanInput) scanInput.addEventListener('keypress', e => e.key === 'Enter' && submitScan());
 
     const deptSelect = document.getElementById('dept-select');
-    if(deptSelect){
-        deptSelect.addEventListener('change', function(){
-            updateMajorOptions('dept-select', 'major-select', 'year-select');
-        });
-    }
+    if(deptSelect) deptSelect.addEventListener('change', () => updateMajorOptions('dept-select', 'major-select', 'year-select'));
 
     const editDeptSelect = document.getElementById('edit-dept');
-    if(editDeptSelect){
-        editDeptSelect.addEventListener('change', function(){
-            updateMajorOptions('edit-dept', 'edit-major', 'edit-year');
-        });
-    }
+    if(editDeptSelect) editDeptSelect.addEventListener('change', () => updateMajorOptions('edit-dept', 'edit-major', 'edit-year'));
 
     const regForm = document.getElementById('register-form');
     if(regForm){
-        regForm.addEventListener('submit', function(e){
+        regForm.addEventListener('submit', e => {
             e.preventDefault();
-            const form = new FormData(this);
+            const form = new FormData(regForm);
             fetch('/register', {method: 'POST', body: form})
-            .then(r => {
-                if(!r.ok) return r.text().then(t => { throw new Error(t || 'Server error'); });
-                return r.json();
-            })
+            .then(r => r.json())
             .then(data => {
                 if(data.success){
                     document.getElementById('barcode-result').style.display = 'block';
@@ -592,9 +629,7 @@ document.addEventListener('DOMContentLoaded', function(){
                     document.getElementById('barcode-img').src = 'data:image/png;base64,' + data.barcode;
                     regForm.reset();
                     document.getElementById('major-select').innerHTML = '<option value="">-- Select Department First --</option>';
-                } else {
-                    alert('❌ Error: ' + data.error);
-                }
+                } else alert('❌ Error: ' + data.error);
             })
             .catch(err => alert('❌ Error: ' + err));
         });
@@ -602,22 +637,17 @@ document.addEventListener('DOMContentLoaded', function(){
 
     const editForm = document.getElementById('edit-form');
     if(editForm){
-        editForm.addEventListener('submit', function(e){
+        editForm.addEventListener('submit', e => {
             e.preventDefault();
-            const form = new FormData(this);
+            const form = new FormData(editForm);
             fetch('/update-student', {method: 'POST', body: form})
-            .then(r => {
-                if(!r.ok) return r.text().then(t => { throw new Error(t || 'Server error'); });
-                return r.json();
-            })
+            .then(r => r.json())
             .then(d => {
                 if(d.success){
                     alert('✅ Updated successfully!');
                     hideEditForm();
                     loadStudents();
-                } else {
-                    alert('❌ Error: ' + d.error);
-                }
+                } else alert('❌ Error: ' + d.error);
             })
             .catch(err => alert('❌ Error: ' + err));
         });
@@ -628,7 +658,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </html>
     """)
 
-# ===================== SCAN ENDPOINT — TIME IN / TIME OUT ✅ =====================
+# ===================== SCAN ENDPOINT — TIME IN / TIME OUT =====================
 @app.route('/scan', methods=['POST'])
 def scan():
     if not is_logged_in():
@@ -693,7 +723,6 @@ def register():
             return jsonify({"success": False, "error": "❌ Database connection failed"}), 500
         
         c = conn.cursor()
-        
         c.execute("SELECT id FROM users WHERE UPPER(id_number) = UPPER(%s)", (id_number,))
         if c.fetchone():
             conn.close()
@@ -708,35 +737,23 @@ def register():
         
         barcode_b64 = generate_barcode_b64(id_number)
         info = f"{full_name} | ID: {id_number} | {id_type}"
-        
         return jsonify({"success": True, "info": info, "barcode": barcode_b64})
     
     except Exception as e:
         print(f"REGISTER ERROR: {e}")
-        return jsonify({"success": False, "error": f"❌ Server error: {str(e)}"}), 500
+        return jsonify({"success": False, "error": f"❌ Error: {str(e)}"}), 500
 
 # ===================== GET STUDENTS =====================
 @app.route('/get-students')
 def get_students():
     if not is_logged_in():
         return jsonify({"students": []})
-    
     conn = get_db()
     if not conn:
         return jsonify({"students": []})
-    
     c = conn.cursor()
     c.execute("SELECT id, id_type, full_name, department, id_number FROM users ORDER BY full_name")
-    students = [
-        {
-            "id": row[0],
-            "id_type": row[1],
-            "full_name": row[2],
-            "department": row[3],
-            "id_number": row[4]
-        }
-        for row in c.fetchall()
-    ]
+    students = [{"id": r[0], "id_type": r[1], "full_name": r[2], "department": r[3], "id_number": r[4]} for r in c.fetchall()]
     conn.close()
     return jsonify({"students": students})
 
@@ -745,7 +762,6 @@ def get_students():
 def update_student():
     if not is_logged_in():
         return jsonify({"success": False, "error": "Unauthorized"}), 401
-    
     try:
         student_id = request.form.get('id', '').strip()
         id_type = request.form.get('id_type', '').strip()
@@ -783,28 +799,14 @@ def update_student():
 def get_records():
     if not is_logged_in():
         return jsonify({"records": []})
-    
     conn = get_db()
     if not conn:
         return jsonify({"records": []})
-    
     c = conn.cursor()
-    c.execute("""
-        SELECT a.scan_date, u.full_name, u.id_number, a.time_in, a.time_out
-        FROM attendance a
-        JOIN users u ON a.user_id = u.id
-        ORDER BY a.scan_date DESC, a.id DESC LIMIT 100
-    """)
-    records = [
-        {
-            "scan_date": row[0],
-            "full_name": row[1],
-            "id_number": row[2],
-            "time_in": row[3],
-            "time_out": row[4]
-        }
-        for row in c.fetchall()
-    ]
+    c.execute("""SELECT a.scan_date, u.full_name, u.id_number, a.time_in, a.time_out
+        FROM attendance a JOIN users u ON a.user_id = u.id
+        ORDER BY a.scan_date DESC, a.id DESC LIMIT 100""")
+    records = [{"scan_date": r[0], "full_name": r[1], "id_number": r[2], "time_in": r[3], "time_out": r[4]} for r in c.fetchall()]
     conn.close()
     return jsonify({"records": records})
 
@@ -813,20 +815,13 @@ def get_records():
 def download_word():
     if not is_logged_in():
         return "<script>window.location='/login';</script>"
-    
     conn = get_db()
     if not conn:
         return "❌ Database error"
-    
     today = get_ph_date()
     c = conn.cursor()
-    c.execute("""
-        SELECT u.full_name, u.id_number, a.time_in, a.time_out
-        FROM attendance a
-        JOIN users u ON a.user_id = u.id
-        WHERE a.scan_date = %s
-        ORDER BY a.id
-    """, (today,))
+    c.execute("""SELECT u.full_name, u.id_number, a.time_in, a.time_out
+        FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.scan_date = %s ORDER BY a.id""", (today,))
     records = c.fetchall()
     conn.close()
     
@@ -837,27 +832,26 @@ def download_word():
     
     table = doc.add_table(rows=1, cols=4)
     table.style = 'Table Grid'
-    hdr_cells = table.rows[0].cells
-    hdr_cells[0].text = 'Full Name'
-    hdr_cells[1].text = 'ID Number'
-    hdr_cells[2].text = 'Time In'
-    hdr_cells[3].text = 'Time Out'
+    hdr = table.rows[0].cells
+    hdr[0].text = 'Full Name'
+    hdr[1].text = 'ID Number'
+    hdr[2].text = 'Time In'
+    hdr[3].text = 'Time Out'
     
     for rec in records:
-        row_cells = table.add_row().cells
-        row_cells[0].text = rec[0]
-        row_cells[1].text = rec[1]
-        row_cells[2].text = rec[2] or '-'
-        row_cells[3].text = rec[3] or '-'
+        row = table.add_row().cells
+        row[0].text = rec[0]
+        row[1].text = rec[1]
+        row[2].text = rec[2] or '-'
+        row[3].text = rec[3] or '-'
     
     buffer = BytesIO()
     doc.save(buffer)
     buffer.seek(0)
-    
-    response = make_response(buffer.getvalue())
-    response.headers['Content-Disposition'] = f'attendance_report_{today}.docx'
-    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    return response
+    resp = make_response(buffer.getvalue())
+    resp.headers['Content-Disposition'] = f'attendance_report_{today}.docx'
+    resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    return resp
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=False)
