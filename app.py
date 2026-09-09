@@ -595,7 +595,7 @@ document.addEventListener("DOMContentLoaded",function(){
 </html>
 """
 
-DMIN_FRONTEND = """
+ADMIN_FRONTEND = """
 <!DOCTYPE html>
 <html>
 <head>
