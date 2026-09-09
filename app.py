@@ -967,6 +967,44 @@ ADMIN_FRONTEND = """
                     </div>
                 </div>
 
+                <!-- PRIVACY POLICY — ADDED TO DASHBOARD -->
+                <div id="privacy" class="tab-content">
+                    <h2>🔒 Privacy Policy</h2>
+                    <div style="background:white;padding:30px;border-radius:20px;line-height:1.8;color:#374151;">
+                        <p><strong>Last Updated:</strong> September 9, 2026</p>
+                        
+                        <h3 style="color:#4f46e5;margin-top:25px;">1. Information We Collect</h3>
+                        <p>The SLSU-JGE Library Attendance System collects personal information including but not limited to your full name, ID number, department, contact number, and attendance time records. This information is collected solely for the purpose of managing library attendance and user registration.</p>
+                        
+                        <h3 style="color:#4f46e5;margin-top:25px;">2. How We Use Your Information</h3>
+                        <ul style="padding-left:25px;margin:10px 0;">
+                            <li>To record daily attendance (Time In / Time Out)</li>
+                            <li>To generate accurate attendance reports</li>
+                            <li>To identify registered users of the library system</li>
+                            <li>To generate barcode IDs for easy scanning</li>
+                        </ul>
+                        
+                        <h3 style="color:#4f46e5;margin-top:25px;">3. Data Protection & Security</h3>
+                        <p>Your personal data is stored in a secure database with restricted access. We do not sell, share, or distribute your personal information to third parties without your consent, except as required by law or university regulations.</p>
+                        
+                        <h3 style="color:#4f46e5;margin-top:25px;">4. Data Retention</h3>
+                        <p>Attendance records and user information are retained for university record-keeping purposes. You may request the deletion or update of your personal information by contacting the library administrator.</p>
+                        
+                        <h3 style="color:#4f46e5;margin-top:25px;">5. Your Rights</h3>
+                        <ul style="padding-left:25px;margin:10px 0;">
+                            <li>Access your personal data</li>
+                            <li>Request correction of inaccurate information</li>
+                            <li>Request deletion of your data where permitted by law</li>
+                            <li>Withdraw consent for data processing</li>
+                        </ul>
+                        
+                        <h3 style="color:#4f46e5;margin-top:25px;">6. Contact Us</h3>
+                        <p>For privacy-related inquiries, please contact:<br>
+                        📧 SLSU-JGE Library Administration<br>
+                        📍 Southern Luzon State University — JGE Campus</p>
+                    </div>
+                </div>
+
             </div><!-- /content-card -->
         </div><!-- /main-content -->
     </div><!-- /app-container -->
@@ -975,7 +1013,7 @@ ADMIN_FRONTEND = """
 let currentDeptFilter = 'ALL';
 let allStudents = [];
 
-// --- SIDEBAR ---
+// --- SIDEBAR — UPDATED WITH PRIVACY LINK ---
 function toggleSidebar() {
     const sb = document.getElementById('sidebar');
     sb.classList.toggle('collapsed');
@@ -987,21 +1025,31 @@ function toggleSidebar() {
     });
 }
 
-// --- TAB NAVIGATION ---
+// --- TAB NAVIGATION — FIXED BUTTON CLICK ---
 function showContent(tabId) {
+    // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    // Remove active from all menu items
     document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-    event.target.classList.add('active');
+    // Show selected tab
+    const tab = document.getElementById(tabId);
+    if (tab) tab.classList.add('active');
+    // Mark menu item as active
+    event.currentTarget.classList.add('active');
+    
+    // Update page title
     const titles = {
         scan: '📱 Scan / Attendance',
         register: '📇 Register New User',
         students: '👥 Registered Users',
         records: '📋 Daily Records',
         history: '📅 Monthly History',
-        export: '📄 Export Reports'
+        export: '📄 Export Reports',
+        privacy: '🔒 Privacy Policy'
     };
     document.getElementById('page-title').textContent = titles[tabId] || '📚 Library System';
+    
+    // Load data when needed
     if (tabId === 'students') loadStudents();
     if (tabId === 'records') loadRecords();
 }
@@ -1013,7 +1061,7 @@ function logout() {
     window.location.href = '/login';
 }
 
-// --- SCAN / ATTENDANCE ---
+// --- SCAN / ATTENDANCE — FIXED SCAN INPUT ---
 document.addEventListener('DOMContentLoaded', () => {
     const scanInput = document.getElementById('scan-input');
     if (scanInput) {
@@ -1040,9 +1088,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         });
+        // Auto-focus scan input
+        setTimeout(() => scanInput.focus(), 300);
     }
 
-    // Register Form
+    // Register Form — FIXED SUBMIT
     const regForm = document.getElementById('register-form');
     if (regForm) {
         regForm.addEventListener('submit', e => {
@@ -1064,7 +1114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Edit Form
+    // Edit Form — FIXED SUBMIT
     const editForm = document.getElementById('edit-form');
     if (editForm) {
         editForm.addEventListener('submit', e => {
@@ -1090,60 +1140,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     alert('❌ ' + data.error);
                 }
-            });
+            })
+            .catch(err => alert('❌ Error: ' + err));
         });
     }
 });
 
-// --- STUDENTS LIST ---
+// --- STUDENTS LIST — FIXED FILTER & RENDER ---
 function loadStudents() {
     fetch('/get-students')
         .then(r => r.json())
         .then(d => {
             allStudents = d.students || [];
             renderStudents();
-        });
+        })
+        .catch(err => console.error('Load students error:', err));
 }
 
 function renderStudents() {
     const tbody = document.getElementById('students-tbody');
-    let filtered = allStudents;
+    if (!tbody) return;
+    
+    let filtered = [...allStudents];
     if (currentDeptFilter !== 'ALL') {
-        filtered = allStudents.filter(s => s.department === currentDeptFilter);
+        filtered = filtered.filter(s => s.department === currentDeptFilter);
     }
     const q = document.getElementById('search-input')?.value?.toLowerCase() || '';
     if (q) {
         filtered = filtered.filter(s => 
-            s.full_name.toLowerCase().includes(q) || 
-            s.id_number.toLowerCase().includes(q)
+            (s.full_name && s.full_name.toLowerCase().includes(q)) || 
+            (s.id_number && s.id_number.toLowerCase().includes(q))
         );
     }
-    tbody.innerHTML = filtered.map(s => `
-        <tr>
-            <td>${s.id_number}</td>
-            <td>${s.full_name}</td>
-            <td>${s.department || '-'}</td>
-            <td>${s.id_type}</td>
-            <td><button class="btn-edit" onclick="editStudent(${s.id}, '${s.id_type}', '${s.id_number}', '${s.full_name.replace(/'/g, "\\'")}', '${s.department||''}', '','','','')">✏️ Edit</button></td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = filtered.length === 0 
+        ? '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No users found</td></tr>'
+        : filtered.map(s => `
+            <tr>
+                <td>${s.id_number || '-'}</td>
+                <td>${s.full_name || '-'}</td>
+                <td>${s.department || '-'}</td>
+                <td>${s.id_type || '-'}</td>
+                <td><button class="btn-edit" onclick="editStudent(${s.id}, '${(s.id_type||'').replace(/'/g, "\\'")}', '${(s.id_number||'').replace(/'/g, "\\'")}', '${(s.full_name||'').replace(/'/g, "\\'")}', '${(s.department||'').replace(/'/g, "\\'")}')">✏️ Edit</button></td>
+            </tr>
+        `).join('');
 }
 
 function switchDept(dept) {
     currentDeptFilter = dept;
     document.querySelectorAll('.dept-tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
+    event.currentTarget.classList.add('active');
     renderStudents();
 }
 
 function filterStudents() { renderStudents(); }
 
-function editStudent(id, type, num, name, dept, major, year, contact, addr) {
+function editStudent(id, type, num, name, dept) {
     document.getElementById('edit-id').value = id;
     document.getElementById('edit-id-type').value = type;
     document.getElementById('edit-id-number').value = num;
     document.getElementById('edit-full-name').value = name;
-    document.getElementById('edit-dept').value = dept;
+    document.getElementById('edit-dept').value = dept || '';
     document.getElementById('edit-form-container').classList.remove('hidden');
     document.getElementById('edit-form-container').scrollIntoView({behavior:'smooth'});
 }
@@ -1153,25 +1209,30 @@ function cancelEdit() {
     document.getElementById('edit-form').reset();
 }
 
-// --- DAILY RECORDS ---
+// --- DAILY RECORDS — FIXED ---
 function loadRecords() {
     fetch('/get-records')
         .then(r => r.json())
         .then(d => {
             const tbody = document.getElementById('records-tbody');
-            tbody.innerHTML = (d.records || []).map(r => `
-                <tr>
-                    <td>${r.scan_date}</td>
-                    <td>${r.full_name}</td>
-                    <td>${r.department || '-'}</td>
-                    <td>${r.time_in || '-'}</td>
-                    <td>${r.time_out || '-'}</td>
-                </tr>
-            `).join('');
-        });
+            if (!tbody) return;
+            const records = d.records || [];
+            tbody.innerHTML = records.length === 0 
+                ? '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No records for today</td></tr>'
+                : records.map(r => `
+                    <tr>
+                        <td>${r.scan_date || '-'}</td>
+                        <td>${r.full_name || '-'}</td>
+                        <td>${r.department || '-'}</td>
+                        <td>${r.time_in || '-'}</td>
+                        <td>${r.time_out || '-'}</td>
+                    </tr>
+                `).join('');
+        })
+        .catch(err => console.error('Load records error:', err));
 }
 
-// --- MONTHLY HISTORY ---
+// --- MONTHLY HISTORY — FIXED ---
 function loadMonthlyHistory() {
     const month = document.getElementById('month-input').value;
     if (!month) return alert('⚠️ Select a month first!');
@@ -1179,16 +1240,21 @@ function loadMonthlyHistory() {
         .then(r => r.json())
         .then(d => {
             const tbody = document.getElementById('monthly-tbody');
-            tbody.innerHTML = (d.records || []).map(r => `
-                <tr>
-                    <td>${r.scan_date}</td>
-                    <td>${r.full_name}</td>
-                    <td>${r.department || '-'}</td>
-                    <td>${r.time_in || '-'}</td>
-                    <td>${r.time_out || '-'}</td>
-                </tr>
-            `).join('');
-        });
+            if (!tbody) return;
+            const records = d.records || [];
+            tbody.innerHTML = records.length === 0 
+                ? '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No records for selected month</td></tr>'
+                : records.map(r => `
+                    <tr>
+                        <td>${r.scan_date || '-'}</td>
+                        <td>${r.full_name || '-'}</td>
+                        <td>${r.department || '-'}</td>
+                        <td>${r.time_in || '-'}</td>
+                        <td>${r.time_out || '-'}</td>
+                    </tr>
+                `).join('');
+        })
+        .catch(err => alert('❌ Error loading history: ' + err));
 }
 
 function downloadMonthly() {
