@@ -39,7 +39,6 @@ def init_db():
         return
     c = conn.cursor()
     
-    # Create tables only if they don't exist — NO DATA LOSS
     c.execute("""CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         id_type TEXT NOT NULL,
@@ -325,7 +324,6 @@ def get_records():
     if not conn:
         return jsonify({"records": []})
     c = conn.cursor()
-    # ✅ Records: Full Name, Department, Time In, Time Out
     c.execute("""SELECT a.scan_date, u.full_name, u.department, a.time_in, a.time_out
         FROM attendance a JOIN users u ON a.user_id = u.id
         ORDER BY a.scan_date DESC, a.id DESC LIMIT 100""")
@@ -464,7 +462,7 @@ PRIVACY_POLICY = """
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
-        body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%;min-height:100vh;padding:40px 20px;}
+        body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px;}
         .container{max-width:800px;margin:0 auto;}
         .card{background:white;padding:40px;border-radius:24px;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
         h1{color:#1e1b4b;margin-bottom:30px;text-align:center;}
@@ -578,6 +576,7 @@ USER_FRONTEND = """
                             <option value="BSFI">BSFI / BSAF</option>
                             <option value="BSBA">BSBA</option>
                             <option value="BPA">BPA</option>
+                            <option value="BSFAS">BSFAS — Food & Service Management</option>
                             <option value="EMPLOYEE">EMPLOYEE</option>
                         </select>
                     </div>
@@ -653,28 +652,28 @@ ADMIN_FRONTEND = """
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
         body{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);min-height:100vh;}
         .app-container{display:flex;height:100vh;}
-        .sidebar{width:280px;background:linear-gradient(180deg,rgba(30,27,75,0.95) 0%,rgba(49,46,129,0.95) 100%);display:flex;flex-direction:column;padding:25px 0;}
+        .sidebar{width:280px;background:linear-gradient(180deg,rgba(30,27,75,0.95) 0%,rgba(49,46,129,0.95) 100%);display:flex;flex-direction:column;padding:25px 0;position:relative;}
         .sidebar.collapsed{width:72px;}
-        .toggle-btn{position:absolute;right:-16px;top:30px;width:34px;height:34px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;border-radius:50%;color:white;cursor:pointer;}
+        .toggle-btn{position:absolute;right:-16px;top:30px;width:34px;height:34px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;border-radius:50%;color:white;cursor:pointer;z-index:10;pointer-events:auto;}
         .sidebar-header{padding:0 20px 30px 20px;border-bottom:1px solid rgba(129,140,248,0.15);}
         .sidebar-header h2{color:white;font-size:20px;}
         .sidebar-menu{display:flex;flex-direction:column;gap:6px;padding:0 12px;}
-        .menu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#c7d2fe;border-radius:12px;cursor:pointer;transition:all 0.3s;}
+        .menu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#c7d2fe;border-radius:12px;cursor:pointer;transition:all 0.3s;pointer-events:auto;position:relative;z-index:2;}
         .menu-item:hover{background:rgba(99,102,241,0.15);color:#e0e7ff;}
         .menu-item.active{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;}
         .sidebar-footer{padding:20px;border-top:1px solid rgba(129,140,248,0.15);margin-top:auto;}
-        .logout-btn{width:100%;padding:14px;background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;border-radius:12px;cursor:pointer;}
+        .logout-btn{width:100%;padding:14px;background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;border-radius:12px;cursor:pointer;pointer-events:auto;position:relative;z-index:2;}
         .main-content{flex:1;padding:30px;overflow-y:auto;}
         .content-card{background:rgba(255,255,255,0.95);border-radius:24px;padding:35px;min-height:calc(100vh - 120px);}
         h2{color:#1e1b4b;margin-bottom:25px;}
         .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
         .form-group{margin-bottom:18px;}
         label{display:block;margin-bottom:8px;color:#374151;font-weight:600;}
-        input,select{width:100%;padding:13px;border:2px solid #e5e7eb;border-radius:12px;font-size:15px;}
+        input,select{width:100%;padding:13px;border:2px solid #e5e7eb;border-radius:12px;font-size:15px;pointer-events:auto;}
         input:focus,select:focus{outline:none;border-color:#6366f1;}
-        button{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;border:none;padding:13px 20px;border-radius:12px;font-weight:600;cursor:pointer;margin:5px;}
+        button{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;border:none;padding:13px 20px;border-radius:12px;font-weight:600;cursor:pointer;margin:5px;pointer-events:auto;position:relative;z-index:2;}
         .scan-area{text-align:center;padding:40px;background:linear-gradient(135deg,#eef2ff 0%,#e0e7ff 100%);border-radius:20px;margin-bottom:20px;}
-        #scan-input{font-size:24px;padding:18px;width:100%;max-width:480px;border-radius:12px;border:2px solid #a5b4fc;}
+        #scan-input{font-size:24px;padding:18px;width:100%;max-width:480px;border-radius:12px;border:2px solid #a5b4fc;pointer-events:auto;}
         .status{font-size:20px;font-weight:bold;margin-top:20px;padding:18px;border-radius:12px;}
         .success{background:#dcfce7;color:#166534;border:2px solid #86efac;}
         .info{background:#e0f2fe;color:#075985;border:2px solid #7dd3fc;}
@@ -686,13 +685,13 @@ ADMIN_FRONTEND = """
         .tab-content.active{display:block;}
         .btn-print{background:linear-gradient(135deg,#10b981 0%,#059669 100%);}
         .btn-download{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);}
-        .btn-edit{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);padding:8px 16px;font-size:13px;}
+        .btn-edit{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);padding:8px 16px;font-size:13px;pointer-events:auto;}
         .btn-save{background:linear-gradient(135deg,#10b981 0%,#059669 100%);}
         .btn-cancel{background:linear-gradient(135deg,#64748b 0%,#475569 100%);}
         .edit-form{background:#f8fafc;padding:25px;border-radius:20px;margin-top:20px;border:2px solid #e2e8f0;}
         .hidden{display:none !important;}
         .dept-tabs{display:flex;gap:8px;margin:20px 0;flex-wrap:wrap;}
-        .dept-tab{padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:10px;cursor:pointer;font-weight:600;}
+        .dept-tab{padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:10px;cursor:pointer;font-weight:600;pointer-events:auto;}
         .dept-tab.active{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;}
         .month-filter{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
         .btn-month-print{background:linear-gradient(135deg,#ec4899 0%,#db2777 100%);color:white;}
@@ -725,7 +724,6 @@ ADMIN_FRONTEND = """
                 <h1 id="page-title">📱 Scan / Attendance</h1>
             </div>
             <div class="content-card">
-                <!-- SCAN / ATTENDANCE -->
                 <div id="scan" class="tab-content active">
                     <h2>📱 Scan Barcode — Time In / Time Out</h2>
                     <div class="scan-area">
@@ -733,7 +731,6 @@ ADMIN_FRONTEND = """
                         <div id="status-box" class="status info">⏳ Waiting for scan...</div>
                     </div>
                 </div>
-                <!-- REGISTER USER -->
                 <div id="register" class="tab-content">
                     <h2>📇 Register New User</h2>
                     <form id="register-form">
@@ -766,6 +763,7 @@ ADMIN_FRONTEND = """
                                     <option value="BSFI">BSFI / BSAF</option>
                                     <option value="BSBA">BSBA</option>
                                     <option value="BPA">BPA</option>
+                                    <option value="BSFAS">BSFAS — Food & Service Management</option>
                                     <option value="EMPLOYEE">EMPLOYEE</option>
                                 </select>
                             </div>
@@ -805,7 +803,6 @@ ADMIN_FRONTEND = """
                         <button class="btn-print" onclick="window.print()">🖨️ Print Barcode</button>
                     </div>
                 </div>
-                <!-- STUDENTS LIST -->
                 <div id="students" class="tab-content">
                     <h2>👥 Registered Users</h2>
                     <div class="search-box">
@@ -818,29 +815,27 @@ ADMIN_FRONTEND = """
                         <button class="dept-tab" onclick="switchDept('BEED')">BEED</button>
                         <button class="dept-tab" onclick="switchDept('BSFI')">BSFI</button>
                         <button class="dept-tab" onclick="switchDept('BSBA')">BSBA</button>
+                        <button class="dept-tab" onclick="switchDept('BSFAS')">BSFAS</button>
+                        <button class="dept-tab" onclick="switchDept('BPA')">BPA</button>
                         <button class="dept-tab" onclick="switchDept('EMPLOYEE')">EMPLOYEE</button>
                     </div>
-                    <button onclick="loadStudents()">🔄 Refresh List</button>
                     <div id="students-table-container">
                         <table id="students-table">
                             <thead>
                                 <tr>
-                                    <th>ID Number</th>
+                                    <th>ID Type</th>
                                     <th>Full Name</th>
                                     <th>Department</th>
-                                    <th>ID Type</th>
+                                    <th>ID Number</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="students-tbody">
-                                <!-- Loaded via JS -->
-                            </tbody>
+                            <tbody id="students-tbody"></tbody>
                         </table>
                     </div>
-
-                    <!-- Edit Student Form -->
+                    <!-- Edit Form -->
                     <div id="edit-form-container" class="edit-form hidden">
-                        <h3>✏️ Edit User</h3>
+                        <h3>✏️ Edit Student / User</h3>
                         <form id="edit-form">
                             <input type="hidden" id="edit-id">
                             <div class="form-row">
@@ -864,7 +859,7 @@ ADMIN_FRONTEND = """
                                 </div>
                                 <div class="form-group">
                                     <label>Department</label>
-                                    <select id="edit-dept">
+                                    <select id="edit-department">
                                         <option value="">-- Select --</option>
                                         <option value="CT">BSIT / Computer Technology</option>
                                         <option value="BSED">BSED</option>
@@ -872,13 +867,14 @@ ADMIN_FRONTEND = """
                                         <option value="BSFI">BSFI / BSAF</option>
                                         <option value="BSBA">BSBA</option>
                                         <option value="BPA">BPA</option>
+                                        <option value="BSFAS">BSFAS</option>
                                         <option value="EMPLOYEE">EMPLOYEE</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>Major / Specialization</label>
+                                    <label>Major</label>
                                     <input type="text" id="edit-major">
                                 </div>
                                 <div class="form-group">
@@ -898,20 +894,19 @@ ADMIN_FRONTEND = """
                                     <input type="text" id="edit-contact">
                                 </div>
                                 <div class="form-group">
-                                    <label>Complete Address</label>
+                                    <label>Address</label>
                                     <input type="text" id="edit-address">
                                 </div>
                             </div>
-                            <button type="submit" class="btn-save">💾 Save Changes</button>
-                            <button type="button" class="btn-cancel" onclick="cancelEdit()">❌ Cancel</button>
+                            <div style="display:flex;gap:12px;margin-top:15px;">
+                                <button type="submit" class="btn-save">💾 Save Changes</button>
+                                <button type="button" class="btn-cancel" onclick="closeEditForm()">❌ Cancel</button>
+                            </div>
                         </form>
                     </div>
                 </div>
-
-                <!-- DAILY RECORDS -->
                 <div id="records" class="tab-content">
-                    <h2>📋 Today's Attendance Records</h2>
-                    <button onclick="loadRecords()">🔄 Refresh Records</button>
+                    <h2>📋 Daily Attendance Records — Today</h2>
                     <button class="btn-download" onclick="window.location='/download-word'">📄 Download Word Report</button>
                     <table id="records-table">
                         <thead>
@@ -926,18 +921,15 @@ ADMIN_FRONTEND = """
                         <tbody id="records-tbody"></tbody>
                     </table>
                 </div>
-
-                <!-- MONTHLY HISTORY -->
                 <div id="history" class="tab-content">
-                    <h2>📅 Monthly Attendance History</h2>
+                    <h2>📅 Monthly History</h2>
                     <div class="month-filter">
                         <label>Select Month:</label>
-                        <input type="month" id="month-input">
-                        <button onclick="loadMonthlyHistory()">🔄 Load</button>
-                        <button class="btn-download" onclick="downloadMonthly()">📄 Download Word</button>
-                        <button class="btn-month-print" onclick="printMonthly()">🖨️ Print Report</button>
+                        <input type="month" id="month-input" onchange="loadMonthlyHistory()">
+                        <button class="btn-month-print" onclick="printMonthly()">🖨️ Print This Month</button>
+                        <button class="btn-download" onclick="downloadMonthlyWord()">📄 Download Word</button>
                     </div>
-                    <table id="monthly-table">
+                    <table id="history-table">
                         <thead>
                             <tr>
                                 <th>Date</th>
@@ -947,198 +939,140 @@ ADMIN_FRONTEND = """
                                 <th>Time Out</th>
                             </tr>
                         </thead>
-                        <tbody id="monthly-tbody"></tbody>
+                        <tbody id="history-tbody"></tbody>
                     </table>
                 </div>
-
-                <!-- EXPORT REPORTS -->
                 <div id="export" class="tab-content">
-                    <h2>📄 Export & Download Reports</h2>
-                    <div style="display:grid;gap:20px;margin-top:25px;">
-                        <button class="btn-download" onclick="window.location='/download-word'" style="padding:20px;font-size:16px;">
-                            📄 Today's Attendance Report (Word)
-                        </button>
-                        <div style="padding:20px;background:#f8fafc;border-radius:16px;">
-                            <h3>📅 Monthly Report</h3>
-                            <p style="margin:10px 0;color:#6b7280;">Select month then click download:</p>
-                            <input type="month" id="export-month" style="padding:10px;border-radius:8px;border:1px solid #ddd;">
-                            <button class="btn-download" onclick="exportMonthlyWord()" style="margin-left:10px;">⬇️ Download Monthly Word</button>
+                    <h2>📄 Export Reports</h2>
+                    <div style="display:flex;flex-direction:column;gap:20px;margin-top:25px;">
+                        <button class="btn-download" onclick="window.location='/download-word'" style="padding:18px;font-size:16px;">📄 Download Today's Report (Word)</button>
+                        <button class="btn-month-print" onclick="document.getElementById('month-input-export').style.display='flex'" style="padding:18px;font-size:16px;">📅 Download Monthly Report</button>
+                        <div id="month-input-export" style="display:none;gap:12px;align-items:center;margin-top:10px;">
+                            <input type="month" id="month-export" style="padding:12px;border-radius:8px;border:1px solid #ccc;">
+                            <button class="btn-download" onclick="downloadMonthlyWord()" style="padding:12px 20px;">Go</button>
                         </div>
                     </div>
                 </div>
-
-                <!-- PRIVACY POLICY — ADDED TO DASHBOARD -->
-                <div id="privacy" class="tab-content">
-                    <h2>🔒 Privacy Policy</h2>
-                    <div style="background:white;padding:30px;border-radius:20px;line-height:1.8;color:#374151;">
-                        <p><strong>Last Updated:</strong> September 9, 2026</p>
-                        
-                        <h3 style="color:#4f46e5;margin-top:25px;">1. Information We Collect</h3>
-                        <p>The SLSU-JGE Library Attendance System collects personal information including but not limited to your full name, ID number, department, contact number, and attendance time records. This information is collected solely for the purpose of managing library attendance and user registration.</p>
-                        
-                        <h3 style="color:#4f46e5;margin-top:25px;">2. How We Use Your Information</h3>
-                        <ul style="padding-left:25px;margin:10px 0;">
-                            <li>To record daily attendance (Time In / Time Out)</li>
-                            <li>To generate accurate attendance reports</li>
-                            <li>To identify registered users of the library system</li>
-                            <li>To generate barcode IDs for easy scanning</li>
-                        </ul>
-                        
-                        <h3 style="color:#4f46e5;margin-top:25px;">3. Data Protection & Security</h3>
-                        <p>Your personal data is stored in a secure database with restricted access. We do not sell, share, or distribute your personal information to third parties without your consent, except as required by law or university regulations.</p>
-                        
-                        <h3 style="color:#4f46e5;margin-top:25px;">4. Data Retention</h3>
-                        <p>Attendance records and user information are retained for university record-keeping purposes. You may request the deletion or update of your personal information by contacting the library administrator.</p>
-                        
-                        <h3 style="color:#4f46e5;margin-top:25px;">5. Your Rights</h3>
-                        <ul style="padding-left:25px;margin:10px 0;">
-                            <li>Access your personal data</li>
-                            <li>Request correction of inaccurate information</li>
-                            <li>Request deletion of your data where permitted by law</li>
-                            <li>Withdraw consent for data processing</li>
-                        </ul>
-                        
-                        <h3 style="color:#4f46e5;margin-top:25px;">6. Contact Us</h3>
-                        <p>For privacy-related inquiries, please contact:<br>
-                        📧 SLSU-JGE Library Administration<br>
-                        📍 Southern Luzon State University — JGE Campus</p>
-                    </div>
-                </div>
-
-            </div><!-- /content-card -->
-        </div><!-- /main-content -->
-    </div><!-- /app-container -->
+            </div>
+        </div>
+    </div>
 
 <script>
-let currentDeptFilter = 'ALL';
-let allStudents = [];
+let currentDept = 'ALL';
+let sidebarCollapsed = false;
 
-// --- SIDEBAR — UPDATED WITH PRIVACY LINK ---
 function toggleSidebar() {
     const sb = document.getElementById('sidebar');
+    sidebarCollapsed = !sidebarCollapsed;
     sb.classList.toggle('collapsed');
-    sb.querySelector('h2').style.display = sb.classList.contains('collapsed') ? 'none' : 'block';
-    sb.querySelector('p').style.display = sb.classList.contains('collapsed') ? 'none' : 'block';
-    document.querySelectorAll('.menu-item').forEach(el => {
-        el.style.justifyContent = sb.classList.contains('collapsed') ? 'center' : 'flex-start';
-        el.style.gap = sb.classList.contains('collapsed') ? '0' : '12px';
-    });
+    sb.querySelector('.toggle-btn').textContent = sidebarCollapsed ? '▶' : '◀';
 }
 
-// --- TAB NAVIGATION — FIXED BUTTON CLICK ---
 function showContent(tabId) {
-    // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    // Remove active from all menu items
     document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-    // Show selected tab
-    const tab = document.getElementById(tabId);
-    if (tab) tab.classList.add('active');
-    // Mark menu item as active
-    event.currentTarget.classList.add('active');
-    
-    // Update page title
+    document.getElementById(tabId).classList.add('active');
+    event.target.classList.add('active');
     const titles = {
         scan: '📱 Scan / Attendance',
-        register: '📇 Register New User',
-        students: '👥 Registered Users',
+        register: '📇 Register User',
+        students: '👥 Students List',
         records: '📋 Daily Records',
         history: '📅 Monthly History',
-        export: '📄 Export Reports',
-        privacy: '🔒 Privacy Policy'
+        export: '📄 Export Reports'
     };
     document.getElementById('page-title').textContent = titles[tabId] || '📚 Library System';
-    
-    // Load data when needed
     if (tabId === 'students') loadStudents();
     if (tabId === 'records') loadRecords();
 }
 
-// --- LOGOUT ---
 function logout() {
-    document.cookie = 'logged_in=; path=/; max-age=0';
-    document.cookie = 'role=; path=/; max-age=0';
+    document.cookie = 'logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+    document.cookie = 'role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
     window.location.href = '/login';
 }
 
-// --- SCAN / ATTENDANCE — FIXED SCAN INPUT ---
-document.addEventListener('DOMContentLoaded', () => {
+// SCAN FUNCTION
+document.addEventListener('DOMContentLoaded', function() {
     const scanInput = document.getElementById('scan-input');
     if (scanInput) {
-        scanInput.addEventListener('keydown', e => {
+        scanInput.focus();
+        scanInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
-                const id = scanInput.value.trim();
+                e.preventDefault();
+                const id = this.value.trim();
                 if (!id) return;
                 fetch('/scan', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id_number: id })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id_number: id})
                 })
-                .then(r => r.json())
+                .then(res => res.json())
                 .then(data => {
                     const box = document.getElementById('status-box');
-                    box.textContent = data.message;
+                    box.textContent = data.message || data.error;
                     box.className = 'status ' + (data.success ? 'success' : 'error');
-                    scanInput.value = '';
+                    this.value = '';
+                    this.focus();
+                    if (document.getElementById('records').classList.contains('active') === false) {
+                        setTimeout(() => loadRecords(), 500);
+                    }
                 })
-                .catch(() => {
-                    document.getElementById('status-box').textContent = '❌ Scan Error!';
+                .catch(err => {
+                    document.getElementById('status-box').textContent = '❌ Server Error';
                     document.getElementById('status-box').className = 'status error';
-                    scanInput.value = '';
                 });
             }
         });
-        // Auto-focus scan input
-        setTimeout(() => scanInput.focus(), 300);
     }
 
-    // Register Form — FIXED SUBMIT
+    // Register form
     const regForm = document.getElementById('register-form');
     if (regForm) {
-        regForm.addEventListener('submit', e => {
+        regForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            const fd = new FormData(regForm);
-            fetch('/register', { method: 'POST', body: fd })
+            const fd = new FormData(this);
+            fetch('/register', {method: 'POST', body: fd})
             .then(r => r.json())
-            .then(data => {
-                if (data.success) {
+            .then(d => {
+                if (d.success) {
                     document.getElementById('barcode-result').style.display = 'block';
-                    document.getElementById('student-info').textContent = data.info;
-                    document.getElementById('barcode-img').src = 'data:image/png;base64,' + data.barcode;
+                    document.getElementById('student-info').textContent = d.info;
+                    document.getElementById('barcode-img').src = 'data:image/png;base64,' + d.barcode;
                     regForm.reset();
                 } else {
-                    alert('❌ ' + data.error);
+                    alert('❌ ' + d.error);
                 }
             })
             .catch(err => alert('❌ Error: ' + err));
         });
     }
 
-    // Edit Form — FIXED SUBMIT
+    // Edit form submit
     const editForm = document.getElementById('edit-form');
     if (editForm) {
-        editForm.addEventListener('submit', e => {
+        editForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const fd = new FormData();
             fd.append('id', document.getElementById('edit-id').value);
             fd.append('id_type', document.getElementById('edit-id-type').value);
             fd.append('id_number', document.getElementById('edit-id-number').value);
             fd.append('full_name', document.getElementById('edit-full-name').value);
-            fd.append('department', document.getElementById('edit-dept').value);
+            fd.append('department', document.getElementById('edit-department').value);
             fd.append('major', document.getElementById('edit-major').value);
             fd.append('year_level', document.getElementById('edit-year-level').value);
             fd.append('contact_number', document.getElementById('edit-contact').value);
             fd.append('address', document.getElementById('edit-address').value);
             
-            fetch('/update-student', { method: 'POST', body: fd })
+            fetch('/update-student', {method: 'POST', body: fd})
             .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    alert('✅ Updated successfully!');
-                    cancelEdit();
+            .then(d => {
+                if (d.success) {
+                    alert('✅ Saved!');
+                    closeEditForm();
                     loadStudents();
                 } else {
-                    alert('❌ ' + data.error);
+                    alert('❌ ' + d.error);
                 }
             })
             .catch(err => alert('❌ Error: ' + err));
@@ -1146,132 +1080,99 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- STUDENTS LIST — FIXED FILTER & RENDER ---
+// STUDENTS
 function loadStudents() {
     fetch('/get-students')
-        .then(r => r.json())
-        .then(d => {
-            allStudents = d.students || [];
-            renderStudents();
-        })
-        .catch(err => console.error('Load students error:', err));
-}
-
-function renderStudents() {
-    const tbody = document.getElementById('students-tbody');
-    if (!tbody) return;
-    
-    let filtered = [...allStudents];
-    if (currentDeptFilter !== 'ALL') {
-        filtered = filtered.filter(s => s.department === currentDeptFilter);
-    }
-    const q = document.getElementById('search-input')?.value?.toLowerCase() || '';
-    if (q) {
-        filtered = filtered.filter(s => 
-            (s.full_name && s.full_name.toLowerCase().includes(q)) || 
-            (s.id_number && s.id_number.toLowerCase().includes(q))
-        );
-    }
-    tbody.innerHTML = filtered.length === 0 
-        ? '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No users found</td></tr>'
-        : filtered.map(s => `
-            <tr>
-                <td>${s.id_number || '-'}</td>
-                <td>${s.full_name || '-'}</td>
-                <td>${s.department || '-'}</td>
-                <td>${s.id_type || '-'}</td>
-                <td><button class="btn-edit" onclick="editStudent(${s.id}, '${(s.id_type||'').replace(/'/g, "\\'")}', '${(s.id_number||'').replace(/'/g, "\\'")}', '${(s.full_name||'').replace(/'/g, "\\'")}', '${(s.department||'').replace(/'/g, "\\'")}')">✏️ Edit</button></td>
-            </tr>
-        `).join('');
+    .then(r => r.json())
+    .then(d => {
+        window.allStudents = d.students;
+        filterStudents();
+    });
 }
 
 function switchDept(dept) {
-    currentDeptFilter = dept;
+    currentDept = dept;
     document.querySelectorAll('.dept-tab').forEach(t => t.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-    renderStudents();
+    event.target.classList.add('active');
+    filterStudents();
 }
 
-function filterStudents() { renderStudents(); }
+function filterStudents() {
+    const q = document.getElementById('search-input')?.value.toLowerCase() || '';
+    const tbody = document.getElementById('students-tbody');
+    if (!window.allStudents) return;
+    tbody.innerHTML = '';
+    window.allStudents.forEach(s => {
+        const matchDept = currentDept === 'ALL' || s.department === currentDept;
+        const matchSearch = q === '' || s.full_name.toLowerCase().includes(q) || s.id_number.toLowerCase().includes(q);
+        if (matchDept && matchSearch) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${s.id_type}</td>
+                <td>${s.full_name}</td>
+                <td>${s.department || '-'}</td>
+                <td>${s.id_number}</td>
+                <td><button class="btn-edit" onclick="openEditForm(${s.id}, '${s.id_type}', '${s.id_number}', '${s.full_name.replace(/'/g, "\\'")}', '${s.department||''}', '${s.major||''}', '${s.year_level||''}', '${s.contact_number||''}', '${s.address||''}')">✏️ Edit</button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+    });
+}
 
-function editStudent(id, type, num, name, dept) {
+function openEditForm(id, type, idnum, name, dept, major, year, contact, addr) {
+    document.getElementById('edit-form-container').classList.remove('hidden');
     document.getElementById('edit-id').value = id;
     document.getElementById('edit-id-type').value = type;
-    document.getElementById('edit-id-number').value = num;
+    document.getElementById('edit-id-number').value = idnum;
     document.getElementById('edit-full-name').value = name;
-    document.getElementById('edit-dept').value = dept || '';
-    document.getElementById('edit-form-container').classList.remove('hidden');
-    document.getElementById('edit-form-container').scrollIntoView({behavior:'smooth'});
+    document.getElementById('edit-department').value = dept;
+    document.getElementById('edit-major').value = major;
+    document.getElementById('edit-year-level').value = year;
+    document.getElementById('edit-contact').value = contact;
+    document.getElementById('edit-address').value = addr;
 }
 
-function cancelEdit() {
+function closeEditForm() {
     document.getElementById('edit-form-container').classList.add('hidden');
-    document.getElementById('edit-form').reset();
 }
 
-// --- DAILY RECORDS — FIXED ---
+// RECORDS
 function loadRecords() {
     fetch('/get-records')
-        .then(r => r.json())
-        .then(d => {
-            const tbody = document.getElementById('records-tbody');
-            if (!tbody) return;
-            const records = d.records || [];
-            tbody.innerHTML = records.length === 0 
-                ? '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No records for today</td></tr>'
-                : records.map(r => `
-                    <tr>
-                        <td>${r.scan_date || '-'}</td>
-                        <td>${r.full_name || '-'}</td>
-                        <td>${r.department || '-'}</td>
-                        <td>${r.time_in || '-'}</td>
-                        <td>${r.time_out || '-'}</td>
-                    </tr>
-                `).join('');
-        })
-        .catch(err => console.error('Load records error:', err));
+    .then(r => r.json())
+    .then(d => {
+        const tb = document.getElementById('records-tbody');
+        tb.innerHTML = '';
+        d.records.forEach(r => {
+            tb.innerHTML += <tr><td>${r.scan_date}</td><td>${r.full_name}</td><td>${r.department||'-'}</td><td>${r.time_in||'-'}</td><td>${r.time_out||'-'}</td></tr>;
+        });
+    });
 }
 
-// --- MONTHLY HISTORY — FIXED ---
+// MONTHLY
 function loadMonthlyHistory() {
-    const month = document.getElementById('month-input').value;
-    if (!month) return alert('⚠️ Select a month first!');
-    fetch(/get-monthly-history?month=${month})
-        .then(r => r.json())
-        .then(d => {
-            const tbody = document.getElementById('monthly-tbody');
-            if (!tbody) return;
-            const records = d.records || [];
-            tbody.innerHTML = records.length === 0 
-                ? '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6b7280;">No records for selected month</td></tr>'
-                : records.map(r => `
-                    <tr>
-                        <td>${r.scan_date || '-'}</td>
-                        <td>${r.full_name || '-'}</td>
-                        <td>${r.department || '-'}</td>
-                        <td>${r.time_in || '-'}</td>
-                        <td>${r.time_out || '-'}</td>
-                    </tr>
-                `).join('');
-        })
-        .catch(err => alert('❌ Error loading history: ' + err));
-}
-
-function downloadMonthly() {
     const m = document.getElementById('month-input').value;
-    if (!m) return alert('⚠️ Select month!');
-    window.location.href = /download-monthly-word?month=${m};
+    if (!m) return;
+    fetch(/get-monthly-history?month=${m})
+    .then(r => r.json())
+    .then(d => {
+        const tb = document.getElementById('history-tbody');
+        tb.innerHTML = '';
+        d.records.forEach(r => {
+            tb.innerHTML += <tr><td>${r.scan_date}</td><td>${r.full_name}</td><td>${r.department||'-'}</td><td>${r.time_in||'-'}</td><td>${r.time_out||'-'}</td></tr>;
+        });
+    });
 }
 
 function printMonthly() {
     const m = document.getElementById('month-input').value;
-    if (!m) return alert('⚠️ Select month!');
+    if (!m) { alert('Pumili ng buwan'); return; }
     window.open(/print-monthly?month=${m}, '_blank');
 }
 
-function exportMonthlyWord() {
-    const m = document.getElementById('export-month').value;
-    if (!m) return alert('⚠️ Select month!');
+function downloadMonthlyWord() {
+    const m = document.getElementById('month-input')?.value || document.getElementById('month-export')?.value;
+    if (!m) { alert('Pumili ng buwan'); return; }
     window.location.href = /download-monthly-word?month=${m};
 }
 </script>
@@ -1279,5 +1180,8 @@ function exportMonthlyWord() {
 </html>
 """
 
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=5000, debug=True)
+
+
