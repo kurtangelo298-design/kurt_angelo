@@ -412,8 +412,6 @@ d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td>
 html+='</table>';document.body.innerHTML+=html;
 }})</script>
 </body></html>"""
-
-# ===================== FRONTEND HTML — BUONG INTERFACE =====================
 FRONTEND_HTML = """
 <!DOCTYPE html>
 <html>
@@ -424,63 +422,52 @@ FRONTEND_HTML = """
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
         body{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%);min-height:100vh;position:relative;overflow:hidden;}
         body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1920&q=80') no-repeat center center;background-size:cover;opacity:0.06;z-index:0;pointer-events:none;}
-        
         .app-container{display:flex;height:100vh;position:relative;z-index:1;}
-        
         .sidebar{width:280px;background:linear-gradient(180deg,rgba(30,41,59,0.95) 0%,rgba(15,23,42,0.95) 100%);backdrop-filter:blur(20px);display:flex;flex-direction:column;padding:25px 0;box-shadow:4px 0 24px rgba(0,0,0,0.2);border-right:1px solid rgba(255,255,255,0.05);position:relative;transition:all 0.4s cubic-bezier(0.4,0,0.2,1);}
         .sidebar.collapsed{width:72px;padding:25px 0;}
-        
         .toggle-btn{position:absolute;right:-16px;top:30px;width:32px;height:32px;background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);border:none;border-radius:50%;color:white;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(59,130,246,0.3);z-index:10;transition:all 0.3s ease;}
         .toggle-btn:hover{transform:scale(1.1);box-shadow:0 6px 16px rgba(59,130,246,0.4);}
         .sidebar.collapsed .toggle-btn{transform:rotate(180deg);}
-        
         .sidebar-header{padding:0 20px 30px 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:20px;transition:opacity 0.3s;}
         .sidebar.collapsed .sidebar-header h2 span,.sidebar.collapsed .sidebar-header p{opacity:0;visibility:hidden;position:absolute;}
         .sidebar-header h2{color:white;font-size:20px;display:flex;align-items:center;gap:10px;}
         .sidebar-header p{color:#94a3b8;font-size:13px;margin-top:5px;}
-        
         .sidebar-menu{display:flex;flex-direction:column;gap:6px;padding:0 12px;flex:1;}
-        .menu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#cbd5e1;border-radius:12px;cursor:pointer;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);font-size:15px;font-weight:500;border:2px solid transparent;white-space:nowrap;}
+        .menu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#cbd5e1;border-radius:12px;cursor:pointer;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);font-size:15px;font-weight:500;border:2px solid transparent;white-space:nowrap;pointer-events:auto;position:relative;z-index:2;}
         .sidebar.collapsed .menu-item{justify-content:center;padding:14px 0;}
         .sidebar.collapsed .menu-item span:nth-child(2){display:none;}
         .menu-item:hover{background:rgba(59,130,246,0.15);color:#93c5fd;transform:translateX(4px);}
         .sidebar.collapsed .menu-item:hover{transform:scale(1.05);}
         .menu-item.active{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;box-shadow:0 4px 15px rgba(59,130,246,0.3);border-color:transparent;}
         .menu-item i{font-size:20px;width:24px;text-align:center;}
-        
         .sidebar-footer{padding:20px;border-top:1px solid rgba(255,255,255,0.08);margin-top:auto;}
         .sidebar.collapsed .sidebar-footer{padding:20px 8px;}
-        .logout-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.3s;}
+        .logout-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.3s;pointer-events:auto;position:relative;z-index:2;}
         .logout-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(220,38,38,0.35);}
-        
         .main-content{flex:1;padding:30px;overflow-y:auto;position:relative;transition:padding 0.3s;}
         .content-header{margin-bottom:25px;display:flex;justify-content:space-between;align-items:center;}
         .content-header h1{color:white;font-size:28px;}
-        .content-card{background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:24px;padding:35px;box-shadow:0 10px 40px rgba(0,0,0,0.2);min-height:calc(100vh - 120px);animation:fadeIn 0.4s ease;}
+        .content-card{background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:24px;padding:35px;box-shadow:0 10px 40px rgba(0,0,0,0.2);min-height:calc(100vh - 120px);animation:fadeIn 0.4s ease;position:relative;z-index:1;}
         @keyframes fadeIn{from{opacity:0;transform:translateY(15px);}to{opacity:1;transform:translateY(0);}}
-        
         h2{color:#1e293b;margin-bottom:25px;font-size:24px;}
         .form-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
         .form-group{margin-bottom:18px;}
         label{display:block;margin-bottom:7px;color:#475569;font-weight:600;font-size:14px;}
-        input,select{width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:12px;font-size:15px;transition:0.3s;background:#fafafa;}
+        input,select{width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:12px;font-size:15px;transition:0.3s;background:#fafafa;pointer-events:auto;}
         input:focus,select:focus{outline:none;border-color:#3b82f6;background:white;box-shadow:0 0 0 4px rgba(59,130,246,0.15);transform:translateY(-1px);}
-        button{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;border:none;padding:13px 28px;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;transition:all 0.3s;margin:5px;}
+        button{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;border:none;padding:13px 28px;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;transition:all 0.3s;margin:5px;pointer-events:auto;position:relative;z-index:2;}
         button:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(99,102,241,0.3);}
-        
         .scan-area{text-align:center;padding:40px;background:linear-gradient(135deg,#eff6ff 0%,#eef2ff 100%);border-radius:20px;margin-bottom:20px;border:2px solid #bfdbfe;}
-        #scan-input{font-size:24px;text-align:center;padding:18px;width:100%;max-width:450px;border-radius:12px;border:2px solid #93c5fd;}
+        #scan-input{font-size:24px;text-align:center;padding:18px;width:100%;max-width:450px;border-radius:12px;border:2px solid #93c5fd;pointer-events:auto;}
         .status{font-size:20px;font-weight:bold;margin-top:20px;padding:18px;border-radius:12px;animation:popIn 0.3s ease;}
         @keyframes popIn{from{transform:scale(0.9);opacity:0;}to{transform:scale(1);opacity:1;}}
         .success{background:#dcfce7;color:#166534;border:2px solid #86efac;}
         .info{background:#e0f2fe;color:#075985;border:2px solid #7dd3fc;}
         .error{background:#fee2e2;color:#991b1b;border:2px solid #fca5a5;}
-        
         table{width:100%;border-collapse:collapse;margin-top:20px;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.05);}
         th,td{padding:16px;text-align:left;border-bottom:1px solid #f1f5f9;font-size:14px;}
         th{background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);font-weight:bold;color:#1e293b;}
         tr:hover{background:#f8fafc;}
-        
         .tab-content{display:none;}
         .tab-content.active{display:block;animation:fadeIn 0.3s ease;}
         .barcode-img{max-width:320px;margin:20px auto;display:block;padding:15px;background:white;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);}
@@ -492,16 +479,14 @@ FRONTEND_HTML = """
         .edit-form{background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);padding:25px;border-radius:20px;margin-top:20px;border:2px solid #e2e8f0;}
         .hidden{display:none !important;}
         .dept-tabs{display:flex;gap:8px;margin:20px 0;flex-wrap:wrap;}
-        .dept-tab{padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:10px;cursor:pointer;font-weight:600;transition:all 0.2s;font-size:14px;}
+        .dept-tab{padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:10px;cursor:pointer;font-weight:600;transition:all 0.2s;font-size:14px;pointer-events:auto;}
         .dept-tab:hover{background:#e2e8f0;transform:translateY(-1px);}
         .dept-tab.active{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;box-shadow:0 4px 12px rgba(59,130,246,0.3);}
         .search-box{margin-bottom:20px;}
         .search-box input{font-size:15px;padding:12px 16px;}
-        
         .month-filter{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
         .month-filter select{max-width:200px;}
         .btn-month-print{background:linear-gradient(135deg,#ec4899 0%,#db2777 100%);color:white;}
-        
         @media(max-width:900px){
             .sidebar{width:72px;padding:25px 0;}
             .sidebar-header h2 span,.sidebar-header p,.menu-item span:nth-child(2){display:none;}
@@ -516,12 +501,10 @@ FRONTEND_HTML = """
     <div class="app-container">
         <div class="sidebar" id="sidebar">
             <button class="toggle-btn" onclick="toggleSidebar()">◀</button>
-            
             <div class="sidebar-header">
                 <h2>📚 <span>Library System</span></h2>
                 <p>SLSU-JGE Attendance</p>
             </div>
-            
             <div class="sidebar-menu">
                 <div class="menu-item active" onclick="showContent('scan')">
                     <span>📱</span> <span>Scan / Attendance</span>
@@ -542,17 +525,14 @@ FRONTEND_HTML = """
                     <span>📄</span> <span>Export Reports</span>
                 </div>
             </div>
-            
             <div class="sidebar-footer">
                 <button class="logout-btn" onclick="logout()">🚪 Logout</button>
             </div>
         </div>
-
         <div class="main-content">
             <div class="content-header">
                 <h1 id="page-title">📱 Scan / Attendance</h1>
             </div>
-            
             <div class="content-card">
                 <div id="scan" class="tab-content active">
                     <h2>📱 Scan Barcode — Time In / Time Out</h2>
@@ -561,7 +541,6 @@ FRONTEND_HTML = """
                         <div id="status-box" class="status info">⏳ Waiting for scan...</div>
                     </div>
                 </div>
-
                 <div id="register" class="tab-content">
                     <h2>📇 Register New User</h2>
                     <form id="register-form">
@@ -625,7 +604,6 @@ FRONTEND_HTML = """
                         <button class="btn-print" onclick="window.print()">🖨️ Print Barcode</button>
                     </div>
                 </div>
-
                 <div id="students" class="tab-content">
                     <h2>👥 Registered Users — By Department</h2>
                     <div class="search-box">
@@ -696,13 +674,11 @@ FRONTEND_HTML = """
                         </form>
                     </div>
                 </div>
-
                 <div id="records" class="tab-content">
                     <h2>📋 Today's Attendance Records</h2>
                     <button onclick="loadRecords()">🔄 Refresh Records</button>
                     <div id="records-table"></div>
                 </div>
-
                 <div id="history" class="tab-content">
                     <h2>📅 Monthly Attendance History</h2>
                     <div class="month-filter">
@@ -727,7 +703,6 @@ FRONTEND_HTML = """
                     <button onclick="loadMonthlyHistory()">🔄 Load Records</button>
                     <div id="history-table"></div>
                 </div>
-
                 <div id="export" class="tab-content">
                     <h2>📄 Export & Print Reports</h2>
                     <p style="font-size:16px;color:#64748b;margin-bottom:25px;">Download today's complete attendance as Microsoft Word Document or print directly.</p>
@@ -737,7 +712,6 @@ FRONTEND_HTML = """
             </div>
         </div>
     </div>
-
 <script>
 const MAJORS = {
     "BSBA": ["Marketing Management", "Financial Management", "Human Resource Development", "Business Management", "Economics"],
@@ -745,274 +719,23 @@ const MAJORS = {
     "CT": ["Computer Technology", "Electronics Technology", "Drafting Technology"],
     "FBT": ["Food Technology", "Baking & Pastry", "Culinary Arts"]
 };
-
-const PAGE_TITLES = {
-    scan: "📱 Scan / Attendance",
-    register: "📇 Register New User",
-    students: "👥 Registered Users",
-    records: "📋 Daily Attendance Records",
-    history: "📅 Monthly Attendance History",
-    export: "📄 Export & Print Reports"
-};
-
-let editingStudentId = null;
-let currentDept = "ALL";
-let allStudents = [];
-
-function toggleSidebar(){
-    const sidebar = document.getElementById('sidebar');
-    sidebar.classList.toggle('collapsed');
-    const btn = sidebar.querySelector('.toggle-btn');
-    btn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
-}
-
-function logout(){
-    document.cookie = "logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    window.location.href = "/login";
-}
-
-function showContent(tabId){
-    document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    
-    const menuItems = document.querySelectorAll('.menu-item');
-    const index = ['scan','register','students','records','history','export'].indexOf(tabId);
-    if(index !== -1) menuItems[index].classList.add('active');
-    
-    document.getElementById(tabId).classList.add('active');
-    document.getElementById('page-title').textContent = PAGE_TITLES[tabId];
-    
-    if(tabId === 'scan') setTimeout(()=>document.getElementById('scan-input')?.focus(), 100);
-    if(tabId === 'students') loadStudents();
-    if(tabId === 'records') loadRecords();
-    if(tabId === 'history') loadMonthlyHistory();
-}
-
-function switchDept(dept){
-    document.querySelectorAll('.dept-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('dept-' + dept).classList.add('active');
-    currentDept = dept;
-    filterStudents();
-}
-
-function updateMajorOptions(deptSelectId, majorSelectId, yearSelectId){
-    const dept = document.getElementById(deptSelectId).value;
-    const majorSelect = document.getElementById(majorSelectId);
-    const yearSelect = document.getElementById(yearSelectId);
-    majorSelect.innerHTML = '<option value="">-- Select Major --</option>';
-    
-    if(dept === 'Visitor' || dept === 'EMPLOYEE' || dept === ''){
-        if(yearSelect) yearSelect.value = 'N/A';
-        if(yearSelect) yearSelect.disabled = true;
-    } else {
-        if(yearSelect) yearSelect.disabled = false;
-        if(MAJORS[dept]){
-            MAJORS[dept].forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m; opt.textContent = m;
-                majorSelect.appendChild(opt);
-            });
-        }
-    }
-}
-
-function submitScan(){
-    const idNumber = document.getElementById('scan-input').value.trim();
-    if(!idNumber) return;
-    
-    fetch('/scan', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({id_number: idNumber})
-    })
-    .then(r => r.json())
-    .then(data => {
-        const box = document.getElementById('status-box');
-        box.className = 'status ' + (data.success ? 'success' : 'error');
-        box.textContent = data.message;
-        document.getElementById('scan-input').value = '';
-    })
-    .catch(err => {
-        document.getElementById('status-box').className = 'status error';
-        document.getElementById('status-box').textContent = '❌ Error: ' + err;
-    });
-}
-
-function loadStudents(){
-    fetch('/get-students')
-    .then(r => r.json())
-    .then(data => {
-        allStudents = data.students || [];
-        filterStudents();
-    })
-    .catch(err => alert('❌ Load Error: ' + err));
-}
-
-function filterStudents(){
-    const search = document.getElementById('search-input')?.value.toLowerCase() || '';
-    let filtered = allStudents;
-    
-    if(currentDept !== 'ALL'){
-        filtered = filtered.filter(s => s.department === currentDept || (currentDept === 'Visitor' && s.id_type === 'Visitor'));
-    }
-    if(search){
-        filtered = filtered.filter(s => 
-            s.full_name.toLowerCase().includes(search) || 
-            s.id_number.toLowerCase().includes(search)
-        );
-    }
-    
-    const table = document.getElementById('students-table');
-    if(!filtered.length){
-        table.innerHTML = '<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records found.</p>';
-        return;
-    }
-    
-    table.innerHTML = '<table><tr><th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Action</th></tr>' +
-        filtered.map(s => `
-            <tr>
-                <td><strong>${s.id_number}</strong></td>
-                <td>${s.full_name}</td>
-                <td>${s.id_type}</td>
-                <td>${s.department || '-'}</td>
-                <td><button class="btn-edit" onclick="editStudent(${s.id})">✏️ Edit</button></td>
-            </tr>
-        `).join('') + '</table>';
-}
-
-function editStudent(id){
-    const student = allStudents.find(s => s.id === id);
-    if(!student) return;
-    editingStudentId = id;
-    
-    document.getElementById('edit-id').value = student.id;
-    document.getElementById('edit-id-type').value = student.id_type;
-    document.getElementById('edit-idnum').value = student.id_number;
-    document.getElementById('edit-fullname').value = student.full_name;
-    document.getElementById('edit-dept').value = student.department || '';
-    document.getElementById('edit-major').value = student.major || '';
-    document.getElementById('edit-year').value = student.year_level || '';
-    document.getElementById('edit-contact').value = student.contact_number || '';
-    document.getElementById('edit-address').value = student.address || '';
-    
-    document.getElementById('edit-form-container').classList.remove('hidden');
-    document.getElementById('edit-form-container').scrollIntoView({behavior:'smooth'});
-}
-
-function hideEditForm(){
-    document.getElementById('edit-form-container').classList.add('hidden');
-    editingStudentId = null;
-    document.getElementById('edit-form').reset();
-}
-
-function loadRecords(){
-    fetch('/get-records')
-    .then(r => r.json())
-    .then(data => {
-        const records = data.records || [];
-        const table = document.getElementById('records-table');
-        if(!records.length){
-            table.innerHTML = '<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No attendance records yet.</p>';
-            return;
-        }
-        table.innerHTML = '<table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>' +
-            records.map(r => `
-                <tr>
-                    <td><strong>${r.scan_date}</strong></td>
-                    <td>${r.full_name}</td>
-                    <td>${r.id_number}</td>
-                    <td style="color:#16a34a;font-weight:600;">${r.time_in || '-'}</td>
-                    <td style="color:#dc2626;font-weight:600;">${r.time_out || '-'}</td>
-                </tr>
-            `).join('') + '</table>';
-    })
-    .catch(err => alert('❌ Load Error: ' + err));
-}
-
-function loadMonthlyHistory(){
-    const month = document.getElementById('month-select').value;
-    fetch('/get-monthly-history?month=' + month)
-    .then(r => r.json())
-    .then(data => {
-        const records = data.records || [];
-        const table = document.getElementById('history-table');
-        if(!records.length){
-            table.innerHTML = <p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records for ${month}.</p>;
-            return;
-        }
-        table.innerHTML = <h3 style="margin:20px 0;color:#1e293b;">📅 Records for ${month}</h3> +
-            '<table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>' +
-            records.map(r => `
-                <tr>
-                    <td><strong>${r.scan_date}</strong></td>
-                    <td>${r.full_name}</td>
-                    <td>${r.id_number}</td>
-                    <td style="color:#16a34a;font-weight:600;">${r.time_in || '-'}</td>
-                    <td style="color:#dc2626;font-weight:600;">${r.time_out || '-'}</td>
-                </tr>
-            `).join('') + '</table>';
-    })
-    .catch(err => alert('❌ Load Error: ' + err));
-}
-
-function printMonthlyReport(){
-    const month = document.getElementById('month-select').value;
-    window.open('/print-monthly?month=' + month, '_blank');
-}
-
-function downloadMonthlyReport(){
-    const month = document.getElementById('month-select').value;
-    window.location.href = '/download-monthly-word?month=' + month;
-}
-
-document.addEventListener('DOMContentLoaded', function(){
-    const scanInput = document.getElementById('scan-input');
-    if(scanInput) scanInput.addEventListener('keypress', e => e.key === 'Enter' && submitScan());
-
-    const deptSelect = document.getElementById('dept-select');
-    if(deptSelect) deptSelect.addEventListener('change', () => updateMajorOptions('dept-select', 'major-select', 'year-select'));
-
-    const editDeptSelect = document.getElementById('edit-dept');
-    if(editDeptSelect) editDeptSelect.addEventListener('change', () => updateMajorOptions('edit-dept', 'edit-major', 'edit-year'));
-
-    const regForm = document.getElementById('register-form');
-    if(regForm){
-        regForm.addEventListener('submit', e => {
-            e.preventDefault();
-            const form = new FormData(regForm);
-            fetch('/register', {method: 'POST', body: form})
-            .then(r => r.json())
-            .then(data => {
-                if(data.success){
-                    document.getElementById('barcode-result').style.display = 'block';
-                    document.getElementById('student-info').textContent = data.info;
-                    document.getElementById('barcode-img').src = 'data:image/png;base64,' + data.barcode;
-                    regForm.reset();
-                    document.getElementById('major-select').innerHTML = '<option value="">-- Select Department First --</option>';
-                } else alert('❌ Error: ' + data.error);
-            })
-            .catch(err => alert('❌ Error: ' + err));
-        });
-    }
-
-    const editForm = document.getElementById('edit-form');
-    if(editForm){
-        editForm.addEventListener('submit', e => {
-            e.preventDefault();
-            const form = new FormData(editForm);
-            fetch('/update-student', {method: 'POST', body: form})
-            .then(r => r.json())
-            .then(d => {
-                if(d.success){
-                    alert('✅ Updated successfully!');
-                    hideEditForm();
-                    loadStudents();
-                } else alert('❌ Error: ' + d.error);
-            })
-            .catch(err => alert('❌ Error: ' + err));
-        });
-    }
-});
+const PAGE_TITLES = {scan:"📱 Scan / Attendance",register:"📇 Register New User",students:"👥 Registered Users",records:"📋 Daily Attendance Records",history:"📅 Monthly Attendance History",export:"📄 Export & Print Reports"};
+let editingStudentId=null,currentDept="ALL",allStudents=[];
+function toggleSidebar(){const e=document.getElementById("sidebar");e.classList.toggle("collapsed");const t=e.querySelector(".toggle-btn");t.textContent=e.classList.contains("collapsed")?"▶":"◀";}
+function logout(){document.cookie="logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";window.location.href="/login";}
+function showContent(e){document.querySelectorAll(".menu-item").forEach(t=>t.classList.remove("active"));document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));const t=["scan","register","students","records","history","export"].indexOf(e);-1!==t&&document.querySelectorAll(".menu-item")[t].classList.add("active");document.getElementById(e).classList.add("active");document.getElementById("page-title").textContent=PAGE_TITLES[e];if("scan"===e)setTimeout(()=>{var t;null===(t=document.getElementById("scan-input"))||void 0===t||t.focus()},100);if("students"===e)loadStudents();if("records"===e)loadRecords();if("history"===e)loadMonthlyHistory();}
+function switchDept(e){document.querySelectorAll(".dept-tab").forEach(t=>t.classList.remove("active"));document.getElementById("dept-"+e).classList.add("active");currentDept=e;filterStudents();}
+function updateMajorOptions(e,t,n){const s=document.getElementById(e).value;const a=document.getElementById(t);const i=document.getElementById(n);a.innerHTML='<option value="">-- Select Major --</option>',("Visitor"===s||"EMPLOYEE"===s||""===s)?(i&&(i.value="N/A",i.disabled=!0)):(i&&(i.disabled=!1),MAJORS[s]&&MAJORS[s].forEach(e=>{const t=document.createElement("option");t.value=e,t.textContent=e,a.appendChild(t)}));}
+function submitScan(){const e=document.getElementById("scan-input").value.trim();if(!e)return;fetch("/scan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id_number:e})}).then(e=>e.json()).then(t=>{const n=document.getElementById("status-box");n.className="status "+(t.success?"success":"error"),n.textContent=t.message,document.getElementById("scan-input").value=""}).catch(e=>{document.getElementById("status-box").className="status error",document.getElementById("status-box").textContent="❌ Error: "+e});}
+function loadStudents(){fetch("/get-students").then(e=>e.json()).then(e=>{allStudents=e.students||[],filterStudents()}).catch(e=>alert("❌ Load Error: "+e));}
+function filterStudents(){const e=document.getElementById("search-input")?.value.toLowerCase()||"";let t=allStudents;"ALL"!==currentDept&&(t=t.filter(e=>e.department===currentDept||"Visitor"===currentDept&&"Visitor"===e.id_type)),e&&(t=t.filter(t=>t.full_name.toLowerCase().includes(e)||t.id_number.toLowerCase().includes(e)));const n=document.getElementById("students-table");t.length?n.innerHTML="<table><tr><th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Action</th></tr>"+t.map(e=>"<tr><td><strong>"+e.id_number+"</strong></td><td>"+e.full_name+"</td><td>"+e.id_type+"</td><td>"+(e.department||"-")+"</td><td><button class='btn-edit' onclick='editStudent("+e.id+")'>✏️ Edit</button></td></tr>").join("")+"</table>":n.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records found.</p>';}
+function editStudent(e){const t=allStudents.find(t=>t.id===e);if(!t)return;editingStudentId=e,document.getElementById("edit-id").value=t.id,document.getElementById("edit-id-type").value=t.id_type,document.getElementById("edit-idnum").value=t.id_number,document.getElementById("edit-fullname").value=t.full_name,document.getElementById("edit-dept").value=t.department||"",document.getElementById("edit-major").value=t.major||"",document.getElementById("edit-year").value=t.year_level||"",document.getElementById("edit-contact").value=t.contact_number||"",document.getElementById("edit-address").value=t.address||"",document.getElementById("edit-form-container").classList.remove("hidden"),document.getElementById("edit-form-container").scrollIntoView({behavior:"smooth"});}
+function hideEditForm(){document.getElementById("edit-form-container").classList.add("hidden"),editingStudentId=null,document.getElementById("edit-form").reset();}
+function loadRecords(){fetch("/get-records").then(e=>e.json()).then(e=>{const t=e.records||[],n=document.getElementById("records-table");t.length?n.innerHTML="<table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>"+t.map(e=>"<tr><td><strong>"+e.scan_date+"</strong></td><td>"+e.full_name+"</td><td>"+e.id_number+"</td><td style='color:#16a34a;font-weight:600;'>"+(e.time_in||"-")+"</td><td style='color:#dc2626;font-weight:600;'>"+(e.time_out||"-")+"</td></tr>").join("")+"</table>":n.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No attendance records yet.</p>';}).catch(e=>alert("❌ Load Error: "+e));}
+function loadMonthlyHistory(){const e=document.getElementById("month-select").value;fetch("/get-monthly-history?month="+e).then(e=>e.json()).then(t=>{const n=t.records||[],s=document.getElementById("history-table");n.length?s.innerHTML="<h3 style='margin:20px 0;color:#1e293b;'>📅 Records for "+e+"</h3><table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>"+n.map(e=>"<tr><td><strong>"+e.scan_date+"</strong></td><td>"+e.full_name+"</td><td>"+e.id_number+"</td><td style='color:#16a34a;font-weight:600;'>"+(e.time_in||"-")+"</td><td style='color:#dc2626;font-weight:600;'>"+(e.time_out||"-")+"</td></tr>").join("")+"</table>":s.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records for '+e+'.</p>';}).catch(e=>alert("❌ Load Error: "+e));}
+function printMonthlyReport(){const e=document.getElementById("month-select").value;window.open("/print-monthly?month="+e,"_blank");}
+function downloadMonthlyReport(){const e=document.getElementById("month-select").value;window.location.href="/download-monthly-word?month="+e;}
+document.addEventListener("DOMContentLoaded",function(){const e=document.getElementById("scan-input");e&&e.addEventListener("keypress",e=>"Enter"===e.key&&submitScan());const t=document.getElementById("dept-select");t&&t.addEventListener("change",()=>updateMajorOptions("dept-select","major-select","year-select"));const n=document.getElementById("edit-dept");n&&n.addEventListener("change",()=>updateMajorOptions("edit-dept","edit-major","edit-year"));const s=document.getElementById("register-form");s&&s.addEventListener("submit",e=>{e.preventDefault();const t=new FormData(s);fetch("/register",{method:"POST",body:t}).then(e=>e.json()).then(t=>{t.success?(document.getElementById("barcode-result").style.display="block",document.getElementById("student-info").textContent=t.info,document.getElementById("barcode-img").src="data:image/png;base64,"+t.barcode,s.reset(),document.getElementById("major-select").innerHTML='<option value="">-- Select Department First --</option>'):alert("❌ Error: "+t.error);}).catch(e=>alert("❌ Error: "+e));});const a=document.getElementById("edit-form");a&&a.addEventListener("submit",e=>{e.preventDefault();const t=new FormData(a);fetch("/update-student",{method:"POST",body:t}).then(e=>e.json()).then(t=>{t.success?(alert("✅ Updated successfully!"),hideEditForm(),loadStudents()):alert("❌ Error: "+t.error);}).catch(e=>alert("❌ Error: "+e));});});
 </script>
 </body>
 </html>
