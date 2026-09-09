@@ -651,20 +651,21 @@ ADMIN_FRONTEND = """
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
         body{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);min-height:100vh;}
-        .app-container{display:flex;height:100vh;}
-        .sidebar{width:280px;background:linear-gradient(180deg,rgba(30,27,75,0.95) 0%,rgba(49,46,129,0.95) 100%);display:flex;flex-direction:column;padding:25px 0;position:relative;}
+        .app-container{display:flex;height:100vh;position:relative;}
+        .sidebar{width:280px;background:linear-gradient(180deg,rgba(30,27,75,0.98) 0%,rgba(49,46,129,0.98) 100%);display:flex;flex-direction:column;padding:25px 0;position:relative;z-index:100;}
         .sidebar.collapsed{width:72px;}
-        .toggle-btn{position:absolute;right:-16px;top:30px;width:34px;height:34px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;border-radius:50%;color:white;cursor:pointer;z-index:10;}
+        .toggle-btn{position:absolute;right:-16px;top:30px;width:34px;height:34px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;border-radius:50%;color:white;cursor:pointer;z-index:101;pointer-events:auto !important;}
         .sidebar-header{padding:0 20px 30px 20px;border-bottom:1px solid rgba(129,140,248,0.15);}
         .sidebar-header h2{color:white;font-size:20px;}
-        .sidebar-menu{display:flex;flex-direction:column;gap:6px;padding:0 12px;}
-        .menu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#c7d2fe;border-radius:12px;cursor:pointer;transition:all 0.3s;}
-        .menu-item:hover{background:rgba(99,102,241,0.15);color:#e0e7ff;}
-        .menu-item.active{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;}
-        .sidebar-footer{padding:20px;border-top:1px solid rgba(129,140,248,0.15);margin-top:auto;}
-        .logout-btn{width:100%;padding:14px;background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;border-radius:12px;cursor:pointer;}
-        .main-content{flex:1;padding:30px;overflow-y:auto;}
-        .content-card{background:rgba(255,255,255,0.95);border-radius:24px;padding:35px;min-height:calc(100vh - 120px);}
+        .sidebar-menu{display:flex;flex-direction:column;gap:6px;padding:0 12px;position:relative;z-index:100;}
+        .menu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#c7d2fe;border-radius:12px;cursor:pointer;transition:all 0.3s;pointer-events:auto !important;position:relative;z-index:100;user-select:none;}
+        .menu-item:hover{background:rgba(99,102,241,0.25);color:#fff;}
+        .menu-item.active{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;box-shadow:0 4px 12px rgba(99,102,241,0.3);}
+        .sidebar-footer{padding:20px;border-top:1px solid rgba(129,140,248,0.15);margin-top:auto;position:relative;z-index:100;}
+        .logout-btn{width:100%;padding:14px;background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;border-radius:12px;cursor:pointer;pointer-events:auto !important;position:relative;z-index:100;font-size:16px;}
+        .logout-btn:hover{filter:brightness(1.1);}
+        .main-content{flex:1;padding:30px;overflow-y:auto;position:relative;z-index:10;}
+        .content-card{background:rgba(255,255,255,0.95);border-radius:24px;padding:35px;min-height:calc(100vh - 120px);position:relative;z-index:10;}
         h2{color:#1e1b4b;margin-bottom:25px;}
         .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
         .form-group{margin-bottom:18px;}
@@ -692,7 +693,7 @@ ADMIN_FRONTEND = """
         .edit-form{background:#f8fafc;padding:25px;border-radius:20px;margin-top:20px;border:2px solid #e2e8f0;}
         .hidden{display:none !important;}
         .dept-tabs{display:flex;gap:8px;margin:20px 0;flex-wrap:wrap;}
-        .dept-tab{padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:10px;cursor:pointer;font-weight:600;}
+        .dept-tab{padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:10px;cursor:pointer;font-weight:600;pointer-events:auto;}
         .dept-tab.active{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;}
         .month-filter{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
         .btn-month-print{background:linear-gradient(135deg,#ec4899 0%,#db2777 100%);color:white;}
@@ -711,12 +712,12 @@ ADMIN_FRONTEND = """
                 <p style="color:#a5b4fc;font-size:13px;margin-top:5px;">SLSU-JGE Attendance — Admin</p>
             </div>
             <div class="sidebar-menu">
-                <div class="menu-item active" onclick="showContent('scan')">📱 Scan / Attendance</div>
-                <div class="menu-item" onclick="showContent('register')">📇 Register User</div>
-                <div class="menu-item" onclick="showContent('students')">👥 Students List</div>
-                <div class="menu-item" onclick="showContent('records')">📋 Daily Records</div>
-                <div class="menu-item" onclick="showContent('history')">📅 Monthly History</div>
-                <div class="menu-item" onclick="showContent('export')">📄 Export Reports</div>
+                <div class="menu-item active" onclick="showTab('scan')">📱 Scan / Attendance</div>
+                <div class="menu-item" onclick="showTab('register')">📇 Register User</div>
+                <div class="menu-item" onclick="showTab('students')">👥 Students List</div>
+                <div class="menu-item" onclick="showTab('records')">📋 Daily Records</div>
+                <div class="menu-item" onclick="showTab('history')">📅 Monthly History</div>
+                <div class="menu-item" onclick="showTab('export')">📄 Export Reports</div>
             </div>
             <div class="sidebar-footer">
                 <button class="logout-btn" onclick="logout()">🚪 Logout</button>
@@ -841,7 +842,6 @@ ADMIN_FRONTEND = """
                             <tbody id="students-tbody"></tbody>
                         </table>
                     </div>
-                    <!-- Edit Form -->
                     <div id="edit-form-container" class="edit-form hidden">
                         <h3>✏️ Edit Student / User</h3>
                         <form id="edit-form">
@@ -975,19 +975,21 @@ ADMIN_FRONTEND = """
 let currentDept = 'ALL';
 let sidebarCollapsed = false;
 
-// --- SIDEBAR & NAVIGATION ---
-function toggleSidebar() {
-    const sb = document.getElementById('sidebar');
-    sidebarCollapsed = !sidebarCollapsed;
-    sb.classList.toggle('collapsed');
-    sb.querySelector('.toggle-btn').textContent = sidebarCollapsed ? '▶' : '◀';
-}
-
-function showContent(tabId) {
+// ✅ PINAKA-IMPORTANTENG FIX — GINAMIT KO ANG IBANG PANGALAN NG FUNCTION PARA HINDI CONFLICT
+function showTab(tabId) {
+    console.log('🖱️ Clicked tab:', tabId); // Makikita mo sa browser console kung gumagana!
+    
+    // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    // Remove active from all menu items
     document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-    event.target.classList.add('active');
+    
+    // Show selected tab
+    const tab = document.getElementById(tabId);
+    if (tab) tab.classList.add('active');
+    event.currentTarget.classList.add('active');
+    
+    // Update title
     const titles = {
         scan: '📱 Scan / Attendance',
         register: '📇 Register User',
@@ -997,8 +999,17 @@ function showContent(tabId) {
         export: '📄 Export Reports'
     };
     document.getElementById('page-title').textContent = titles[tabId] || '📚 Library System';
+    
+    // Load data if needed
     if (tabId === 'students') loadStudents();
     if (tabId === 'records') loadRecords();
+}
+
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    sidebarCollapsed = !sidebarCollapsed;
+    sb.classList.toggle('collapsed');
+    sb.querySelector('.toggle-btn').textContent = sidebarCollapsed ? '▶' : '◀';
 }
 
 function logout() {
@@ -1007,7 +1018,7 @@ function logout() {
     window.location.href = '/login';
 }
 
-// --- SCAN FUNCTION ---
+// SCAN FUNCTION
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Admin Panel Loaded');
 
@@ -1040,12 +1051,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- REGISTER FORM ---
+    // REGISTER FORM
     const regForm = document.getElementById('register-form');
     if (regForm) {
         regForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            console.log('📤 Submitting register form...');
             const fd = new FormData(this);
             fetch('/register', {method: 'POST', body: fd})
             .then(r => r.json())
@@ -1063,7 +1073,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- EDIT FORM ---
+    // EDIT FORM
     const editForm = document.getElementById('edit-form');
     if (editForm) {
         editForm.addEventListener('submit', function(e) {
@@ -1095,21 +1105,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// --- STUDENTS FUNCTIONS ---
+// STUDENTS FUNCTIONS
 function loadStudents() {
     fetch('/get-students')
     .then(r => r.json())
     .then(d => {
         window.allStudents = d.students;
         filterStudents();
-    })
-    .catch(err => console.error('Load students error:', err));
+    });
 }
 
 function switchDept(dept) {
     currentDept = dept;
     document.querySelectorAll('.dept-tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
+    event.currentTarget.classList.add('active');
     filterStudents();
 }
 
@@ -1152,7 +1161,7 @@ function closeEditForm() {
     document.getElementById('edit-form-container').classList.add('hidden');
 }
 
-// --- RECORDS ---
+// RECORDS
 function loadRecords() {
     fetch('/get-records')
     .then(r => r.json())
@@ -1165,7 +1174,7 @@ function loadRecords() {
     });
 }
 
-// --- MONTHLY ---
+// MONTHLY
 function loadMonthlyHistory() {
     const m = document.getElementById('month-input').value;
     if (!m) return;
@@ -1197,5 +1206,5 @@ function downloadMonthlyWord() {
 """
 
 # ✅ RUN THE APP
-if __name__ == "__main__":
+if __name__ == "_+main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
