@@ -127,7 +127,7 @@ def login():
 </body>
 </html>"""
 
-# ===================== MAIN DASHBOARD — SIDEBAR LAYOUT =====================
+# ===================== MAIN DASHBOARD — COLLAPSIBLE SIDEBAR + AESTHETIC DESIGN =====================
 @app.route('/')
 def home():
     if not is_logged_in():
@@ -146,27 +146,39 @@ def home():
         /* ===== MAIN LAYOUT ===== */
         .app-container{display:flex;height:100vh;position:relative;z-index:1;}
         
-        /* ===== SIDEBAR — LEFT ===== */
-        .sidebar{width:280px;background:linear-gradient(180deg,#1e293b 0%,#0f172a 100%);display:flex;flex-direction:column;padding:25px 0;box-shadow:4px 0 20px rgba(0,0,0,0.3);border-right:1px solid rgba(255,255,255,0.05);}
-        .sidebar-header{padding:0 20px 30px 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:20px;}
+        /* ===== SIDEBAR — COLLAPSIBLE / NAKATAGO BY DEFAULT ===== */
+        .sidebar{width:280px;background:linear-gradient(180deg,rgba(30,41,59,0.95) 0%,rgba(15,23,42,0.95) 100%);backdrop-filter:blur(20px);display:flex;flex-direction:column;padding:25px 0;box-shadow:4px 0 24px rgba(0,0,0,0.2);border-right:1px solid rgba(255,255,255,0.05);position:relative;transition:all 0.4s cubic-bezier(0.4,0,0.2,1);}
+        .sidebar.collapsed{width:72px;padding:25px 0;}
+        
+        /* ===== TOGGLE BUTTON — ARROW LANG ===== */
+        .toggle-btn{position:absolute;right:-16px;top:30px;width:32px;height:32px;background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);border:none;border-radius:50%;color:white;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(59,130,246,0.3);z-index:10;transition:all 0.3s ease;}
+        .toggle-btn:hover{transform:scale(1.1);box-shadow:0 6px 16px rgba(59,130,246,0.4);}
+        .sidebar.collapsed .toggle-btn{transform:rotate(180deg);}
+        
+        .sidebar-header{padding:0 20px 30px 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:20px;transition:opacity 0.3s;}
+        .sidebar.collapsed .sidebar-header h2 span,.sidebar.collapsed .sidebar-header p{opacity:0;visibility:hidden;position:absolute;}
         .sidebar-header h2{color:white;font-size:20px;display:flex;align-items:center;gap:10px;}
         .sidebar-header p{color:#94a3b8;font-size:13px;margin-top:5px;}
         
         .sidebar-menu{display:flex;flex-direction:column;gap:6px;padding:0 12px;flex:1;}
-        .menu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#cbd5e1;border-radius:12px;cursor:pointer;transition:all 0.3s ease;font-size:15px;font-weight:500;border:2px solid transparent;}
-        .menu-item:hover{background:rgba(59,130,246,0.1);color:#93c5fd;}
+        .menu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#cbd5e1;border-radius:12px;cursor:pointer;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);font-size:15px;font-weight:500;border:2px solid transparent;white-space:nowrap;}
+        .sidebar.collapsed .menu-item{justify-content:center;padding:14px 0;}
+        .sidebar.collapsed .menu-item span:nth-child(2){display:none;}
+        .menu-item:hover{background:rgba(59,130,246,0.15);color:#93c5fd;transform:translateX(4px);}
+        .sidebar.collapsed .menu-item:hover{transform:scale(1.05);}
         .menu-item.active{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;box-shadow:0 4px 15px rgba(59,130,246,0.3);border-color:transparent;}
         .menu-item i{font-size:20px;width:24px;text-align:center;}
         
         .sidebar-footer{padding:20px;border-top:1px solid rgba(255,255,255,0.08);margin-top:auto;}
+        .sidebar.collapsed .sidebar-footer{padding:20px 8px;}
         .logout-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.3s;}
         .logout-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(220,38,38,0.35);}
         
-        /* ===== MAIN CONTENT — CENTER DISPLAY AREA ===== */
-        .main-content{flex:1;padding:30px;overflow-y:auto;position:relative;}
-        .content-header{margin-bottom:25px;}
+        /* ===== MAIN CONTENT ===== */
+        .main-content{flex:1;padding:30px;overflow-y:auto;position:relative;transition:padding 0.3s;}
+        .content-header{margin-bottom:25px;display:flex;justify-content:space-between;align-items:center;}
         .content-header h1{color:white;font-size:28px;}
-        .content-card{background:rgba(255,255,255,0.95);border-radius:20px;padding:35px;box-shadow:0 10px 40px rgba(0,0,0,0.2);min-height:calc(100vh - 120px);animation:fadeIn 0.4s ease;}
+        .content-card{background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:24px;padding:35px;box-shadow:0 10px 40px rgba(0,0,0,0.2);min-height:calc(100vh - 120px);animation:fadeIn 0.4s ease;}
         @keyframes fadeIn{from{opacity:0;transform:translateY(15px);}to{opacity:1;transform:translateY(0);}}
         
         /* ===== FORM & TABLE STYLES ===== */
@@ -174,45 +186,51 @@ def home():
         .form-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
         .form-group{margin-bottom:18px;}
         label{display:block;margin-bottom:7px;color:#475569;font-weight:600;font-size:14px;}
-        input,select{width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;transition:0.3s;background:#fafafa;}
-        input:focus,select:focus{outline:none;border-color:#3b82f6;background:white;box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
-        button{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;border:none;padding:13px 28px;border-radius:10px;font-size:15px;font-weight:bold;cursor:pointer;transition:all 0.3s;margin:5px;}
-        button:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(99,102,241,0.3);}
+        input,select{width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:12px;font-size:15px;transition:0.3s;background:#fafafa;}
+        input:focus,select:focus{outline:none;border-color:#3b82f6;background:white;box-shadow:0 0 0 4px rgba(59,130,246,0.15);transform:translateY(-1px);}
+        button{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;border:none;padding:13px 28px;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;transition:all 0.3s;margin:5px;}
+        button:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(99,102,241,0.3);}
         
-        .scan-area{text-align:center;padding:40px;background:linear-gradient(135deg,#eff6ff 0%,#eef2ff 100%);border-radius:16px;margin-bottom:20px;border:2px solid #bfdbfe;}
+        .scan-area{text-align:center;padding:40px;background:linear-gradient(135deg,#eff6ff 0%,#eef2ff 100%);border-radius:20px;margin-bottom:20px;border:2px solid #bfdbfe;}
         #scan-input{font-size:24px;text-align:center;padding:18px;width:100%;max-width:450px;border-radius:12px;border:2px solid #93c5fd;}
-        .status{font-size:20px;font-weight:bold;margin-top:20px;padding:18px;border-radius:12px;}
+        .status{font-size:20px;font-weight:bold;margin-top:20px;padding:18px;border-radius:12px;animation:popIn 0.3s ease;}
+        @keyframes popIn{from{transform:scale(0.9);opacity:0;}to{transform:scale(1);opacity:1;}}
         .success{background:#dcfce7;color:#166534;border:2px solid #86efac;}
         .info{background:#e0f2fe;color:#075985;border:2px solid #7dd3fc;}
         .error{background:#fee2e2;color:#991b1b;border:2px solid #fca5a5;}
         
-        table{width:100%;border-collapse:collapse;margin-top:20px;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.05);}
-        th,td{padding:14px;text-align:left;border-bottom:1px solid #f1f5f9;font-size:14px;}
+        table{width:100%;border-collapse:collapse;margin-top:20px;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.05);}
+        th,td{padding:16px;text-align:left;border-bottom:1px solid #f1f5f9;font-size:14px;}
         th{background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);font-weight:bold;color:#1e293b;}
         tr:hover{background:#f8fafc;}
         
         .tab-content{display:none;}
-        .tab-content.active{display:block;}
-        .barcode-img{max-width:320px;margin:20px auto;display:block;padding:15px;background:white;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.1);}
+        .tab-content.active{display:block;animation:fadeIn 0.3s ease;}
+        .barcode-img{max-width:320px;margin:20px auto;display:block;padding:15px;background:white;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);}
         .btn-print{background:linear-gradient(135deg,#10b981 0%,#059669 100%);}
         .btn-download{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:white;}
-        .btn-edit{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);color:white;padding:7px 14px;font-size:13px;border-radius:8px;}
+        .btn-edit{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);color:white;padding:8px 16px;font-size:13px;border-radius:10px;}
         .btn-save{background:linear-gradient(135deg,#10b981 0%,#059669 100%);}
         .btn-cancel{background:linear-gradient(135deg,#64748b 0%,#475569 100%);}
-        .edit-form{background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);padding:25px;border-radius:16px;margin-top:20px;border:2px solid #e2e8f0;}
+        .edit-form{background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);padding:25px;border-radius:20px;margin-top:20px;border:2px solid #e2e8f0;}
         .hidden{display:none !important;}
         .dept-tabs{display:flex;gap:8px;margin:20px 0;flex-wrap:wrap;}
         .dept-tab{padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:10px;cursor:pointer;font-weight:600;transition:all 0.2s;font-size:14px;}
-        .dept-tab:hover{background:#e2e8f0;}
+        .dept-tab:hover{background:#e2e8f0;transform:translateY(-1px);}
         .dept-tab.active{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;box-shadow:0 4px 12px rgba(59,130,246,0.3);}
         .search-box{margin-bottom:20px;}
         .search-box input{font-size:15px;padding:12px 16px;}
         
+        /* ===== MONTH FILTER — NEW ===== */
+        .month-filter{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
+        .month-filter select{max-width:200px;}
+        .btn-month-print{background:linear-gradient(135deg,#ec4899 0%,#db2777 100%);color:white;}
+        
         /* ===== RESPONSIVE ===== */
         @media(max-width:900px){
-            .sidebar{width:70px;padding:20px 0;}
-            .sidebar-header h2 span,.sidebar-header p,.menu-item span{display:none;}
-            .menu-item{justify-content:center;padding:14px;}
+            .sidebar{width:72px;padding:25px 0;}
+            .sidebar-header h2 span,.sidebar-header p,.menu-item span:nth-child(2){display:none;}
+            .menu-item{justify-content:center;padding:14px 0;}
             .form-row{grid-template-columns:1fr;}
             .main-content{padding:15px;}
             .content-card{padding:20px;}
@@ -221,8 +239,10 @@ def home():
 </head>
 <body>
     <div class="app-container">
-        <!-- ===== SIDEBAR — LEFT MENU ===== -->
-        <div class="sidebar">
+        <!-- ===== SIDEBAR — COLLAPSIBLE ===== -->
+        <div class="sidebar" id="sidebar">
+            <button class="toggle-btn" onclick="toggleSidebar()">◀</button>
+            
             <div class="sidebar-header">
                 <h2>📚 <span>Library System</span></h2>
                 <p>SLSU-JGE Attendance</p>
@@ -239,7 +259,10 @@ def home():
                     <span>👥</span> <span>Students List</span>
                 </div>
                 <div class="menu-item" onclick="showContent('records')">
-                    <span>📋</span> <span>Attendance Records</span>
+                    <span>📋</span> <span>Daily Records</span>
+                </div>
+                <div class="menu-item" onclick="showContent('history')">
+                    <span>📅</span> <span>Monthly History</span>
                 </div>
                 <div class="menu-item" onclick="showContent('export')">
                     <span>📄</span> <span>Export Reports</span>
@@ -251,7 +274,7 @@ def home():
             </div>
         </div>
 
-        <!-- ===== MAIN CONTENT — CENTER DISPLAY AREA ===== -->
+        <!-- ===== MAIN CONTENT ===== -->
         <div class="main-content">
             <div class="content-header">
                 <h1 id="page-title">📱 Scan / Attendance</h1>
@@ -324,7 +347,7 @@ def home():
                         </div>
                         <button type="submit">✅ Register & Generate Barcode</button>
                     </form>
-                    <div id="barcode-result" style="display:none;margin-top:30px;text-align:center;padding:30px;background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-radius:16px;border:2px solid #bae6fd;">
+                    <div id="barcode-result" style="display:none;margin-top:30px;text-align:center;padding:30px;background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-radius:20px;border:2px solid #bae6fd;">
                         <h3>✅ Registration Successful!</h3>
                         <p style="font-size:18px;margin:15px 0;"><strong id="student-info"></strong></p>
                         <img id="barcode-img" class="barcode-img"><br>
@@ -404,19 +427,45 @@ def home():
                     </div>
                 </div>
 
-                <!-- === RECORDS === -->
+                <!-- === DAILY RECORDS === -->
                 <div id="records" class="tab-content">
-                    <h2>📋 Attendance Records — Time In / Time Out</h2>
+                    <h2>📋 Today's Attendance Records</h2>
                     <button onclick="loadRecords()">🔄 Refresh Records</button>
                     <div id="records-table"></div>
+                </div>
+
+                <!-- === MONTHLY HISTORY — NEW FEATURE === -->
+                <div id="history" class="tab-content">
+                    <h2>📅 Monthly Attendance History</h2>
+                    <div class="month-filter">
+                        <label>Select Month:</label>
+                        <select id="month-select" onchange="loadMonthlyHistory()">
+                            <option value="2026-01">January 2026</option>
+                            <option value="2026-02">February 2026</option>
+                            <option value="2026-03">March 2026</option>
+                            <option value="2026-04">April 2026</option>
+                            <option value="2026-05">May 2026</option>
+                            <option value="2026-06">June 2026</option>
+                            <option value="2026-07">July 2026</option>
+                            <option value="2026-08">August 2026</option>
+                            <option value="2026-09" selected>September 2026</option>
+                            <option value="2026-10">October 2026</option>
+                            <option value="2026-11">November 2026</option>
+                            <option value="2026-12">December 2026</option>
+                        </select>
+                        <button class="btn-month-print" onclick="printMonthlyReport()">🖨️ Print Monthly Report</button>
+                        <button class="btn-download" onclick="downloadMonthlyReport()">📄 Download Word</button>
+                    </div>
+                    <button onclick="loadMonthlyHistory()">🔄 Load Records</button>
+                    <div id="history-table"></div>
                 </div>
 
                 <!-- === EXPORT === -->
                 <div id="export" class="tab-content">
                     <h2>📄 Export & Print Reports</h2>
                     <p style="font-size:16px;color:#64748b;margin-bottom:25px;">Download today's complete attendance as Microsoft Word Document or print directly.</p>
-                    <button class="btn-download" onclick="window.location.href='/download-word'">📄 Download Word Report</button><br><br>
-                    <button class="btn-print" onclick="window.print()">🖨️ Print Report</button>
+                    <button class="btn-download" onclick="window.location.href='/download-word'">📄 Download Today's Report</button><br><br>
+                    <button class="btn-print" onclick="window.print()">🖨️ Print Page</button>
                 </div>
             </div>
         </div>
@@ -434,7 +483,8 @@ const PAGE_TITLES = {
     scan: "📱 Scan / Attendance",
     register: "📇 Register New User",
     students: "👥 Registered Users",
-    records: "📋 Attendance Records",
+    records: "📋 Daily Attendance Records",
+    history: "📅 Monthly Attendance History",
     export: "📄 Export & Print Reports"
 };
 
@@ -442,18 +492,26 @@ let editingStudentId = null;
 let currentDept = "ALL";
 let allStudents = [];
 
+// ===== SIDEBAR TOGGLE — NAKATAGO, MAY ARROW =====
+function toggleSidebar(){
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('collapsed');
+    const btn = sidebar.querySelector('.toggle-btn');
+    btn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+}
+
 function logout(){
     document.cookie = "logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     window.location.href = "/login";
 }
 
-// ===== SIDEBAR MENU CLICK → SHOW IN CENTER =====
+// ===== SIDEBAR MENU CLICK =====
 function showContent(tabId){
     document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     
     const menuItems = document.querySelectorAll('.menu-item');
-    const index = ['scan','register','students','records','export'].indexOf(tabId);
+    const index = ['scan','register','students','records','history','export'].indexOf(tabId);
     if(index !== -1) menuItems[index].classList.add('active');
     
     document.getElementById(tabId).classList.add('active');
@@ -462,6 +520,7 @@ function showContent(tabId){
     if(tabId === 'scan') setTimeout(()=>document.getElementById('scan-input')?.focus(), 100);
     if(tabId === 'students') loadStudents();
     if(tabId === 'records') loadRecords();
+    if(tabId === 'history') loadMonthlyHistory();
 }
 
 function switchDept(dept){
@@ -605,6 +664,43 @@ function loadRecords(){
     .catch(err => alert('❌ Load Error: ' + err));
 }
 
+// ===== MONTHLY HISTORY — NEW FEATURE =====
+function loadMonthlyHistory(){
+    const month = document.getElementById('month-select').value;
+    fetch('/get-monthly-history?month=' + month)
+    .then(r => r.json())
+    .then(data => {
+        const records = data.records || [];
+        const table = document.getElementById('history-table');
+        if(!records.length){
+            table.innerHTML = <p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records for ${month}.</p>;
+            return;
+        }
+        table.innerHTML =<h3 style="margin:20px 0;color:#1e293b;">📅 Records for ${month}</h3>` +
+            '<table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>' +
+            records.map(r => `
+                <tr>
+                    <td><strong>${r.scan_date}</strong></td>
+                    <td>${r.full_name}</td>
+                    <td>${r.id_number}</td>
+                    <td style="color:#16a34a;font-weight:600;">${r.time_in || '-'}</td>
+                    <td style="color:#dc2626;font-weight:600;">${r.time_out || '-'}</td>
+                </tr>
+            `).join('') + '</table>';
+    })
+    .catch(err => alert('❌ Load Error: ' + err));
+}
+
+function printMonthlyReport(){
+    const month = document.getElementById('month-select').value;
+    window.open('/print-monthly?month=' + month, '_blank');
+}
+
+function downloadMonthlyReport(){
+    const month = document.getElementById('month-select').value;
+    window.location.href = '/download-monthly-word?month=' + month;
+}
+
 document.addEventListener('DOMContentLoaded', function(){
     const scanInput = document.getElementById('scan-input');
     if(scanInput) scanInput.addEventListener('keypress', e => e.key === 'Enter' && submitScan());
@@ -710,6 +806,7 @@ def register():
         department = request.form.get('department', '').strip() or None
         major = request.form.get('major', '').strip() or None
         contact_number = request.form.get('contact_number', '').strip() or None
+        # ===================== REGISTER ENDPOINT (KULANG NA BAHAGI) =====================
         address = request.form.get('address', '').strip() or None
         year_level = request.form.get('year_level', '').strip() or None
         id_number = request.form.get('id_number', '').strip().upper()
@@ -810,7 +907,25 @@ def get_records():
     conn.close()
     return jsonify({"records": records})
 
-# ===================== DOWNLOAD WORD =====================
+# ===================== MONTHLY HISTORY — NEW FEATURE =====================
+@app.route('/get-monthly-history')
+def get_monthly_history():
+    if not is_logged_in():
+        return jsonify({"records": []})
+    month = request.args.get('month', '').strip()
+    conn = get_db()
+    if not conn:
+        return jsonify({"records": []})
+    c = conn.cursor()
+    c.execute("""SELECT a.scan_date, u.full_name, u.id_number, a.time_in, a.time_out
+        FROM attendance a JOIN users u ON a.user_id = u.id
+        WHERE a.scan_date LIKE %s
+        ORDER BY a.scan_date DESC, a.id DESC""", (f"{month}%",))
+    records = [{"scan_date": r[0], "full_name": r[1], "id_number": r[2], "time_in": r[3], "time_out": r[4]} for r in c.fetchall()]
+    conn.close()
+    return jsonify({"records": records})
+
+# ===================== DOWNLOAD DAILY WORD =====================
 @app.route('/download-word')
 def download_word():
     if not is_logged_in():
@@ -852,6 +967,72 @@ def download_word():
     resp.headers['Content-Disposition'] = f'attendance_report_{today}.docx'
     resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     return resp
+
+# ===================== DOWNLOAD MONTHLY WORD — NEW =====================
+@app.route('/download-monthly-word')
+def download_monthly_word():
+    if not is_logged_in():
+        return "<script>window.location='/login';</script>"
+    month = request.args.get('month', '').strip()
+    conn = get_db()
+    if not conn:
+        return "❌ Database error"
+    c = conn.cursor()
+    c.execute("""SELECT u.full_name, u.id_number, a.scan_date, a.time_in, a.time_out
+        FROM attendance a JOIN users u ON a.user_id = u.id
+        WHERE a.scan_date LIKE %s ORDER BY a.scan_date, a.id""", (f"{month}%",))
+    records = c.fetchall()
+    conn.close()
+    
+    doc = Document()
+    doc.add_heading(f'📚 Monthly Attendance Report — {month}', 0)
+    doc.add_paragraph(f'Generated on: {get_ph_date()} {get_ph_time()}')
+    doc.add_paragraph('=' * 60)
+    
+    table = doc.add_table(rows=1, cols=5)
+    table.style = 'Table Grid'
+    hdr = table.rows[0].cells
+    hdr[0].text = 'Date'
+    hdr[1].text = 'Full Name'
+    hdr[2].text = 'ID Number'
+    hdr[3].text = 'Time In'
+    hdr[4].text = 'Time Out'
+    
+    for rec in records:
+        row = table.add_row().cells
+        row[0].text = rec[2]
+        row[1].text = rec[0]
+        row[2].text = rec[1]
+        row[3].text = rec[3] or '-'
+        row[4].text = rec[4] or '-'
+    
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    resp = make_response(buffer.getvalue())
+    resp.headers['Content-Disposition'] = f'monthly_attendance_{month}.docx'
+    resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    return resp
+
+# ===================== PRINT MONTHLY PAGE =====================
+@app.route('/print-monthly')
+def print_monthly():
+    if not is_logged_in():
+        return "<script>window.location='/login';</script>"
+    month = request.args.get('month', '').strip()
+    return f"""
+<!DOCTYPE html><html><head><title>Monthly Report — {month}</title>
+<style>body{{font-family:Arial;padding:30px;}}h1{{text-align:center;}}table{{width:100%;border-collapse:collapse;margin-top:20px;}}th,td{{border:1px solid #ccc;padding:10px;text-align:left;}}th{{background:#f0f0f0;}}@media print{{button{{display:none;}}}}</style>
+</head><body>
+<h1>📚 Monthly Attendance Report — {month}</h1>
+<p>Generated: {get_ph_date()} {get_ph_time()}</p>
+<button onclick="window.print()" style="padding:10px 20px;font-size:16px;cursor:pointer;">🖨️ Print</button>
+<script>fetch('/get-monthly-history?month={month}').then(r=>r.json()).then(d=>{{
+let html='<table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>';
+d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.id_number+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');
+html+='</table>';document.body.innerHTML+=html;
+}})</script>
+</body></html>"""
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=False)
