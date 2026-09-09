@@ -1164,7 +1164,7 @@ function loadMonthlyHistory() {
                     </table>
                 `;
             } else {
-                table.innerHTML = <p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records for ${month}.</p>;
+                table.innerHTML = `<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records for ${month}.</p>`;
             }
         })
         .catch(err => alert("❌ Load Error: " + err));
