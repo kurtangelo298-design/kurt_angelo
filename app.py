@@ -127,12 +127,294 @@ def login():
 </body>
 </html>"""
 
-# ===================== MAIN DASHBOARD — COLLAPSIBLE SIDEBAR + AESTHETIC DESIGN =====================
+# ===================== MAIN DASHBOARD =====================
 @app.route('/')
 def home():
     if not is_logged_in():
         return "<script>window.location='/login';</script>"
-    return render_template_string("""
+    return render_template_string(FRONTEND_HTML)
+
+# ===================== SCAN ENDPOINT — TIME IN / TIME OUT =====================
+@app.route('/scan', methods=['POST'])
+def scan():
+    if not is_logged_in():
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+    
+    data = request.get_json()
+    id_number = data.get('id_number', '').strip()
+    
+    conn = get_db()
+    if not conn:
+        return jsonify({"success": False, "message": "❌ Database connection error"}), 500
+    
+    c = conn.cursor()
+    today = get_ph_date()
+    now = get_ph_time()
+    
+    c.execute("SELECT id, full_name, id_number FROM users WHERE UPPER(id_number) = UPPER(%s)", (id_number,))
+    user = c.fetchone()
+    
+    if not user:
+        conn.close()
+        return jsonify({"success": False, "message": f"❌ ID {id_number} not found!"})
+    
+    user_id, full_name, _ = user
+    
+    c.execute("SELECT id, time_in, time_out FROM attendance WHERE user_id = %s AND scan_date = %s ORDER BY id DESC LIMIT 1", (user_id, today))
+    last_attendance = c.fetchone()
+    
+    if not last_attendance or last_attendance[2]:
+        c.execute("INSERT INTO attendance (user_id, time_in, scan_date) VALUES (%s, %s, %s)", (user_id, now, today))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": f"✅ TIME IN: {full_name} — {now}"})
+    else:
+        c.execute("UPDATE attendance SET time_out = %s WHERE id = %s", (now, last_attendance[0]))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": f"✅ TIME OUT: {full_name} — {now}"})
+
+# ===================== REGISTER ENDPOINT =====================
+@app.route('/register', methods=['POST'])
+def register():
+    if not is_logged_in():
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+    
+    try:
+        id_type = request.form.get('id_type', '').strip()
+        full_name = request.form.get('full_name', '').strip()
+        department = request.form.get('department', '').strip() or None
+        major = request.form.get('major', '').strip() or None
+        contact_number = request.form.get('contact_number', '').strip() or None
+        address = request.form.get('address', '').strip() or None
+        year_level = request.form.get('year_level', '').strip() or None
+        id_number = request.form.get('id_number', '').strip().upper()
+        registered_at = get_ph_date() + " " + get_ph_time()
+        
+        if not id_type or not full_name or not id_number:
+            return jsonify({"success": False, "error": "⚠️ Fill up all required fields!"}), 400
+        
+        conn = get_db()
+        if not conn:
+            return jsonify({"success": False, "error": "❌ Database connection failed"}), 500
+        
+        c = conn.cursor()
+        c.execute("SELECT id FROM users WHERE UPPER(id_number) = UPPER(%s)", (id_number,))
+        if c.fetchone():
+            conn.close()
+            return jsonify({"success": False, "error": "⚠️ ID Number already exists!"}), 400
+        
+        c.execute("""INSERT INTO users 
+            (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at))
+        conn.commit()
+        conn.close()
+        
+        barcode_b64 = generate_barcode_b64(id_number)
+        info = f"{full_name} | ID: {id_number} | {id_type}"
+        return jsonify({"success": True, "info": info, "barcode": barcode_b64})
+    
+    except Exception as e:
+        print(f"REGISTER ERROR: {e}")
+        return jsonify({"success": False, "error": f"❌ Error: {str(e)}"}), 500
+
+# ===================== GET STUDENTS =====================
+@app.route('/get-students')
+def get_students():
+    if not is_logged_in():
+        return jsonify({"students": []})
+    conn = get_db()
+    if not conn:
+        return jsonify({"students": []})
+    c = conn.cursor()
+    c.execute("SELECT id, id_type, full_name, department, id_number FROM users ORDER BY full_name")
+    students = [{"id": r[0], "id_type": r[1], "full_name": r[2], "department": r[3], "id_number": r[4]} for r in c.fetchall()]
+    conn.close()
+    return jsonify({"students": students})
+
+# ===================== UPDATE STUDENT =====================
+@app.route('/update-student', methods=['POST'])
+def update_student():
+    if not is_logged_in():
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+    try:
+        student_id = request.form.get('id', '').strip()
+        id_type = request.form.get('id_type', '').strip()
+        id_number = request.form.get('id_number', '').strip().upper()
+        full_name = request.form.get('full_name', '').strip()
+        department = request.form.get('department', '').strip() or None
+        major = request.form.get('major', '').strip() or None
+        contact_number = request.form.get('contact_number', '').strip() or None
+        address = request.form.get('address', '').strip() or None
+        year_level = request.form.get('year_level', '').strip() or None
+        
+        if not all([student_id, id_type, id_number, full_name]):
+            return jsonify({"success": False, "error": "⚠️ Missing required fields"}), 400
+        
+        conn = get_db()
+        if not conn:
+            return jsonify({"success": False, "error": "❌ Database error"}), 500
+        
+        c = conn.cursor()
+        c.execute("""UPDATE users SET 
+            id_type = %s, id_number = %s, full_name = %s, department = %s, 
+            major = %s, contact_number = %s, address = %s, year_level = %s
+            WHERE id = %s""",
+            (id_type, id_number, full_name, department, major, contact_number, address, year_level, student_id))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    
+    except Exception as e:
+        print(f"UPDATE ERROR: {e}")
+        return jsonify({"success": False, "error": f"❌ Error: {str(e)}"}), 500
+
+# ===================== GET RECORDS =====================
+@app.route('/get-records')
+def get_records():
+    if not is_logged_in():
+        return jsonify({"records": []})
+    conn = get_db()
+    if not conn:
+        return jsonify({"records": []})
+    c = conn.cursor()
+    c.execute("""SELECT a.scan_date, u.full_name, u.id_number, a.time_in, a.time_out
+        FROM attendance a JOIN users u ON a.user_id = u.id
+        ORDER BY a.scan_date DESC, a.id DESC LIMIT 100""")
+    records = [{"scan_date": r[0], "full_name": r[1], "id_number": r[2], "time_in": r[3], "time_out": r[4]} for r in c.fetchall()]
+    conn.close()
+    return jsonify({"records": records})
+
+# ===================== MONTHLY HISTORY =====================
+@app.route('/get-monthly-history')
+def get_monthly_history():
+    if not is_logged_in():
+        return jsonify({"records": []})
+    month = request.args.get('month', '').strip()
+    conn = get_db()
+    if not conn:
+        return jsonify({"records": []})
+    c = conn.cursor()
+    c.execute("""SELECT a.scan_date, u.full_name, u.id_number, a.time_in, a.time_out
+        FROM attendance a JOIN users u ON a.user_id = u.id
+        WHERE a.scan_date LIKE %s
+        ORDER BY a.scan_date DESC, a.id DESC""", (f"{month}%",))
+    records = [{"scan_date": r[0], "full_name": r[1], "id_number": r[2], "time_in": r[3], "time_out": r[4]} for r in c.fetchall()]
+    conn.close()
+    return jsonify({"records": records})
+
+# ===================== DOWNLOAD DAILY WORD =====================
+@app.route('/download-word')
+def download_word():
+    if not is_logged_in():
+        return "<script>window.location='/login';</script>"
+    conn = get_db()
+    if not conn:
+        return "❌ Database error"
+    today = get_ph_date()
+    c = conn.cursor()
+    c.execute("""SELECT u.full_name, u.id_number, a.time_in, a.time_out
+        FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.scan_date = %s ORDER BY a.id""", (today,))
+    records = c.fetchall()
+    conn.close()
+    
+    doc = Document()
+    doc.add_heading(f'📚 Library Attendance Report — {today}', 0)
+    doc.add_paragraph(f'Generated on: {get_ph_date()} {get_ph_time()}')
+    doc.add_paragraph('=' * 50)
+    
+    table = doc.add_table(rows=1, cols=4)
+    table.style = 'Table Grid'
+    hdr = table.rows[0].cells
+    hdr[0].text = 'Full Name'
+    hdr[1].text = 'ID Number'
+    hdr[2].text = 'Time In'
+    hdr[3].text = 'Time Out'
+    
+    for rec in records:
+        row = table.add_row().cells
+        row[0].text = rec[0]
+        row[1].text = rec[1]
+        row[2].text = rec[2] or '-'
+        row[3].text = rec[3] or '-'
+    
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    resp = make_response(buffer.getvalue())
+    resp.headers['Content-Disposition'] = f'attendance_report_{today}.docx'
+    resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    return resp
+
+# ===================== DOWNLOAD MONTHLY WORD =====================
+@app.route('/download-monthly-word')
+def download_monthly_word():
+    if not is_logged_in():
+        return "<script>window.location='/login';</script>"
+    month = request.args.get('month', '').strip()
+    conn = get_db()
+    if not conn:
+        return "❌ Database error"
+    c = conn.cursor()
+    c.execute("""SELECT u.full_name, u.id_number, a.scan_date, a.time_in, a.time_out
+        FROM attendance a JOIN users u ON a.user_id = u.id
+        WHERE a.scan_date LIKE %s ORDER BY a.scan_date, a.id""", (f"{month}%",))
+    records = c.fetchall()
+    conn.close()
+    
+    doc = Document()
+    doc.add_heading(f'📚 Monthly Attendance Report — {month}', 0)
+    doc.add_paragraph(f'Generated on: {get_ph_date()} {get_ph_time()}')
+    doc.add_paragraph('=' * 60)
+    
+    table = doc.add_table(rows=1, cols=5)
+    table.style = 'Table Grid'
+    hdr = table.rows[0].cells
+    hdr[0].text = 'Date'
+    hdr[1].text = 'Full Name'
+    hdr[2].text = 'ID Number'
+    hdr[3].text = 'Time In'
+    hdr[4].text = 'Time Out'
+    
+    for rec in records:
+        row = table.add_row().cells
+        row[0].text = rec[2]
+        row[1].text = rec[0]
+        row[2].text = rec[1]
+        row[3].text = rec[3] or '-'
+        row[4].text = rec[4] or '-'
+    
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    resp = make_response(buffer.getvalue())
+    resp.headers['Content-Disposition'] = f'monthly_attendance_{month}.docx'
+    resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    return resp
+
+# ===================== PRINT MONTHLY PAGE =====================
+@app.route('/print-monthly')
+def print_monthly():
+    if not is_logged_in():
+        return "<script>window.location='/login';</script>"
+    month = request.args.get('month', '').strip()
+    return f"""
+<!DOCTYPE html><html><head><title>Monthly Report — {month}</title>
+<style>body{{font-family:Arial;padding:30px;}}h1{{text-align:center;}}table{{width:100%;border-collapse:collapse;margin-top:20px;}}th,td{{border:1px solid #ccc;padding:10px;text-align:left;}}th{{background:#f0f0f0;}}@media print{{button{{display:none;}}}}</style>
+</head><body>
+<h1>📚 Monthly Attendance Report — {month}</h1>
+<p>Generated: {get_ph_date()} {get_ph_time()}</p>
+<button onclick="window.print()" style="padding:10px 20px;font-size:16px;cursor:pointer;">🖨️ Print</button>
+<script>fetch('/get-monthly-history?month={month}').then(r=>r.json()).then(d=>{{
+let html='<table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>';
+d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.id_number+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');
+html+='</table>';document.body.innerHTML+=html;
+}})</script>
+</body></html>"""
+
+# ===================== FRONTEND HTML — BUONG INTERFACE =====================
+FRONTEND_HTML = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -143,14 +425,11 @@ def home():
         body{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%);min-height:100vh;position:relative;overflow:hidden;}
         body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1920&q=80') no-repeat center center;background-size:cover;opacity:0.06;z-index:0;pointer-events:none;}
         
-        /* ===== MAIN LAYOUT ===== */
         .app-container{display:flex;height:100vh;position:relative;z-index:1;}
         
-        /* ===== SIDEBAR — COLLAPSIBLE / NAKATAGO BY DEFAULT ===== */
         .sidebar{width:280px;background:linear-gradient(180deg,rgba(30,41,59,0.95) 0%,rgba(15,23,42,0.95) 100%);backdrop-filter:blur(20px);display:flex;flex-direction:column;padding:25px 0;box-shadow:4px 0 24px rgba(0,0,0,0.2);border-right:1px solid rgba(255,255,255,0.05);position:relative;transition:all 0.4s cubic-bezier(0.4,0,0.2,1);}
         .sidebar.collapsed{width:72px;padding:25px 0;}
         
-        /* ===== TOGGLE BUTTON — ARROW LANG ===== */
         .toggle-btn{position:absolute;right:-16px;top:30px;width:32px;height:32px;background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);border:none;border-radius:50%;color:white;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(59,130,246,0.3);z-index:10;transition:all 0.3s ease;}
         .toggle-btn:hover{transform:scale(1.1);box-shadow:0 6px 16px rgba(59,130,246,0.4);}
         .sidebar.collapsed .toggle-btn{transform:rotate(180deg);}
@@ -174,14 +453,12 @@ def home():
         .logout-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.3s;}
         .logout-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(220,38,38,0.35);}
         
-        /* ===== MAIN CONTENT ===== */
         .main-content{flex:1;padding:30px;overflow-y:auto;position:relative;transition:padding 0.3s;}
         .content-header{margin-bottom:25px;display:flex;justify-content:space-between;align-items:center;}
         .content-header h1{color:white;font-size:28px;}
         .content-card{background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:24px;padding:35px;box-shadow:0 10px 40px rgba(0,0,0,0.2);min-height:calc(100vh - 120px);animation:fadeIn 0.4s ease;}
         @keyframes fadeIn{from{opacity:0;transform:translateY(15px);}to{opacity:1;transform:translateY(0);}}
         
-        /* ===== FORM & TABLE STYLES ===== */
         h2{color:#1e293b;margin-bottom:25px;font-size:24px;}
         .form-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
         .form-group{margin-bottom:18px;}
@@ -221,12 +498,10 @@ def home():
         .search-box{margin-bottom:20px;}
         .search-box input{font-size:15px;padding:12px 16px;}
         
-        /* ===== MONTH FILTER — NEW ===== */
         .month-filter{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
         .month-filter select{max-width:200px;}
         .btn-month-print{background:linear-gradient(135deg,#ec4899 0%,#db2777 100%);color:white;}
         
-        /* ===== RESPONSIVE ===== */
         @media(max-width:900px){
             .sidebar{width:72px;padding:25px 0;}
             .sidebar-header h2 span,.sidebar-header p,.menu-item span:nth-child(2){display:none;}
@@ -239,7 +514,6 @@ def home():
 </head>
 <body>
     <div class="app-container">
-        <!-- ===== SIDEBAR — COLLAPSIBLE ===== -->
         <div class="sidebar" id="sidebar">
             <button class="toggle-btn" onclick="toggleSidebar()">◀</button>
             
@@ -274,14 +548,12 @@ def home():
             </div>
         </div>
 
-        <!-- ===== MAIN CONTENT ===== -->
         <div class="main-content">
             <div class="content-header">
                 <h1 id="page-title">📱 Scan / Attendance</h1>
             </div>
             
             <div class="content-card">
-                <!-- === SCAN / ATTENDANCE === -->
                 <div id="scan" class="tab-content active">
                     <h2>📱 Scan Barcode — Time In / Time Out</h2>
                     <div class="scan-area">
@@ -290,7 +562,6 @@ def home():
                     </div>
                 </div>
 
-                <!-- === REGISTER === -->
                 <div id="register" class="tab-content">
                     <h2>📇 Register New User</h2>
                     <form id="register-form">
@@ -355,7 +626,6 @@ def home():
                     </div>
                 </div>
 
-                <!-- === STUDENTS LIST === -->
                 <div id="students" class="tab-content">
                     <h2>👥 Registered Users — By Department</h2>
                     <div class="search-box">
@@ -427,14 +697,12 @@ def home():
                     </div>
                 </div>
 
-                <!-- === DAILY RECORDS === -->
                 <div id="records" class="tab-content">
                     <h2>📋 Today's Attendance Records</h2>
                     <button onclick="loadRecords()">🔄 Refresh Records</button>
                     <div id="records-table"></div>
                 </div>
 
-                <!-- === MONTHLY HISTORY — NEW FEATURE === -->
                 <div id="history" class="tab-content">
                     <h2>📅 Monthly Attendance History</h2>
                     <div class="month-filter">
@@ -460,7 +728,6 @@ def home():
                     <div id="history-table"></div>
                 </div>
 
-                <!-- === EXPORT === -->
                 <div id="export" class="tab-content">
                     <h2>📄 Export & Print Reports</h2>
                     <p style="font-size:16px;color:#64748b;margin-bottom:25px;">Download today's complete attendance as Microsoft Word Document or print directly.</p>
@@ -492,7 +759,6 @@ let editingStudentId = null;
 let currentDept = "ALL";
 let allStudents = [];
 
-// ===== SIDEBAR TOGGLE — NAKATAGO, MAY ARROW =====
 function toggleSidebar(){
     const sidebar = document.getElementById('sidebar');
     sidebar.classList.toggle('collapsed');
@@ -505,7 +771,6 @@ function logout(){
     window.location.href = "/login";
 }
 
-// ===== SIDEBAR MENU CLICK =====
 function showContent(tabId){
     document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -664,7 +929,6 @@ function loadRecords(){
     .catch(err => alert('❌ Load Error: ' + err));
 }
 
-// ===== MONTHLY HISTORY — NEW FEATURE =====
 function loadMonthlyHistory(){
     const month = document.getElementById('month-select').value;
     fetch('/get-monthly-history?month=' + month)
@@ -676,7 +940,7 @@ function loadMonthlyHistory(){
             table.innerHTML = <p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records for ${month}.</p>;
             return;
         }
-        table.innerHTML =<h3 style="margin:20px 0;color:#1e293b;">📅 Records for ${month}</h3>` +
+        table.innerHTML = <h3 style="margin:20px 0;color:#1e293b;">📅 Records for ${month}</h3> +
             '<table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>' +
             records.map(r => `
                 <tr>
@@ -752,287 +1016,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 </body>
 </html>
-    """)
-
-# ===================== SCAN ENDPOINT — TIME IN / TIME OUT =====================
-@app.route('/scan', methods=['POST'])
-def scan():
-    if not is_logged_in():
-        return jsonify({"success": False, "message": "Unauthorized"}), 401
-    
-    data = request.get_json()
-    id_number = data.get('id_number', '').strip()
-    
-    conn = get_db()
-    if not conn:
-        return jsonify({"success": False, "message": "❌ Database connection error"}), 500
-    
-    c = conn.cursor()
-    today = get_ph_date()
-    now = get_ph_time()
-    
-    c.execute("SELECT id, full_name, id_number FROM users WHERE UPPER(id_number) = UPPER(%s)", (id_number,))
-    user = c.fetchone()
-    
-    if not user:
-        conn.close()
-        return jsonify({"success": False, "message": f"❌ ID {id_number} not found!"})
-    
-    user_id, full_name, _ = user
-    
-    c.execute("SELECT id, time_in, time_out FROM attendance WHERE user_id = %s AND scan_date = %s ORDER BY id DESC LIMIT 1", (user_id, today))
-    last_attendance = c.fetchone()
-    
-    if not last_attendance or last_attendance[2]:
-        c.execute("INSERT INTO attendance (user_id, time_in, scan_date) VALUES (%s, %s, %s)", (user_id, now, today))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": f"✅ TIME IN: {full_name} — {now}"})
-    else:
-        c.execute("UPDATE attendance SET time_out = %s WHERE id = %s", (now, last_attendance[0]))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": f"✅ TIME OUT: {full_name} — {now}"})
-
-# ===================== REGISTER ENDPOINT =====================
-@app.route('/register', methods=['POST'])
-def register():
-    if not is_logged_in():
-        return jsonify({"success": False, "error": "Unauthorized"}), 401
-    
-    try:
-        id_type = request.form.get('id_type', '').strip()
-        full_name = request.form.get('full_name', '').strip()
-        department = request.form.get('department', '').strip() or None
-        major = request.form.get('major', '').strip() or None
-        contact_number = request.form.get('contact_number', '').strip() or None
-        # ===================== REGISTER ENDPOINT (KULANG NA BAHAGI) =====================
-        address = request.form.get('address', '').strip() or None
-        year_level = request.form.get('year_level', '').strip() or None
-        id_number = request.form.get('id_number', '').strip().upper()
-        registered_at = get_ph_date() + " " + get_ph_time()
-        
-        if not id_type or not full_name or not id_number:
-            return jsonify({"success": False, "error": "⚠️ Fill up all required fields!"}), 400
-        
-        conn = get_db()
-        if not conn:
-            return jsonify({"success": False, "error": "❌ Database connection failed"}), 500
-        
-        c = conn.cursor()
-        c.execute("SELECT id FROM users WHERE UPPER(id_number) = UPPER(%s)", (id_number,))
-        if c.fetchone():
-            conn.close()
-            return jsonify({"success": False, "error": "⚠️ ID Number already exists!"}), 400
-        
-        c.execute("""INSERT INTO users 
-            (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-            (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at))
-        conn.commit()
-        conn.close()
-        
-        barcode_b64 = generate_barcode_b64(id_number)
-        info = f"{full_name} | ID: {id_number} | {id_type}"
-        return jsonify({"success": True, "info": info, "barcode": barcode_b64})
-    
-    except Exception as e:
-        print(f"REGISTER ERROR: {e}")
-        return jsonify({"success": False, "error": f"❌ Error: {str(e)}"}), 500
-
-# ===================== GET STUDENTS =====================
-@app.route('/get-students')
-def get_students():
-    if not is_logged_in():
-        return jsonify({"students": []})
-    conn = get_db()
-    if not conn:
-        return jsonify({"students": []})
-    c = conn.cursor()
-    c.execute("SELECT id, id_type, full_name, department, id_number FROM users ORDER BY full_name")
-    students = [{"id": r[0], "id_type": r[1], "full_name": r[2], "department": r[3], "id_number": r[4]} for r in c.fetchall()]
-    conn.close()
-    return jsonify({"students": students})
-
-# ===================== UPDATE STUDENT =====================
-@app.route('/update-student', methods=['POST'])
-def update_student():
-    if not is_logged_in():
-        return jsonify({"success": False, "error": "Unauthorized"}), 401
-    try:
-        student_id = request.form.get('id', '').strip()
-        id_type = request.form.get('id_type', '').strip()
-        id_number = request.form.get('id_number', '').strip().upper()
-        full_name = request.form.get('full_name', '').strip()
-        department = request.form.get('department', '').strip() or None
-        major = request.form.get('major', '').strip() or None
-        contact_number = request.form.get('contact_number', '').strip() or None
-        address = request.form.get('address', '').strip() or None
-        year_level = request.form.get('year_level', '').strip() or None
-        
-        if not all([student_id, id_type, id_number, full_name]):
-            return jsonify({"success": False, "error": "⚠️ Missing required fields"}), 400
-        
-        conn = get_db()
-        if not conn:
-            return jsonify({"success": False, "error": "❌ Database error"}), 500
-        
-        c = conn.cursor()
-        c.execute("""UPDATE users SET 
-            id_type = %s, id_number = %s, full_name = %s, department = %s, 
-            major = %s, contact_number = %s, address = %s, year_level = %s
-            WHERE id = %s""",
-            (id_type, id_number, full_name, department, major, contact_number, address, year_level, student_id))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True})
-    
-    except Exception as e:
-        print(f"UPDATE ERROR: {e}")
-        return jsonify({"success": False, "error": f"❌ Error: {str(e)}"}), 500
-
-# ===================== GET RECORDS =====================
-@app.route('/get-records')
-def get_records():
-    if not is_logged_in():
-        return jsonify({"records": []})
-    conn = get_db()
-    if not conn:
-        return jsonify({"records": []})
-    c = conn.cursor()
-    c.execute("""SELECT a.scan_date, u.full_name, u.id_number, a.time_in, a.time_out
-        FROM attendance a JOIN users u ON a.user_id = u.id
-        ORDER BY a.scan_date DESC, a.id DESC LIMIT 100""")
-    records = [{"scan_date": r[0], "full_name": r[1], "id_number": r[2], "time_in": r[3], "time_out": r[4]} for r in c.fetchall()]
-    conn.close()
-    return jsonify({"records": records})
-
-# ===================== MONTHLY HISTORY — NEW FEATURE =====================
-@app.route('/get-monthly-history')
-def get_monthly_history():
-    if not is_logged_in():
-        return jsonify({"records": []})
-    month = request.args.get('month', '').strip()
-    conn = get_db()
-    if not conn:
-        return jsonify({"records": []})
-    c = conn.cursor()
-    c.execute("""SELECT a.scan_date, u.full_name, u.id_number, a.time_in, a.time_out
-        FROM attendance a JOIN users u ON a.user_id = u.id
-        WHERE a.scan_date LIKE %s
-        ORDER BY a.scan_date DESC, a.id DESC""", (f"{month}%",))
-    records = [{"scan_date": r[0], "full_name": r[1], "id_number": r[2], "time_in": r[3], "time_out": r[4]} for r in c.fetchall()]
-    conn.close()
-    return jsonify({"records": records})
-
-# ===================== DOWNLOAD DAILY WORD =====================
-@app.route('/download-word')
-def download_word():
-    if not is_logged_in():
-        return "<script>window.location='/login';</script>"
-    conn = get_db()
-    if not conn:
-        return "❌ Database error"
-    today = get_ph_date()
-    c = conn.cursor()
-    c.execute("""SELECT u.full_name, u.id_number, a.time_in, a.time_out
-        FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.scan_date = %s ORDER BY a.id""", (today,))
-    records = c.fetchall()
-    conn.close()
-    
-    doc = Document()
-    doc.add_heading(f'📚 Library Attendance Report — {today}', 0)
-    doc.add_paragraph(f'Generated on: {get_ph_date()} {get_ph_time()}')
-    doc.add_paragraph('=' * 50)
-    
-    table = doc.add_table(rows=1, cols=4)
-    table.style = 'Table Grid'
-    hdr = table.rows[0].cells
-    hdr[0].text = 'Full Name'
-    hdr[1].text = 'ID Number'
-    hdr[2].text = 'Time In'
-    hdr[3].text = 'Time Out'
-    
-    for rec in records:
-        row = table.add_row().cells
-        row[0].text = rec[0]
-        row[1].text = rec[1]
-        row[2].text = rec[2] or '-'
-        row[3].text = rec[3] or '-'
-    
-    buffer = BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
-    resp = make_response(buffer.getvalue())
-    resp.headers['Content-Disposition'] = f'attendance_report_{today}.docx'
-    resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    return resp
-
-# ===================== DOWNLOAD MONTHLY WORD — NEW =====================
-@app.route('/download-monthly-word')
-def download_monthly_word():
-    if not is_logged_in():
-        return "<script>window.location='/login';</script>"
-    month = request.args.get('month', '').strip()
-    conn = get_db()
-    if not conn:
-        return "❌ Database error"
-    c = conn.cursor()
-    c.execute("""SELECT u.full_name, u.id_number, a.scan_date, a.time_in, a.time_out
-        FROM attendance a JOIN users u ON a.user_id = u.id
-        WHERE a.scan_date LIKE %s ORDER BY a.scan_date, a.id""", (f"{month}%",))
-    records = c.fetchall()
-    conn.close()
-    
-    doc = Document()
-    doc.add_heading(f'📚 Monthly Attendance Report — {month}', 0)
-    doc.add_paragraph(f'Generated on: {get_ph_date()} {get_ph_time()}')
-    doc.add_paragraph('=' * 60)
-    
-    table = doc.add_table(rows=1, cols=5)
-    table.style = 'Table Grid'
-    hdr = table.rows[0].cells
-    hdr[0].text = 'Date'
-    hdr[1].text = 'Full Name'
-    hdr[2].text = 'ID Number'
-    hdr[3].text = 'Time In'
-    hdr[4].text = 'Time Out'
-    
-    for rec in records:
-        row = table.add_row().cells
-        row[0].text = rec[2]
-        row[1].text = rec[0]
-        row[2].text = rec[1]
-        row[3].text = rec[3] or '-'
-        row[4].text = rec[4] or '-'
-    
-    buffer = BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
-    resp = make_response(buffer.getvalue())
-    resp.headers['Content-Disposition'] = f'monthly_attendance_{month}.docx'
-    resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    return resp
-
-# ===================== PRINT MONTHLY PAGE =====================
-@app.route('/print-monthly')
-def print_monthly():
-    if not is_logged_in():
-        return "<script>window.location='/login';</script>"
-    month = request.args.get('month', '').strip()
-    return f"""
-<!DOCTYPE html><html><head><title>Monthly Report — {month}</title>
-<style>body{{font-family:Arial;padding:30px;}}h1{{text-align:center;}}table{{width:100%;border-collapse:collapse;margin-top:20px;}}th,td{{border:1px solid #ccc;padding:10px;text-align:left;}}th{{background:#f0f0f0;}}@media print{{button{{display:none;}}}}</style>
-</head><body>
-<h1>📚 Monthly Attendance Report — {month}</h1>
-<p>Generated: {get_ph_date()} {get_ph_time()}</p>
-<button onclick="window.print()" style="padding:10px 20px;font-size:16px;cursor:pointer;">🖨️ Print</button>
-<script>fetch('/get-monthly-history?month={month}').then(r=>r.json()).then(d=>{{
-let html='<table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>';
-d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.id_number+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');
-html+='</table>';document.body.innerHTML+=html;
-}})</script>
-</body></html>"""
+"""
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=False)
