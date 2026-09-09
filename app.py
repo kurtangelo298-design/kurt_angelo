@@ -10,14 +10,13 @@ from docx import Document
 
 app = Flask(__name__)
 
-# ===================== DATABASE — POSTGRESQL =====================
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-# ===================== LOGIN =====================
-USERNAME = "slsu"
-PASSWORD = "jge"
+ADMIN_USER = "slsu"
+ADMIN_PASS = "jge"
+USER_USER = "jge"
+USER_PASS = "slsu"
 
-# ===================== DB CONNECTION =====================
 def get_db():
     try:
         conn = psycopg2.connect(DATABASE_URL)
@@ -26,7 +25,6 @@ def get_db():
         print(f"❌ DB Connect Error: {e}")
         return None
 
-# ===================== PHILIPPINE TIME — UTC+8 =====================
 def get_ph_time():
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
     return now.strftime("%I:%M %p")
@@ -34,7 +32,6 @@ def get_ph_time():
 def get_ph_date():
     return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d")
 
-# ===================== INIT DB =====================
 def init_db():
     conn = get_db()
     if not conn:
@@ -84,18 +81,28 @@ def generate_barcode_b64(id_number):
 def is_logged_in():
     return request.cookies.get('logged_in') == 'true'
 
-# ===================== LOGIN PAGE =====================
+def get_role():
+    return request.cookies.get('role', 'user')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         uname = request.form.get('username', '').strip()
         pword = request.form.get('password', '').strip()
-        if uname == USERNAME and pword == PASSWORD:
+        
+        if uname == ADMIN_USER and pword == ADMIN_PASS:
             resp = make_response("<script>window.location='/';</script>")
             resp.set_cookie('logged_in', 'true', max_age=31536000)
+            resp.set_cookie('role', 'admin', max_age=31536000)
             return resp
-        return """<html><body style="font-family:Arial;text-align:center;padding-top:100px;background:linear-gradient(135deg,#1e3a8a 0%,#312e81 100%);"><h2 style="color:#ff6b6b;">❌ Wrong Credentials!</h2><a href="/login" style="font-size:18px;color:white;">Try Again</a></body></html>"""
-    return """
+        
+        if uname == USER_USER and pword == USER_PASS:
+            resp = make_response("<script>window.location='/user';</script>")
+            resp.set_cookie('logged_in', 'true', max_age=31536000)
+            resp.set_cookie('role', 'user', max_age=31536000)
+            return resp
+        
+        return """
 <!DOCTYPE html>
 <html>
 <head>
@@ -103,38 +110,89 @@ def login():
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
-        body{background:linear-gradient(135deg,#1e3a8a 0%,#312e81 100%);min-height:100vh;display:flex;justify-content:center;align-items:center;position:relative;}
-        body::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:url('https://images.unsplash.com/photo-1507842273431-48ccb61e49b?w=1920&q=80') no-repeat center center;background-size:cover;opacity:0.15;z-index:0;}
-        .card{background:rgba(255,255,255,0.95);padding:45px 35px;border-radius:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);width:100%;max-width:420px;position:relative;z-index:1;backdrop-filter:blur(10px);}
-        h1{text-align:center;color:#1e3a8a;margin-bottom:35px;font-size:28px;}
-        .form-group{margin-bottom:22px;}
-        label{display:block;margin-bottom:8px;color:#374151;font-weight:600;font-size:15px;}
-        input{width:100%;padding:15px;border:2px solid #e5e7eb;border-radius:12px;font-size:16px;transition:0.3s;}
-        input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 4px rgba(59,130,246,0.2);}
-        button{width:100%;padding:15px;background:linear-gradient(135deg,#1e3a8a 0%,#4f46e5 100%);color:white;border:none;border-radius:12px;font-size:18px;font-weight:bold;cursor:pointer;transition:0.3s;}
-        button:hover{transform:translateY(-2px);box-shadow:0 10px 25px rgba(79,70,229,0.4);}
+        body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;justify-content:center;align-items:center;position:relative;}
+        body::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at 20% 50%,rgba(255,255,255,0.1) 0%,transparent 50%),radial-gradient(circle at 80% 80%,rgba(255,255,255,0.1) 0%,transparent 50%);z-index:0;}
+        .card{background:rgba(255,255,255,0.95);padding:50px 40px;border-radius:28px;box-shadow:0 25px 80px rgba(0,0,0,0.25);width:100%;max-width:440px;position:relative;z-index:1;backdrop-filter:blur(20px);animation:slideUp 0.5s ease;}
+        @keyframes slideUp{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
+        h1{text-align:center;color:#1e1b4b;margin-bottom:10px;font-size:30px;font-weight:700;}
+        .subtitle{text-align:center;color:#6b7280;margin-bottom:35px;font-size:15px;}
+        .form-group{margin-bottom:24px;}
+        label{display:block;margin-bottom:10px;color:#374151;font-weight:600;font-size:15px;}
+        input{width:100%;padding:16px 18px;border:2px solid #e5e7eb;border-radius:14px;font-size:16px;transition:all 0.3s ease;background:#f9fafb;}
+        input:focus{outline:none;border-color:#6366f1;background:#fff;box-shadow:0 0 0 5px rgba(99,102,241,0.15);}
+        button{width:100%;padding:16px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;border:none;border-radius:14px;font-size:18px;font-weight:700;cursor:pointer;transition:all 0.3s ease;box-shadow:0 8px 24px rgba(99,102,241,0.3);}
+        button:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(99,102,241,0.4);}
+        .error{background:#fef2f2;color:#dc2626;padding:14px;border-radius:12px;margin-bottom:25px;text-align:center;border:1px solid #fecaca;}
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>🔐 Admin Login</h1>
+        <h1>❌ Invalid Credentials</h1>
+        <p class="subtitle">Please check your username and password</p>
+        <a href="/login" style="display:block;text-align:center;padding:14px;background:#f3f4f6;color:#374151;border-radius:12px;text-decoration:none;font-weight:600;transition:all 0.2s;">← Try Again</a>
+    </div>
+</body>
+</html>"""
+    
+    return """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login — Library Attendance System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
+        body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;justify-content:center;align-items:center;position:relative;overflow:hidden;}
+        body::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at 10% 20%,rgba(255,255,255,0.12) 0%,transparent 50%),radial-gradient(circle at 90% 80%,rgba(255,255,255,0.12) 0%,transparent 50%);z-index:0;}
+        .card{background:rgba(255,255,255,0.95);padding:50px 40px;border-radius:28px;box-shadow:0 25px 80px rgba(0,0,0,0.25);width:100%;max-width:440px;position:relative;z-index:1;backdrop-filter:blur(20px);animation:slideUp 0.6s ease;}
+        @keyframes slideUp{from{opacity:0;transform:translateY(40px);}to{opacity:1;transform:translateY(0);}}
+        .icon{text-align:center;font-size:48px;margin-bottom:10px;}
+        h1{text-align:center;color:#1e1b4b;margin-bottom:8px;font-size:30px;font-weight:800;}
+        .subtitle{text-align:center;color:#6b7280;margin-bottom:40px;font-size:15px;}
+        .form-group{margin-bottom:24px;}
+        label{display:block;margin-bottom:10px;color:#374151;font-weight:600;font-size:15px;}
+        input{width:100%;padding:16px 18px;border:2px solid #e5e7eb;border-radius:14px;font-size:16px;transition:all 0.3s ease;background:#f9fafb;}
+        input:focus{outline:none;border-color:#6366f1;background:#fff;box-shadow:0 0 0 5px rgba(99,102,241,0.15);transform:scale(1.02);}
+        button{width:100%;padding:16px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;border:none;border-radius:14px;font-size:18px;font-weight:700;cursor:pointer;transition:all 0.3s ease;box-shadow:0 8px 24px rgba(99,102,241,0.3);}
+        button:hover{transform:translateY(-3px);box-shadow:0 14px 36px rgba(99,102,241,0.4);}
+        .hint{margin-top:25px;text-align:center;font-size:13px;color:#9ca3af;line-height:1.6;}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">📚</div>
+        <h1>Welcome Back</h1>
+        <p class="subtitle">SLSU-JGE Library Attendance System</p>
         <form method="POST">
-            <div class="form-group"><label>Username</label><input type="text" name="username" required></div>
-            <div class="form-group"><label>Password</label><input type="password" name="password" required></div>
-            <button type="submit">Login</button>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" required placeholder="Enter your username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" required placeholder="Enter your password">
+            </div>
+            <button type="submit">Sign In</button>
         </form>
+        <p class="hint">Admin: slsu / jge<br>User: jge / slsu</p>
     </div>
 </body>
 </html>"""
 
-# ===================== MAIN DASHBOARD =====================
+@app.route('/user')
+def user_panel():
+    if not is_logged_in() or get_role() != 'user':
+        return "<script>window.location='/login';</script>"
+    return render_template_string(USER_FRONTEND)
+
 @app.route('/')
 def home():
     if not is_logged_in():
         return "<script>window.location='/login';</script>"
-    return render_template_string(FRONTEND_HTML)
+    if get_role() != 'admin':
+        return "<script>window.location='/user';</script>"
+    return render_template_string(ADMIN_FRONTEND)
 
-# ===================== SCAN ENDPOINT — TIME IN / TIME OUT =====================
 @app.route('/scan', methods=['POST'])
 def scan():
     if not is_logged_in():
@@ -174,7 +232,6 @@ def scan():
         conn.close()
         return jsonify({"success": True, "message": f"✅ TIME OUT: {full_name} — {now}"})
 
-# ===================== REGISTER ENDPOINT =====================
 @app.route('/register', methods=['POST'])
 def register():
     if not is_logged_in():
@@ -219,7 +276,6 @@ def register():
         print(f"REGISTER ERROR: {e}")
         return jsonify({"success": False, "error": f"❌ Error: {str(e)}"}), 500
 
-# ===================== GET STUDENTS =====================
 @app.route('/get-students')
 def get_students():
     if not is_logged_in():
@@ -233,7 +289,6 @@ def get_students():
     conn.close()
     return jsonify({"students": students})
 
-# ===================== UPDATE STUDENT =====================
 @app.route('/update-student', methods=['POST'])
 def update_student():
     if not is_logged_in():
@@ -270,7 +325,6 @@ def update_student():
         print(f"UPDATE ERROR: {e}")
         return jsonify({"success": False, "error": f"❌ Error: {str(e)}"}), 500
 
-# ===================== GET RECORDS =====================
 @app.route('/get-records')
 def get_records():
     if not is_logged_in():
@@ -286,7 +340,6 @@ def get_records():
     conn.close()
     return jsonify({"records": records})
 
-# ===================== MONTHLY HISTORY =====================
 @app.route('/get-monthly-history')
 def get_monthly_history():
     if not is_logged_in():
@@ -304,7 +357,6 @@ def get_monthly_history():
     conn.close()
     return jsonify({"records": records})
 
-# ===================== DOWNLOAD DAILY WORD =====================
 @app.route('/download-word')
 def download_word():
     if not is_logged_in():
@@ -347,7 +399,6 @@ def download_word():
     resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     return resp
 
-# ===================== DOWNLOAD MONTHLY WORD =====================
 @app.route('/download-monthly-word')
 def download_monthly_word():
     if not is_logged_in():
@@ -393,7 +444,6 @@ def download_monthly_word():
     resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     return resp
 
-# ===================== PRINT MONTHLY PAGE =====================
 @app.route('/print-monthly')
 def print_monthly():
     if not is_logged_in():
@@ -401,76 +451,209 @@ def print_monthly():
     month = request.args.get('month', '').strip()
     return f"""
 <!DOCTYPE html><html><head><title>Monthly Report — {month}</title>
-<style>body{{font-family:Arial;padding:30px;}}h1{{text-align:center;}}table{{width:100%;border-collapse:collapse;margin-top:20px;}}th,td{{border:1px solid #ccc;padding:10px;text-align:left;}}th{{background:#f0f0f0;}}@media print{{button{{display:none;}}}}</style>
+<style>body{{font-family:'Segoe UI',sans-serif;padding:40px;max-width:1200px;margin:0 auto;}}h1{{text-align:center;color:#1e1b4b;margin-bottom:10px;}}table{{width:100%;border-collapse:collapse;margin-top:30px;}}th,td{{border:1px solid #e5e7eb;padding:14px;text-align:left;}}th{{background:#f9fafb;font-weight:700;color:#1e1b4b;}}tr:nth-child(even){{background:#f9fafb;}}@media print{{button{{display:none;}}body{{padding:0;}}}}</style>
 </head><body>
 <h1>📚 Monthly Attendance Report — {month}</h1>
-<p>Generated: {get_ph_date()} {get_ph_time()}</p>
-<button onclick="window.print()" style="padding:10px 20px;font-size:16px;cursor:pointer;">🖨️ Print</button>
+<p style="text-align:center;color:#6b7280;margin-bottom:20px;">Generated: {get_ph_date()} {get_ph_time()}</p>
+<button onclick="window.print()" style="padding:12px 30px;font-size:16px;cursor:pointer;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:12px;font-weight:600;">🖨️ Print Report</button>
 <script>fetch('/get-monthly-history?month={month}').then(r=>r.json()).then(d=>{{
 let html='<table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>';
 d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.id_number+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');
 html+='</table>';document.body.innerHTML+=html;
 }})</script>
 </body></html>"""
-FRONTEND_HTML = """
+
+USER_FRONTEND = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>📚 Library Attendance — SLSU-JGE</title>
+    <title>📇 User Registration — SLSU-JGE</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
-        body{background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%);min-height:100vh;position:relative;overflow:hidden;}
-        body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:url('https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1920&q=80') no-repeat center center;background-size:cover;opacity:0.06;z-index:0;pointer-events:none;}
+        body{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:30px;position:relative;}
+        body::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at 10% 20%,rgba(255,255,255,0.1) 0%,transparent 50%),radial-gradient(circle at 90% 80%,rgba(255,255,255,0.1) 0%,transparent 50%);z-index:0;}
+        .container{width:100%;max-width:520px;position:relative;z-index:1;}
+        .card{background:rgba(255,255,255,0.95);padding:45px 40px;border-radius:28px;box-shadow:0 25px 80px rgba(0,0,0,0.25);backdrop-filter:blur(20px);animation:slideUp 0.6s ease;}
+        @keyframes slideUp{from{opacity:0;transform:translateY(40px);}to{opacity:1;transform:translateY(0);}}
+        .icon{text-align:center;font-size:52px;margin-bottom:10px;}
+        h1{text-align:center;color:#1e1b4b;margin-bottom:8px;font-size:28px;font-weight:800;}
+        .subtitle{text-align:center;color:#6b7280;margin-bottom:35px;font-size:15px;}
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
+        .form-group{margin-bottom:18px;}
+        label{display:block;margin-bottom:9px;color:#374151;font-weight:600;font-size:14px;}
+        input,select{width:100%;padding:14px 16px;border:2px solid #e5e7eb;border-radius:12px;font-size:15px;transition:all 0.3s ease;background:#f9fafb;}
+        input:focus,select:focus{outline:none;border-color:#6366f1;background:#fff;box-shadow:0 0 0 4px rgba(99,102,241,0.15);transform:scale(1.01);}
+        button{width:100%;padding:15px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;border:none;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer;transition:all 0.3s ease;box-shadow:0 8px 24px rgba(99,102,241,0.3);margin-top:8px;}
+        button:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(99,102,241,0.4);}
+        #barcode-result{display:none;margin-top:30px;text-align:center;padding:30px;background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-radius:20px;border:2px solid #bae6fd;animation:fadeIn 0.4s ease;}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+        #barcode-result h3{color:#0369a1;margin-bottom:15px;}
+        #student-info{font-size:17px;color:#1e293b;}
+        .barcode-img{max-width:280px;margin:20px auto;display:block;padding:15px;background:white;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);}
+        .btn-print{background:linear-gradient(135deg,#10b981 0%,#059669 100%);width:auto;padding:12px 28px;margin-top:20px;}
+        .btn-print:hover{box-shadow:0 8px 24px rgba(16,185,129,0.3);}
+        .logout-link{display:block;text-align:center;margin-top:25px;color:#6b7280;text-decoration:none;font-size:14px;transition:color 0.2s;}
+        .logout-link:hover{color:#6366f1;}
+        @media(max-width:600px){.form-row{grid-template-columns:1fr;}.card{padding:30px 24px;}}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="icon">📇</div>
+            <h1>User Registration</h1>
+            <p class="subtitle">Fill in the form to generate your barcode</p>
+            <form id="register-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ID Type *</label>
+                        <select name="id_type" id="id-type-select" required>
+                            <option value="Student">🎓 Student</option>
+                            <option value="Employee">👨‍🏫 Employee</option>
+                            <option value="Visitor">👤 Visitor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>ID Number *</label>
+                        <input type="text" name="id_number" required placeholder="e.g. 2024-0001">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" name="full_name" required placeholder="Last, First Middle">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Department</label>
+                        <select name="department" id="dept-select">
+                            <option value="">-- Select Department --</option>
+                            <option value="CT">BSIT</option>
+                            <option value="BSED">BSED</option>
+                            <option value="BEED">BEED</option>
+                            <option value="BSFI">BSFI</option>
+                            <option value="BSBA">BSBA</option>
+                            <option value="EMPLOYEE">EMPLOYEE</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Year Level</label>
+                        <select name="year_level" id="year-select">
+                            <option value="1st Year">1st Year</option>
+                            <option value="2nd Year">2nd Year</option>
+                            <option value="3rd Year">3rd Year</option>
+                            <option value="4th Year">4th Year</option>
+                            <option value="N/A">N/A — Not Applicable</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Contact Number</label>
+                        <input type="text" name="contact_number" placeholder="09XX-XXX-XXXX">
+                    </div>
+                    <div class="form-group">
+                        <label>Address</label>
+                        <input type="text" name="address" placeholder="City, Province">
+                    </div>
+                </div>
+                <button type="submit">✅ Register & Generate Barcode</button>
+            </form>
+            <div id="barcode-result">
+                <h3>✅ Registration Successful!</h3>
+                <p id="student-info"></p>
+                <img id="barcode-img" class="barcode-img"><br>
+                <button class="btn-print" onclick="window.print()">🖨️ Print Barcode</button>
+            </div>
+            <a href="/login" class="logout-link">← Back to Login</a>
+        </div>
+    </div>
+<script>
+document.addEventListener("DOMContentLoaded",function(){
+    const form = document.getElementById("register-form");
+    form.addEventListener("submit",function(e){
+        e.preventDefault();
+        const formData = new FormData(form);
+        fetch("/register",{method:"POST",body:formData})
+        .then(res=>res.json())
+        .then(data=>{
+            if(data.success){
+                document.getElementById("barcode-result").style.display="block";
+                document.getElementById("student-info").textContent=data.info;
+                document.getElementById("barcode-img").src="data:image/png;base64,"+data.barcode;
+                form.reset();
+                document.getElementById("dept-select").value="";
+            }else{
+                alert("❌ "+data.error);
+            }
+        })
+        .catch(err=>alert("❌ Error: "+err));
+    });
+});
+</script>
+</body>
+</html>
+"""
+
+ADMIN_FRONTEND = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📚 Library Attendance — SLSU-JGE Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
+        body{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);min-height:100vh;position:relative;overflow:hidden;}
+        body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at 15% 30%,rgba(129,140,248,0.08) 0%,transparent 50%),radial-gradient(circle at 85% 70%,rgba(167,139,250,0.08) 0%,transparent 50%);z-index:0;pointer-events:none;}
         .app-container{display:flex;height:100vh;position:relative;z-index:1;}
-        .sidebar{width:280px;background:linear-gradient(180deg,rgba(30,41,59,0.95) 0%,rgba(15,23,42,0.95) 100%);backdrop-filter:blur(20px);display:flex;flex-direction:column;padding:25px 0;box-shadow:4px 0 24px rgba(0,0,0,0.2);border-right:1px solid rgba(255,255,255,0.05);position:relative;transition:all 0.4s cubic-bezier(0.4,0,0.2,1);}
+        .sidebar{width:280px;background:linear-gradient(180deg,rgba(30,27,75,0.95) 0%,rgba(49,46,129,0.95) 100%);backdrop-filter:blur(24px);display:flex;flex-direction:column;padding:25px 0;box-shadow:4px 0 30px rgba(0,0,0,0.3);border-right:1px solid rgba(129,140,248,0.15);position:relative;transition:all 0.4s cubic-bezier(0.4,0,0.2,1);}
         .sidebar.collapsed{width:72px;padding:25px 0;}
-        .toggle-btn{position:absolute;right:-16px;top:30px;width:32px;height:32px;background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);border:none;border-radius:50%;color:white;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(59,130,246,0.3);z-index:10;transition:all 0.3s ease;}
-        .toggle-btn:hover{transform:scale(1.1);box-shadow:0 6px 16px rgba(59,130,246,0.4);}
+        .toggle-btn{position:absolute;right:-16px;top:30px;width:34px;height:34px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;border-radius:50%;color:white;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 15px rgba(99,102,241,0.4);z-index:10;transition:all 0.3s ease;}
+        .toggle-btn:hover{transform:scale(1.15);box-shadow:0 6px 20px rgba(99,102,241,0.5);}
         .sidebar.collapsed .toggle-btn{transform:rotate(180deg);}
-        .sidebar-header{padding:0 20px 30px 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:20px;transition:opacity 0.3s;}
+        .sidebar-header{padding:0 20px 30px 20px;border-bottom:1px solid rgba(129,140,248,0.15);margin-bottom:20px;transition:opacity 0.3s;}
         .sidebar.collapsed .sidebar-header h2 span,.sidebar.collapsed .sidebar-header p{opacity:0;visibility:hidden;position:absolute;}
         .sidebar-header h2{color:white;font-size:20px;display:flex;align-items:center;gap:10px;}
-        .sidebar-header p{color:#94a3b8;font-size:13px;margin-top:5px;}
+        .sidebar-header p{color:#a5b4fc;font-size:13px;margin-top:5px;}
         .sidebar-menu{display:flex;flex-direction:column;gap:6px;padding:0 12px;flex:1;}
-        .menu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#cbd5e1;border-radius:12px;cursor:pointer;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);font-size:15px;font-weight:500;border:2px solid transparent;white-space:nowrap;pointer-events:auto;position:relative;z-index:2;}
+        .menu-item{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#c7d2fe;border-radius:12px;cursor:pointer;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);font-size:15px;font-weight:500;border:2px solid transparent;white-space:nowrap;position:relative;}
         .sidebar.collapsed .menu-item{justify-content:center;padding:14px 0;}
         .sidebar.collapsed .menu-item span:nth-child(2){display:none;}
-        .menu-item:hover{background:rgba(59,130,246,0.15);color:#93c5fd;transform:translateX(4px);}
+        .menu-item:hover{background:rgba(99,102,241,0.15);color:#e0e7ff;transform:translateX(4px);}
         .sidebar.collapsed .menu-item:hover{transform:scale(1.05);}
-        .menu-item.active{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;box-shadow:0 4px 15px rgba(59,130,246,0.3);border-color:transparent;}
+        .menu-item.active{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;box-shadow:0 4px 20px rgba(99,102,241,0.35);border-color:transparent;}
         .menu-item i{font-size:20px;width:24px;text-align:center;}
-        .sidebar-footer{padding:20px;border-top:1px solid rgba(255,255,255,0.08);margin-top:auto;}
+        .sidebar-footer{padding:20px;border-top:1px solid rgba(129,140,248,0.15);margin-top:auto;}
         .sidebar.collapsed .sidebar-footer{padding:20px 8px;}
-        .logout-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.3s;pointer-events:auto;position:relative;z-index:2;}
+        .logout-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.3s;}
         .logout-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(220,38,38,0.35);}
         .main-content{flex:1;padding:30px;overflow-y:auto;position:relative;transition:padding 0.3s;}
         .content-header{margin-bottom:25px;display:flex;justify-content:space-between;align-items:center;}
-        .content-header h1{color:white;font-size:28px;}
-        .content-card{background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:24px;padding:35px;box-shadow:0 10px 40px rgba(0,0,0,0.2);min-height:calc(100vh - 120px);animation:fadeIn 0.4s ease;position:relative;z-index:1;}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(15px);}to{opacity:1;transform:translateY(0);}}
-        h2{color:#1e293b;margin-bottom:25px;font-size:24px;}
-        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+        .content-header h1{color:white;font-size:28px;font-weight:700;}
+        .content-card{background:rgba(255,255,255,0.95);border-radius:24px;padding:35px;box-shadow:0 10px 50px rgba(0,0,0,0.3);min-height:calc(100vh - 120px);animation:fadeIn 0.5s ease;position:relative;backdrop-filter:blur(20px);}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+        h2{color:#1e1b4b;margin-bottom:25px;font-size:24px;font-weight:700;}
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
         .form-group{margin-bottom:18px;}
-        label{display:block;margin-bottom:7px;color:#475569;font-weight:600;font-size:14px;}
-        input,select{width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:12px;font-size:15px;transition:0.3s;background:#fafafa;pointer-events:auto;}
-        input:focus,select:focus{outline:none;border-color:#3b82f6;background:white;box-shadow:0 0 0 4px rgba(59,130,246,0.15);transform:translateY(-1px);}
-        button{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;border:none;padding:13px 28px;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;transition:all 0.3s;margin:5px;pointer-events:auto;position:relative;z-index:2;}
-        button:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(99,102,241,0.3);}
-        .scan-area{text-align:center;padding:40px;background:linear-gradient(135deg,#eff6ff 0%,#eef2ff 100%);border-radius:20px;margin-bottom:20px;border:2px solid #bfdbfe;}
-        #scan-input{font-size:24px;text-align:center;padding:18px;width:100%;max-width:450px;border-radius:12px;border:2px solid #93c5fd;pointer-events:auto;}
+        label{display:block;margin-bottom:8px;color:#374151;font-weight:600;font-size:14px;}
+        input,select{width:100%;padding:13px 16px;border:2px solid #e5e7eb;border-radius:12px;font-size:15px;transition:all 0.3s ease;background:#f9fafb;}
+        input:focus,select:focus{outline:none;border-color:#6366f1;background:white;box-shadow:0 0 0 4px rgba(99,102,241,0.15);transform:translateY(-1px);}
+        button{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;border:none;padding:13px 28px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.3s ease;margin:5px;}
+        button:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(99,102,241,0.35);}
+        .scan-area{text-align:center;padding:40px;background:linear-gradient(135deg,#eef2ff 0%,#e0e7ff 100%);border-radius:20px;margin-bottom:20px;border:2px solid #c7d2fe;}
+        #scan-input{font-size:24px;text-align:center;padding:18px;width:100%;max-width:480px;border-radius:12px;border:2px solid #a5b4fc;}
         .status{font-size:20px;font-weight:bold;margin-top:20px;padding:18px;border-radius:12px;animation:popIn 0.3s ease;}
         @keyframes popIn{from{transform:scale(0.9);opacity:0;}to{transform:scale(1);opacity:1;}}
         .success{background:#dcfce7;color:#166534;border:2px solid #86efac;}
         .info{background:#e0f2fe;color:#075985;border:2px solid #7dd3fc;}
         .error{background:#fee2e2;color:#991b1b;border:2px solid #fca5a5;}
-        table{width:100%;border-collapse:collapse;margin-top:20px;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.05);}
+        table{width:100%;border-collapse:collapse;margin-top:20px;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.06);}
         th,td{padding:16px;text-align:left;border-bottom:1px solid #f1f5f9;font-size:14px;}
-        th{background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);font-weight:bold;color:#1e293b;}
+        th{background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);font-weight:700;color:#1e1b4b;}
         tr:hover{background:#f8fafc;}
         .tab-content{display:none;}
         .tab-content.active{display:block;animation:fadeIn 0.3s ease;}
-        .barcode-img{max-width:320px;margin:20px auto;display:block;padding:15px;background:white;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);}
+        .barcode-img{max-width:320px;margin:20px auto;display:block;padding:15px;background:white;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.08);}
         .btn-print{background:linear-gradient(135deg,#10b981 0%,#059669 100%);}
         .btn-download{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:white;}
         .btn-edit{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);color:white;padding:8px 16px;font-size:13px;border-radius:10px;}
@@ -479,9 +662,9 @@ FRONTEND_HTML = """
         .edit-form{background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);padding:25px;border-radius:20px;margin-top:20px;border:2px solid #e2e8f0;}
         .hidden{display:none !important;}
         .dept-tabs{display:flex;gap:8px;margin:20px 0;flex-wrap:wrap;}
-        .dept-tab{padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:10px;cursor:pointer;font-weight:600;transition:all 0.2s;font-size:14px;pointer-events:auto;}
+        .dept-tab{padding:10px 16px;background:#f1f5f9;color:#475569;border:none;border-radius:10px;cursor:pointer;font-weight:600;transition:all 0.2s;font-size:14px;}
         .dept-tab:hover{background:#e2e8f0;transform:translateY(-1px);}
-        .dept-tab.active{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 100%);color:white;box-shadow:0 4px 12px rgba(59,130,246,0.3);}
+        .dept-tab.active{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);color:white;box-shadow:0 4px 12px rgba(99,102,241,0.3);}
         .search-box{margin-bottom:20px;}
         .search-box input{font-size:15px;padding:12px 16px;}
         .month-filter{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
@@ -503,7 +686,7 @@ FRONTEND_HTML = """
             <button class="toggle-btn" onclick="toggleSidebar()">◀</button>
             <div class="sidebar-header">
                 <h2>📚 <span>Library System</span></h2>
-                <p>SLSU-JGE Attendance</p>
+                <p>SLSU-JGE Attendance — Admin</p>
             </div>
             <div class="sidebar-menu">
                 <div class="menu-item active" onclick="showContent('scan')">
@@ -564,8 +747,7 @@ FRONTEND_HTML = """
                                 <label>Department</label>
                                 <select name="department" id="dept-select">
                                     <option value="">-- Select Department --</option>
-                                    <option value="CT">Computer Technology (CT)</option>
-                                    <option value="FBT">Food & Beverage Technology (FBT)</option>
+                                    <option value="CT">BSIT</option>
                                     <option value="BSED">BSED</option>
                                     <option value="BEED">BEED</option>
                                     <option value="BSFI">BSFI</option>
@@ -586,7 +768,6 @@ FRONTEND_HTML = """
                                     <option value="2nd Year">2nd Year</option>
                                     <option value="3rd Year">3rd Year</option>
                                     <option value="4th Year">4th Year</option>
-                                    <option value="5th Year">5th Year</option>
                                     <option value="N/A">N/A — Not Applicable</option>
                                 </select>
                             </div>
@@ -612,7 +793,6 @@ FRONTEND_HTML = """
                     <div class="dept-tabs">
                         <button class="dept-tab active" id="dept-ALL" onclick="switchDept('ALL')">📋 ALL</button>
                         <button class="dept-tab" id="dept-CT" onclick="switchDept('CT')">CT</button>
-                        <button class="dept-tab" id="dept-FBT" onclick="switchDept('FBT')">FBT</button>
                         <button class="dept-tab" id="dept-BSED" onclick="switchDept('BSED')">BSED</button>
                         <button class="dept-tab" id="dept-BEED" onclick="switchDept('BEED')">BEED</button>
                         <button class="dept-tab" id="dept-BSFI" onclick="switchDept('BSFI')">BSFI</button>
@@ -642,12 +822,12 @@ FRONTEND_HTML = """
                                     <label>Department</label>
                                     <select id="edit-dept" name="department">
                                         <option value="">-- Select --</option>
-                                        <option value="CT">Computer Technology (CT)</option>
-                                        <option value="FBT">Food & Beverage Technology (FBT)</option>
+                                        <option value="CT">BSIT</option>
                                         <option value="BSED">BSED</option>
                                         <option value="BEED">BEED</option>
-                                        <option value="BSFI">BSFI</option>
+                                        <option value="BSFI">BSFAS</option>
                                         <option value="BSBA">BSBA</option>
+                                        <option value="BPA">BPA</option>
                                         <option value="EMPLOYEE">EMPLOYEE</option>
                                     </select>
                                 </div>
@@ -660,7 +840,6 @@ FRONTEND_HTML = """
                                         <option value="2nd Year">2nd Year</option>
                                         <option value="3rd Year">3rd Year</option>
                                         <option value="4th Year">4th Year</option>
-                                        <option value="5th Year">5th Year</option>
                                         <option value="N/A">N/A</option>
                                     </select>
                                 </div>
@@ -714,21 +893,20 @@ FRONTEND_HTML = """
     </div>
 <script>
 const MAJORS = {
-    "BSBA": ["Marketing Management", "Financial Management", "Human Resource Development", "Business Management", "Economics"],
-    "BSED": ["English", "Mathematics", "Science", "Filipino", "Social Studies", "Values Education"],
-    "CT": ["Computer Technology", "Electronics Technology", "Drafting Technology"],
-    "FBT": ["Food Technology", "Baking & Pastry", "Culinary Arts"]
+    "BSBA": ["Marketing Management", "Financial Management"],
+    "BSED": ["English", "Mathematics", "Science"],
+    "CT": ["Computer Technology", "Food Technology", "BindTech", "Culinary"],
 };
 const PAGE_TITLES = {scan:"📱 Scan / Attendance",register:"📇 Register New User",students:"👥 Registered Users",records:"📋 Daily Attendance Records",history:"📅 Monthly Attendance History",export:"📄 Export & Print Reports"};
 let editingStudentId=null,currentDept="ALL",allStudents=[];
 function toggleSidebar(){const e=document.getElementById("sidebar");e.classList.toggle("collapsed");const t=e.querySelector(".toggle-btn");t.textContent=e.classList.contains("collapsed")?"▶":"◀";}
-function logout(){document.cookie="logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";window.location.href="/login";}
+function logout(){document.cookie="logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";document.cookie="role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";window.location.href="/login";}
 function showContent(e){document.querySelectorAll(".menu-item").forEach(t=>t.classList.remove("active"));document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));const t=["scan","register","students","records","history","export"].indexOf(e);-1!==t&&document.querySelectorAll(".menu-item")[t].classList.add("active");document.getElementById(e).classList.add("active");document.getElementById("page-title").textContent=PAGE_TITLES[e];if("scan"===e)setTimeout(()=>{var t;null===(t=document.getElementById("scan-input"))||void 0===t||t.focus()},100);if("students"===e)loadStudents();if("records"===e)loadRecords();if("history"===e)loadMonthlyHistory();}
 function switchDept(e){document.querySelectorAll(".dept-tab").forEach(t=>t.classList.remove("active"));document.getElementById("dept-"+e).classList.add("active");currentDept=e;filterStudents();}
 function updateMajorOptions(e,t,n){const s=document.getElementById(e).value;const a=document.getElementById(t);const i=document.getElementById(n);a.innerHTML='<option value="">-- Select Major --</option>',("Visitor"===s||"EMPLOYEE"===s||""===s)?(i&&(i.value="N/A",i.disabled=!0)):(i&&(i.disabled=!1),MAJORS[s]&&MAJORS[s].forEach(e=>{const t=document.createElement("option");t.value=e,t.textContent=e,a.appendChild(t)}));}
 function submitScan(){const e=document.getElementById("scan-input").value.trim();if(!e)return;fetch("/scan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id_number:e})}).then(e=>e.json()).then(t=>{const n=document.getElementById("status-box");n.className="status "+(t.success?"success":"error"),n.textContent=t.message,document.getElementById("scan-input").value=""}).catch(e=>{document.getElementById("status-box").className="status error",document.getElementById("status-box").textContent="❌ Error: "+e});}
 function loadStudents(){fetch("/get-students").then(e=>e.json()).then(e=>{allStudents=e.students||[],filterStudents()}).catch(e=>alert("❌ Load Error: "+e));}
-function filterStudents(){const e=document.getElementById("search-input")?.value.toLowerCase()||"";let t=allStudents;"ALL"!==currentDept&&(t=t.filter(e=>e.department===currentDept||"Visitor"===currentDept&&"Visitor"===e.id_type)),e&&(t=t.filter(t=>t.full_name.toLowerCase().includes(e)||t.id_number.toLowerCase().includes(e)));const n=document.getElementById("students-table");t.length?n.innerHTML="<table><tr><th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Action</th></tr>"+t.map(e=>"<tr><td><strong>"+e.id_number+"</strong></td><td>"+e.full_name+"</td><td>"+e.id_type+"</td><td>"+(e.department||"-")+"</td><td><button class='btn-edit' onclick='editStudent("+e.id+")'>✏️ Edit</button></td></tr>").join("")+"</table>":n.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records found.</p>';}
+function filterStudents(){const e=document.getElementById("search-input")?.value.toLowerCase()||"";let t=allStudents;"ALL"!==currentDept&&(t=t.filter(e=>e.department===currentDept||"Visitor"===currentDept&&"Visitor"===e.id_type)),e&&(t=t.filter(t=>t.full_name.toLowerCase().includes(e)||t.id_number.toLowerCase().includes(e))));const n=document.getElementById("students-table");t.length?n.innerHTML="<table><tr><th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Action</th></tr>"+t.map(e=>"<tr><td><strong>"+e.id_number+"</strong></td><td>"+e.full_name+"</td><td>"+e.id_type+"</td><td>"+(e.department||"-")+"</td><td><button class='btn-edit' onclick='editStudent("+e.id+")'>✏️ Edit</button></td></tr>").join("")+"</table>":n.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records found.</p>';}
 function editStudent(e){const t=allStudents.find(t=>t.id===e);if(!t)return;editingStudentId=e,document.getElementById("edit-id").value=t.id,document.getElementById("edit-id-type").value=t.id_type,document.getElementById("edit-idnum").value=t.id_number,document.getElementById("edit-fullname").value=t.full_name,document.getElementById("edit-dept").value=t.department||"",document.getElementById("edit-major").value=t.major||"",document.getElementById("edit-year").value=t.year_level||"",document.getElementById("edit-contact").value=t.contact_number||"",document.getElementById("edit-address").value=t.address||"",document.getElementById("edit-form-container").classList.remove("hidden"),document.getElementById("edit-form-container").scrollIntoView({behavior:"smooth"});}
 function hideEditForm(){document.getElementById("edit-form-container").classList.add("hidden"),editingStudentId=null,document.getElementById("edit-form").reset();}
 function loadRecords(){fetch("/get-records").then(e=>e.json()).then(e=>{const t=e.records||[],n=document.getElementById("records-table");t.length?n.innerHTML="<table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>"+t.map(e=>"<tr><td><strong>"+e.scan_date+"</strong></td><td>"+e.full_name+"</td><td>"+e.id_number+"</td><td style='color:#16a34a;font-weight:600;'>"+(e.time_in||"-")+"</td><td style='color:#dc2626;font-weight:600;'>"+(e.time_out||"-")+"</td></tr>").join("")+"</table>":n.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No attendance records yet.</p>';}).catch(e=>alert("❌ Load Error: "+e));}
