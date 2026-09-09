@@ -595,7 +595,7 @@ document.addEventListener("DOMContentLoaded",function(){
 </html>
 """
 
-ADMIN_FRONTEND = """
+DMIN_FRONTEND = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -717,6 +717,7 @@ ADMIN_FRONTEND = """
                 <h1 id="page-title">📱 Scan / Attendance</h1>
             </div>
             <div class="content-card">
+                <!-- ============= SCAN / ATTENDANCE ============= -->
                 <div id="scan" class="tab-content active">
                     <h2>📱 Scan Barcode — Time In / Time Out</h2>
                     <div class="scan-area">
@@ -724,6 +725,7 @@ ADMIN_FRONTEND = """
                         <div id="status-box" class="status info">⏳ Waiting for scan...</div>
                     </div>
                 </div>
+                <!-- ============= REGISTER USER ============= -->
                 <div id="register" class="tab-content">
                     <h2>📇 Register New User</h2>
                     <form id="register-form">
@@ -742,16 +744,20 @@ ADMIN_FRONTEND = """
                             </div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group"><label>Full Name *</label><input type="text" name="full_name" required placeholder="Last, First Middle"></div>
+                            <div class="form-group">
+                                <label>Full Name *</label>
+                                <input type="text" name="full_name" required placeholder="Last, First Middle">
+                            </div>
                             <div class="form-group">
                                 <label>Department</label>
                                 <select name="department" id="dept-select">
                                     <option value="">-- Select Department --</option>
-                                    <option value="CT">BSIT</option>
+                                    <option value="CT">BSIT / Computer Technology</option>
                                     <option value="BSED">BSED</option>
                                     <option value="BEED">BEED</option>
-                                    <option value="BSFI">BSFI</option>
+                                    <option value="BSFI">BSFI / BSAF</option>
                                     <option value="BSBA">BSBA</option>
+                                    <option value="BPA">BPA</option>
                                     <option value="EMPLOYEE">EMPLOYEE</option>
                                 </select>
                             </div>
@@ -759,7 +765,9 @@ ADMIN_FRONTEND = """
                         <div class="form-row" id="major-row">
                             <div class="form-group">
                                 <label>Major / Specialization</label>
-                                <select name="major" id="major-select"><option value="">-- Select Department First --</option></select>
+                                <select name="major" id="major-select">
+                                    <option value="">-- Select Department First --</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label>Year Level</label>
@@ -773,18 +781,25 @@ ADMIN_FRONTEND = """
                             </div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group"><label>Contact Number</label><input type="text" name="contact_number" placeholder="09XX-XXX-XXXX"></div>
-                            <div class="form-group"><label>Complete Address</label><input type="text" name="address" placeholder="City, Province"></div>
+                            <div class="form-group">
+                                <label>Contact Number</label>
+                                <input type="text" name="contact_number" placeholder="09XX-XXX-XXXX">
+                            </div>
+                            <div class="form-group">
+                                <label>Complete Address</label>
+                                <input type="text" name="address" placeholder="City, Province">
+                            </div>
                         </div>
-                        <button type="submit">✅ Register & Generate Barcode</button>
+                        <button type="submit" class="btn-primary">✅ Register & Generate Barcode</button>
                     </form>
                     <div id="barcode-result" style="display:none;margin-top:30px;text-align:center;padding:30px;background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border-radius:20px;border:2px solid #bae6fd;">
                         <h3>✅ Registration Successful!</h3>
                         <p style="font-size:18px;margin:15px 0;"><strong id="student-info"></strong></p>
-                        <img id="barcode-img" class="barcode-img"><br>
+                        <img id="barcode-img" class="barcode-img"><br><br>
                         <button class="btn-print" onclick="window.print()">🖨️ Print Barcode</button>
                     </div>
                 </div>
+                <!-- ============= STUDENTS LIST ============= -->
                 <div id="students" class="tab-content">
                     <h2>👥 Registered Users — By Department</h2>
                     <div class="search-box">
@@ -800,32 +815,40 @@ ADMIN_FRONTEND = """
                         <button class="dept-tab" id="dept-EMPLOYEE" onclick="switchDept('EMPLOYEE')">EMPLOYEE</button>
                         <button class="dept-tab" id="dept-Visitor" onclick="switchDept('Visitor')">👤 VISITOR</button>
                     </div>
-                    <button onclick="loadStudents()">🔄 Refresh List</button>
+                    <button class="btn-refresh" onclick="loadStudents()">🔄 Refresh List</button>
                     <div id="students-table"></div>
+
                     <div id="edit-form-container" class="edit-form hidden">
                         <h3>✏️ Edit User Information</h3>
                         <form id="edit-form">
                             <input type="hidden" id="edit-id" name="id">
                             <div class="form-row">
-                                <div class="form-group"><label>ID Type</label>
+                                <div class="form-group">
+                                    <label>ID Type</label>
                                     <select id="edit-id-type" name="id_type">
                                         <option value="Student">🎓 Student</option>
                                         <option value="Employee">👨‍🏫 Employee</option>
                                         <option value="Visitor">👤 Visitor</option>
                                     </select>
                                 </div>
-                                <div class="form-group"><label>ID Number</label><input type="text" id="edit-idnum" name="id_number" required></div>
+                                <div class="form-group">
+                                    <label>ID Number</label>
+                                    <input type="text" id="edit-idnum" name="id_number" required>
+                                </div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group"><label>Full Name</label><input type="text" id="edit-fullname" name="full_name" required></div>
+                                <div class="form-group">
+                                    <label>Full Name</label>
+                                    <input type="text" id="edit-fullname" name="full_name" required>
+                                </div>
                                 <div class="form-group">
                                     <label>Department</label>
                                     <select id="edit-dept" name="department">
                                         <option value="">-- Select --</option>
-                                        <option value="CT">BSIT</option>
+                                        <option value="CT">BSIT / Computer Technology</option>
                                         <option value="BSED">BSED</option>
                                         <option value="BEED">BEED</option>
-                                        <option value="BSFI">BSFAS</option>
+                                        <option value="BSFI">BSFI / BSAF</option>
                                         <option value="BSBA">BSBA</option>
                                         <option value="BPA">BPA</option>
                                         <option value="EMPLOYEE">EMPLOYEE</option>
@@ -833,8 +856,12 @@ ADMIN_FRONTEND = """
                                 </div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group"><label>Major / Specialization</label><select id="edit-major" name="major"></select></div>
-                                <div class="form-group"><label>Year Level</label>
+                                <div class="form-group">
+                                    <label>Major / Specialization</label>
+                                    <select id="edit-major" name="major"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Year Level</label>
                                     <select id="edit-year" name="year_level">
                                         <option value="1st Year">1st Year</option>
                                         <option value="2nd Year">2nd Year</option>
@@ -845,19 +872,27 @@ ADMIN_FRONTEND = """
                                 </div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group"><label>Contact Number</label><input type="text" id="edit-contact" name="contact_number"></div>
-                                <div class="form-group"><label>Complete Address</label><input type="text" id="edit-address" name="address"></div>
+                                <div class="form-group">
+                                    <label>Contact Number</label>
+                                    <input type="text" id="edit-contact" name="contact_number">
+                                </div>
+                                <div class="form-group">
+                                    <label>Complete Address</label>
+                                    <input type="text" id="edit-address" name="address">
+                                </div>
                             </div>
                             <button type="submit" class="btn-save">💾 Save Changes</button>
                             <button type="button" class="btn-cancel" onclick="hideEditForm()">❌ Cancel</button>
                         </form>
                     </div>
                 </div>
+                <!-- ============= DAILY RECORDS ============= -->
                 <div id="records" class="tab-content">
                     <h2>📋 Today's Attendance Records</h2>
-                    <button onclick="loadRecords()">🔄 Refresh Records</button>
+                    <button class="btn-refresh" onclick="loadRecords()">🔄 Refresh Records</button>
                     <div id="records-table"></div>
                 </div>
+                <!-- ============= MONTHLY HISTORY ============= -->
                 <div id="history" class="tab-content">
                     <h2>📅 Monthly Attendance History</h2>
                     <div class="month-filter">
@@ -879,9 +914,10 @@ ADMIN_FRONTEND = """
                         <button class="btn-month-print" onclick="printMonthlyReport()">🖨️ Print Monthly Report</button>
                         <button class="btn-download" onclick="downloadMonthlyReport()">📄 Download Word</button>
                     </div>
-                    <button onclick="loadMonthlyHistory()">🔄 Load Records</button>
+                    <button class="btn-refresh" onclick="loadMonthlyHistory()">🔄 Load Records</button>
                     <div id="history-table"></div>
                 </div>
+                <!-- ============= EXPORT REPORTS ============= -->
                 <div id="export" class="tab-content">
                     <h2>📄 Export & Print Reports</h2>
                     <p style="font-size:16px;color:#64748b;margin-bottom:25px;">Download today's complete attendance as Microsoft Word Document or print directly.</p>
@@ -892,28 +928,325 @@ ADMIN_FRONTEND = """
         </div>
     </div>
 <script>
+// ============= FIXED: ALL FUNCTIONS — BUTTONS NOW WORKING =============
 const MAJORS = {
     "BSBA": ["Marketing Management", "Financial Management"],
     "BSED": ["English", "Mathematics", "Science"],
-    "CT": ["Computer Technology", "Food Technology", "BindTech", "Culinary"],
+    "CT": ["Computer Technology", "Food Technology"],
+    "BSFI": ["Food Service Management", "Hospitality Management"],
 };
-const PAGE_TITLES = {scan:"📱 Scan / Attendance",register:"📇 Register New User",students:"👥 Registered Users",records:"📋 Daily Attendance Records",history:"📅 Monthly Attendance History",export:"📄 Export & Print Reports"};
-let editingStudentId=null,currentDept="ALL",allStudents=[];
-function toggleSidebar(){const e=document.getElementById("sidebar");e.classList.toggle("collapsed");const t=e.querySelector(".toggle-btn");t.textContent=e.classList.contains("collapsed")?"▶":"◀";}
-function logout(){document.cookie="logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";document.cookie="role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";window.location.href="/login";}
-function showContent(e){document.querySelectorAll(".menu-item").forEach(t=>t.classList.remove("active"));document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));const t=["scan","register","students","records","history","export"].indexOf(e);-1!==t&&document.querySelectorAll(".menu-item")[t].classList.add("active");document.getElementById(e).classList.add("active");document.getElementById("page-title").textContent=PAGE_TITLES[e];if("scan"===e)setTimeout(()=>{var t;null===(t=document.getElementById("scan-input"))||void 0===t||t.focus()},100);if("students"===e)loadStudents();if("records"===e)loadRecords();if("history"===e)loadMonthlyHistory();}
-function switchDept(e){document.querySelectorAll(".dept-tab").forEach(t=>t.classList.remove("active"));document.getElementById("dept-"+e).classList.add("active");currentDept=e;filterStudents();}
-function updateMajorOptions(e,t,n){const s=document.getElementById(e).value;const a=document.getElementById(t);const i=document.getElementById(n);a.innerHTML='<option value="">-- Select Major --</option>',("Visitor"===s||"EMPLOYEE"===s||""===s)?(i&&(i.value="N/A",i.disabled=!0)):(i&&(i.disabled=!1),MAJORS[s]&&MAJORS[s].forEach(e=>{const t=document.createElement("option");t.value=e,t.textContent=e,a.appendChild(t)}));}
-function submitScan(){const e=document.getElementById("scan-input").value.trim();if(!e)return;fetch("/scan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id_number:e})}).then(e=>e.json()).then(t=>{const n=document.getElementById("status-box");n.className="status "+(t.success?"success":"error"),n.textContent=t.message,document.getElementById("scan-input").value=""}).catch(e=>{document.getElementById("status-box").className="status error",document.getElementById("status-box").textContent="❌ Error: "+e});}
-function loadStudents(){fetch("/get-students").then(e=>e.json()).then(e=>{allStudents=e.students||[],filterStudents()}).catch(e=>alert("❌ Load Error: "+e));}
-function filterStudents(){const e=document.getElementById("search-input")?.value.toLowerCase()||"";let t=allStudents;"ALL"!==currentDept&&(t=t.filter(e=>e.department===currentDept||"Visitor"===currentDept&&"Visitor"===e.id_type)),e&&(t=t.filter(t=>t.full_name.toLowerCase().includes(e)||t.id_number.toLowerCase().includes(e))));const n=document.getElementById("students-table");t.length?n.innerHTML="<table><tr><th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Action</th></tr>"+t.map(e=>"<tr><td><strong>"+e.id_number+"</strong></td><td>"+e.full_name+"</td><td>"+e.id_type+"</td><td>"+(e.department||"-")+"</td><td><button class='btn-edit' onclick='editStudent("+e.id+")'>✏️ Edit</button></td></tr>").join("")+"</table>":n.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records found.</p>';}
-function editStudent(e){const t=allStudents.find(t=>t.id===e);if(!t)return;editingStudentId=e,document.getElementById("edit-id").value=t.id,document.getElementById("edit-id-type").value=t.id_type,document.getElementById("edit-idnum").value=t.id_number,document.getElementById("edit-fullname").value=t.full_name,document.getElementById("edit-dept").value=t.department||"",document.getElementById("edit-major").value=t.major||"",document.getElementById("edit-year").value=t.year_level||"",document.getElementById("edit-contact").value=t.contact_number||"",document.getElementById("edit-address").value=t.address||"",document.getElementById("edit-form-container").classList.remove("hidden"),document.getElementById("edit-form-container").scrollIntoView({behavior:"smooth"});}
-function hideEditForm(){document.getElementById("edit-form-container").classList.add("hidden"),editingStudentId=null,document.getElementById("edit-form").reset();}
-function loadRecords(){fetch("/get-records").then(e=>e.json()).then(e=>{const t=e.records||[],n=document.getElementById("records-table");t.length?n.innerHTML="<table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>"+t.map(e=>"<tr><td><strong>"+e.scan_date+"</strong></td><td>"+e.full_name+"</td><td>"+e.id_number+"</td><td style='color:#16a34a;font-weight:600;'>"+(e.time_in||"-")+"</td><td style='color:#dc2626;font-weight:600;'>"+(e.time_out||"-")+"</td></tr>").join("")+"</table>":n.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No attendance records yet.</p>';}).catch(e=>alert("❌ Load Error: "+e));}
-function loadMonthlyHistory(){const e=document.getElementById("month-select").value;fetch("/get-monthly-history?month="+e).then(e=>e.json()).then(t=>{const n=t.records||[],s=document.getElementById("history-table");n.length?s.innerHTML="<h3 style='margin:20px 0;color:#1e293b;'>📅 Records for "+e+"</h3><table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>"+n.map(e=>"<tr><td><strong>"+e.scan_date+"</strong></td><td>"+e.full_name+"</td><td>"+e.id_number+"</td><td style='color:#16a34a;font-weight:600;'>"+(e.time_in||"-")+"</td><td style='color:#dc2626;font-weight:600;'>"+(e.time_out||"-")+"</td></tr>").join("")+"</table>":s.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records for '+e+'.</p>';}).catch(e=>alert("❌ Load Error: "+e));}
-function printMonthlyReport(){const e=document.getElementById("month-select").value;window.open("/print-monthly?month="+e,"_blank");}
-function downloadMonthlyReport(){const e=document.getElementById("month-select").value;window.location.href="/download-monthly-word?month="+e;}
-document.addEventListener("DOMContentLoaded",function(){const e=document.getElementById("scan-input");e&&e.addEventListener("keypress",e=>"Enter"===e.key&&submitScan());const t=document.getElementById("dept-select");t&&t.addEventListener("change",()=>updateMajorOptions("dept-select","major-select","year-select"));const n=document.getElementById("edit-dept");n&&n.addEventListener("change",()=>updateMajorOptions("edit-dept","edit-major","edit-year"));const s=document.getElementById("register-form");s&&s.addEventListener("submit",e=>{e.preventDefault();const t=new FormData(s);fetch("/register",{method:"POST",body:t}).then(e=>e.json()).then(t=>{t.success?(document.getElementById("barcode-result").style.display="block",document.getElementById("student-info").textContent=t.info,document.getElementById("barcode-img").src="data:image/png;base64,"+t.barcode,s.reset(),document.getElementById("major-select").innerHTML='<option value="">-- Select Department First --</option>'):alert("❌ Error: "+t.error);}).catch(e=>alert("❌ Error: "+e));});const a=document.getElementById("edit-form");a&&a.addEventListener("submit",e=>{e.preventDefault();const t=new FormData(a);fetch("/update-student",{method:"POST",body:t}).then(e=>e.json()).then(t=>{t.success?(alert("✅ Updated successfully!"),hideEditForm(),loadStudents()):alert("❌ Error: "+t.error);}).catch(e=>alert("❌ Error: "+e));});});
+const PAGE_TITLES = {
+    scan: "📱 Scan / Attendance",
+    register: "📇 Register New User",
+    students: "👥 Registered Users",
+    records: "📋 Daily Attendance Records",
+    history: "📅 Monthly Attendance History",
+    export: "📄 Export & Print Reports"
+};
+let editingStudentId = null;
+let currentDept = "ALL";
+let allStudents = [];
+// --- SIDEBAR TOGGLE ---
+function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    sidebar.classList.toggle("collapsed");
+    const btn = sidebar.querySelector(".toggle-btn");
+    btn.textContent = sidebar.classList.contains("collapsed") ? "▶" : "◀";
+}
+// --- LOGOUT ---
+function logout() {
+    document.cookie = "logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    document.cookie = "role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    window.location.href = "/login";
+}
+// ============= FIXED: MAIN NAVIGATION — BUTTONS NOW RESPOND =============
+function showContent(pageId) {
+    console.log("Switching to:", pageId); // ✅ Check console kung gumana
+    // Remove active from all menu items
+    document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+    // Remove active from all tabs
+    document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
+    // Activate selected menu
+    const menuIndex = ["scan", "register", "students", "records", "history", "export"].indexOf(pageId);
+    if (menuIndex !== -1) {
+        document.querySelectorAll(".menu-item")[menuIndex].classList.add("active");
+    }
+    // Show selected content
+    const targetTab = document.getElementById(pageId);
+    if (targetTab) {
+        targetTab.classList.add("active");
+    }
+    // Update page title
+    document.getElementById("page-title").textContent = PAGE_TITLES[pageId] || "Library System";
+    // Load data for pages
+    if (pageId === "scan") {
+        setTimeout(() => document.getElementById("scan-input")?.focus(), 100);
+    }
+    if (pageId === "students") loadStudents();
+    if (pageId === "records") loadRecords();
+    if (pageId === "history") loadMonthlyHistory();
+}
+// --- DEPARTMENT TABS ---
+function switchDept(dept) {
+    document.querySelectorAll(".dept-tab").forEach(tab => tab.classList.remove("active"));
+    document.getElementById("dept-" + dept).classList.add("active");
+    currentDept = dept;
+    filterStudents();
+}
+// --- MAJOR OPTIONS ---
+function updateMajorOptions(deptSelectId, majorSelectId, yearSelectId) {
+    const dept = document.getElementById(deptSelectId).value;
+    const majorSelect = document.getElementById(majorSelectId);
+    const yearSelect = yearSelectId ? document.getElementById(yearSelectId) : null;
+
+    majorSelect.innerHTML = '<option value="">-- Select Major --</option>';
+
+    if (dept === "Visitor" || dept === "EMPLOYEE" || !dept) {
+        if (yearSelect) { yearSelect.value = "N/A"; yearSelect.disabled = true; }
+        return;
+    }
+
+    if (yearSelect) yearSelect.disabled = false;
+
+    if (MAJORS[dept]) {
+        MAJORS[dept].forEach(major => {
+            const option = document.createElement("option");
+            option.value = major;
+            option.textContent = major;
+            majorSelect.appendChild(option);
+        });
+    }
+}
+// --- SCAN SUBMIT ---
+function submitScan() {
+    const input = document.getElementById("scan-input");
+    const idNumber = input.value.trim();
+    if (!idNumber) return;
+    fetch("/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_number: idNumber })
+    })
+    .then(res => res.json())
+    .then(data => {
+        const statusBox = document.getElementById("status-box");
+        statusBox.className = "status " + (data.success ? "success" : "error");
+        statusBox.textContent = data.message;
+        input.value = "";
+    })
+    .catch(err => {
+        document.getElementById("status-box").className = "status error";
+        document.getElementById("status-box").textContent = "❌ Error: " + err;
+    });
+}
+// --- LOAD STUDENTS ---
+function loadStudents() {
+    fetch("/get-students")
+        .then(res => res.json())
+        .then(data => {
+            allStudents = data.students || [];
+            filterStudents();
+        })
+        .catch(err => alert("❌ Load Error: " + err));
+}
+// --- FILTER STUDENTS ---
+function filterStudents() {
+    const search = document.getElementById("search-input")?.value.toLowerCase() || "";
+    let filtered = allStudents;
+    if (currentDept !== "ALL") {
+        filtered = filtered.filter(s =>
+            s.department === currentDept ||
+            (currentDept === "Visitor" && s.id_type === "Visitor")
+        );
+    }
+    if (search) {
+        filtered = filtered.filter(s =>
+            s.full_name.toLowerCase().includes(search) ||
+            s.id_number.toLowerCase().includes(search)
+        );
+    }
+    const table = document.getElementById("students-table");
+    if (filtered.length > 0) {
+        table.innerHTML = `
+            <table>
+                <tr><th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Action</th></tr>
+                ${filtered.map(s => `
+                    <tr>
+                        <td><strong>${s.id_number}</strong></td>
+                        <td>${s.full_name}</td>
+                        <td>${s.id_type}</td>
+                        <td>${s.department || "-"}</td>
+                        <td><button class='btn-edit' onclick='editStudent(${s.id})'>✏️ Edit</button></td>
+                    </tr>
+                `).join("")}
+            </table>
+        `;
+    } else {
+        table.innerHTML = '<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records found.</p>';
+    }
+}
+// --- EDIT STUDENT ---
+function editStudent(id) {
+    const student = allStudents.find(s => s.id === id);
+    if (!student) return;
+
+    editingStudentId = id;
+    document.getElementById("edit-id").value = student.id;
+    document.getElementById("edit-id-type").value = student.id_type;
+    document.getElementById("edit-idnum").value = student.id_number;
+    document.getElementById("edit-fullname").value = student.full_name;
+    document.getElementById("edit-dept").value = student.department || "";
+    document.getElementById("edit-major").value = student.major || "";
+    document.getElementById("edit-year").value = student.year_level || "";
+    document.getElementById("edit-contact").value = student.contact_number || "";
+    document.getElementById("edit-address").value = student.address || "";
+
+    document.getElementById("edit-form-container").classList.remove("hidden");
+    document.getElementById("edit-form-container").scrollIntoView({ behavior: "smooth" });
+}
+function hideEditForm() {
+    document.getElementById("edit-form-container").classList.add("hidden");
+    editingStudentId = null;
+    document.getElementById("edit-form").reset();
+}
+// --- LOAD DAILY RECORDS ---
+function loadRecords() {
+    fetch("/get-records")
+        .then(res => res.json())
+        .then(data => {
+            const records = data.records || [];
+            const table = document.getElementById("records-table");
+
+            if (records.length > 0) {
+                table.innerHTML = `
+                    <table>
+                        <tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>
+                        ${records.map(r => `
+                            <tr>
+                                <td><strong>${r.scan_date}</strong></td>
+                                <td>${r.full_name}</td>
+                                <td>${r.id_number}</td>
+                                <td style='color:#16a34a;font-weight:600;'>${r.time_in || "-"}</td>
+                                <td style='color:#dc2626;font-weight:600;'>${r.time_out || "-"}</td>
+                            </tr>
+                        `).join("")}
+                    </table>
+                `;
+            } else {
+                table.innerHTML = '<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No attendance records yet.</p>';
+            }
+        })
+        .catch(err => alert("❌ Load Error: " + err));
+}
+// --- LOAD MONTHLY HISTORY ---
+function loadMonthlyHistory() {
+    const month = document.getElementById("month-select").value;
+    fetch("/get-monthly-history?month=" + month)
+        .then(res => res.json())
+        .then(data => {
+            const records = data.records || [];
+            const table = document.getElementById("history-table");
+
+            if (records.length > 0) {
+                table.innerHTML = `
+                    <h3 style='margin:20px 0;color:#1e293b;'>📅 Records for ${month}</h3>
+                    <table>
+                        <tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>
+                        ${records.map(r => `
+                            <tr>
+                                <td><strong>${r.scan_date}</strong></td>
+                                <td>${r.full_name}</td>
+                                <td>${r.id_number}</td>
+                                <td style='color:#16a34a;font-weight:600;'>${r.time_in || "-"}</td>
+                                <td style='color:#dc2626;font-weight:600;'>${r.time_out || "-"}</td>
+                            </tr>
+                        `).join("")}
+                    </table>
+                `;
+            } else {
+                table.innerHTML = `<p style="text-align:center;color:#64748b;padding:30px;font-size:16px;">📭 No records for ${month}.</p>`;
+            }
+        })
+        .catch(err => alert("❌ Load Error: " + err));
+}
+function printMonthlyReport() {
+    const month = document.getElementById("month-select").value;
+    window.open("/print-monthly?month=" + month, "_blank");
+}
+function downloadMonthlyReport() {
+    const month = document.getElementById("month-select").value;
+    window.location.href = "/download-monthly-word?month=" + month;
+}
+// ============= FIXED: FORM INITIALIZATION =============
+document.addEventListener("DOMContentLoaded", function() {
+    console.log("✅ Dashboard Loaded — Buttons Ready!");
+    // Scan input — Enter key
+    const scanInput = document.getElementById("scan-input");
+    if (scanInput) {
+        scanInput.addEventListener("keypress", e => {
+            if (e.key === "Enter") submitScan();
+        });
+    }
+    // Department → Major linkage
+    const deptSelect = document.getElementById("dept-select");
+    if (deptSelect) {
+        deptSelect.addEventListener("change", () => updateMajorOptions("dept-select", "major-select", "year-select"));
+    }
+    const editDeptSelect = document.getElementById("edit-dept");
+    if (editDeptSelect) {
+        editDeptSelect.addEventListener("change", () => updateMajorOptions("edit-dept", "edit-major", "edit-year"));
+    }
+    // Register Form Submit
+    const registerForm = document.getElementById("register-form");
+    if (registerForm) {
+        registerForm.addEventListener("submit", e => {
+            e.preventDefault();
+            const formData = new FormData(registerForm);
+
+            fetch("/register", {
+                method: "POST",
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById("barcode-result").style.display = "block";
+                    document.getElementById("student-info").textContent = data.info;
+                    document.getElementById("barcode-img").src = "data:image/png;base64," + data.barcode;
+                    registerForm.reset();
+                    document.getElementById("major-select").innerHTML = '<option value="">-- Select Department First --</option>';
+                } else {
+                    alert("❌ Error: " + data.error);
+                }
+            })
+            .catch(err => alert("❌ Error: " + err));
+        });
+    }
+    // Edit Form Submit
+    const editForm = document.getElementById("edit-form");
+    if (editForm) {
+        editForm.addEventListener("submit", e => {
+            e.preventDefault();
+            const formData = new FormData(editForm);
+
+            fetch("/update-student", {
+                method: "POST",
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("✅ Updated successfully!");
+                    hideEditForm();
+                    loadStudents();
+                } else {
+                    alert("❌ Error: " + data.error);
+                }
+            })
+            .catch(err => alert("❌ Error: " + err));
+        });
+    }
+});
 </script>
 </body>
 </html>
