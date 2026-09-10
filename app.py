@@ -12,10 +12,11 @@ app = Flask(__name__)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-ADMIN_USER = "slsu"
-ADMIN_PASS = "jge"
-USER_USER = "jge"
-USER_PASS = "slsu"
+ADMIN_USER = os.environ.get("ADMIN_USER", "slsu")
+ADMIN_PASS = os.environ.get("ADMIN_PASS", "jge")
+
+USER_USER = os.environ.get("USER_USER", "jge")
+USER_PASS = os.environ.get("USER_PASS", "slsu")
 
 def get_db():
     try:
@@ -34,37 +35,41 @@ def get_ph_date():
 
 def init_db():
     conn = get_db()
+
     if not conn:
         print("Cannot connect to database")
         return
+
     c = conn.cursor()
 
-    c.execute("DROP TABLE IF EXISTS attendance;")
-    c.execute("DROP TABLE IF EXISTS users;")
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            id_type TEXT NOT NULL,
+            full_name TEXT NOT NULL,
+            department TEXT,
+            major TEXT,
+            contact_number TEXT,
+            address TEXT,
+            year_level TEXT,
+            id_number TEXT NOT NULL UNIQUE,
+            registered_at TEXT NOT NULL
+        )
+    """)
 
-    c.execute("""CREATE TABLE users (
-        id SERIAL PRIMARY KEY,
-        id_type TEXT NOT NULL,
-        full_name TEXT NOT NULL,
-        department TEXT,
-        major TEXT,
-        contact_number TEXT,
-        address TEXT,
-        year_level TEXT,
-        id_number TEXT NOT NULL UNIQUE,
-        registered_at TEXT NOT NULL
-    )""")
-
-    c.execute("""CREATE TABLE attendance (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id),
-        time_in TEXT,
-        time_out TEXT,
-        scan_date TEXT NOT NULL
-    )""")
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS attendance (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            time_in TEXT,
+            time_out TEXT,
+            scan_date TEXT NOT NULL
+        )
+    """)
 
     conn.commit()
     conn.close()
+
     print("DATABASE READY")
 
 init_db()
@@ -162,7 +167,7 @@ def login():
     <div class="card">
         <div class="card-top"></div>
         <div class="card-body">
-            <div class="brand-mark">SLSU JGE</div>
+            <div class="brand-mark">SLSUJGE</div>
             <h1>Sign In</h1>
             <p class="subtitle">Library Attendance System</p>
             <form method="POST">
@@ -176,7 +181,7 @@ def login():
                 </div>
                 <button type="submit">Sign In</button>
             </form>
-            <p class="hint">Administrator: slsu / jge<br>Staff User: jge / slsu</p>
+           
         </div>
     </div>
 </body>
@@ -281,16 +286,50 @@ def register():
 
 @app.route('/get-students')
 def get_students():
-    if not is_logged_in():
-        return jsonify({"students": []})
+    if not is_logged_in() or get_role() != 'admin':
+        return jsonify({"students": []}), 403
+
     conn = get_db()
+
     if not conn:
-        return jsonify({"students": []})
+        return jsonify({"students": []}), 500
+
     c = conn.cursor()
-    c.execute("SELECT id, id_type, full_name, department, id_number FROM users ORDER BY full_name")
-    students = [{"id": r[0], "id_type": r[1], "full_name": r[2], "department": r[3], "id_number": r[4]} for r in c.fetchall()]
+
+    c.execute("""
+        SELECT
+            id,
+            id_type,
+            full_name,
+            department,
+            major,
+            contact_number,
+            address,
+            year_level,
+            id_number
+        FROM users
+        ORDER BY full_name
+    """)
+
+    students = [
+        {
+            "id": row[0],
+            "id_type": row[1],
+            "full_name": row[2],
+            "department": row[3],
+            "major": row[4],
+            "contact_number": row[5],
+            "address": row[6],
+            "year_level": row[7],
+            "id_number": row[8]
+        }
+        for row in c.fetchall()
+    ]
+
     conn.close()
+
     return jsonify({"students": students})
+
 
 @app.route('/update-student', methods=['POST'])
 def update_student():
@@ -330,35 +369,88 @@ def update_student():
 
 @app.route('/get-records')
 def get_records():
-    if not is_logged_in():
-        return jsonify({"records": []})
+    if not is_logged_in() or get_role() != 'admin':
+        return jsonify({"records": []}), 403
+
     conn = get_db()
+
     if not conn:
-        return jsonify({"records": []})
+        return jsonify({"records": []}), 500
+
     c = conn.cursor()
-    c.execute("""SELECT a.scan_date, u.full_name, u.id_number, a.time_in, a.time_out
-        FROM attendance a JOIN users u ON a.user_id = u.id
-        ORDER BY a.scan_date DESC, a.id DESC LIMIT 100""")
-    records = [{"scan_date": r[0], "full_name": r[1], "id_number": r[2], "time_in": r[3], "time_out": r[4]} for r in c.fetchall()]
+
+    c.execute("""
+        SELECT
+            u.full_name,
+            u.department,
+            a.time_in,
+            a.time_out
+        FROM attendance a
+        JOIN users u ON a.user_id = u.id
+        WHERE a.scan_date = %s
+        ORDER BY a.id DESC
+    """, (get_ph_date(),))
+
+    records = [
+        {
+            "full_name": row[0],
+            "department": row[1] or "-",
+            "time_in": row[2],
+            "time_out": row[3]
+        }
+        for row in c.fetchall()
+    ]
+
     conn.close()
+
     return jsonify({"records": records})
+
 
 @app.route('/get-monthly-history')
 def get_monthly_history():
-    if not is_logged_in():
-        return jsonify({"records": []})
+    if not is_logged_in() or get_role() != 'admin':
+        return jsonify({"records": []}), 403
+
     month = request.args.get('month', '').strip()
-    conn = get_db()
-    if not conn:
+
+    if not month:
         return jsonify({"records": []})
+
+    conn = get_db()
+
+    if not conn:
+        return jsonify({"records": []}), 500
+
     c = conn.cursor()
-    c.execute("""SELECT a.scan_date, u.full_name, u.id_number, a.time_in, a.time_out
-        FROM attendance a JOIN users u ON a.user_id = u.id
+
+    c.execute("""
+        SELECT
+            a.scan_date,
+            u.full_name,
+            u.department,
+            a.time_in,
+            a.time_out
+        FROM attendance a
+        JOIN users u ON a.user_id = u.id
         WHERE a.scan_date LIKE %s
-        ORDER BY a.scan_date DESC, a.id DESC""", (f"{month}%",))
-    records = [{"scan_date": r[0], "full_name": r[1], "id_number": r[2], "time_in": r[3], "time_out": r[4]} for r in c.fetchall()]
+        ORDER BY a.scan_date DESC, a.id DESC
+    """, (f"{month}%",))
+
+    records = [
+        {
+            "scan_date": row[0],
+            "full_name": row[1],
+            "department": row[2] or "-",
+            "time_in": row[3],
+            "time_out": row[4]
+        }
+        for row in c.fetchall()
+    ]
+
     conn.close()
+
     return jsonify({"records": records})
+
 
 @app.route('/download-word')
 def download_word():
