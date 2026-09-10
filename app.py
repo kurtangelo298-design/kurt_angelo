@@ -162,7 +162,7 @@ def login():
     <div class="card">
         <div class="card-top"></div>
         <div class="card-body">
-            <div class="brand-mark">SLSU<br>JGE</div>
+            <div class="brand-mark">SLSU JGE</div>
             <h1>Sign In</h1>
             <p class="subtitle">Library Attendance System</p>
             <form method="POST">
