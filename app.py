@@ -12,8 +12,8 @@ app = Flask(__name__)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-ADMIN_USER = "slsu"
-ADMIN_PASS = "jge"
+ADMIN_USER = "library"
+ADMIN_PASS = "slsu"
 USER_USER = "jge"
 USER_PASS = "slsu"
 
@@ -74,6 +74,19 @@ def generate_barcode_b64(id_number):
     buffered = BytesIO()
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
+
+@app.route('/barcode/<path:id_number>')
+def barcode_image(id_number):
+    if not is_logged_in():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        image_data = base64.b64decode(generate_barcode_b64(id_number))
+        response = make_response(image_data)
+        response.headers['Content-Type'] = 'image/png'
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 def is_logged_in():
     return request.cookies.get('logged_in') == 'true'
@@ -505,8 +518,10 @@ USER_FRONTEND = """
         #barcode-result h3{color:#1b2a41;margin-bottom:12px;font-size:16px;font-family:Georgia,'Times New Roman',serif;}
         #student-info{font-size:15px;color:#1f2937;}
         .barcode-img{max-width:280px;margin:18px auto;display:block;padding:14px;background:white;border:1px solid #d8dbe0;border-radius:4px;}
+        .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;}
         .btn-print{background:#1e6b34;margin-top:16px;}
         .btn-print:hover{background:#175628;}
+        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:20px;border:0;background:#fff;}.btn-print{display:none !important;}}
         .logout-link{display:block;text-align:center;margin-top:22px;color:#64748b;text-decoration:none;font-size:13px;border-top:1px solid #eef0f3;padding-top:18px;}
         .logout-link:hover{color:#1b2a41;}
         @media(max-width:600px){.form-row{grid-template-columns:1fr;}.card-body{padding:30px 24px;}}
@@ -586,7 +601,7 @@ USER_FRONTEND = """
                 </form>
                 <div id="barcode-result">
                     <h3>Registration Successful</h3>
-                    <p id="student-info"></p>
+                    <p id="barcode-id" class="barcode-id"></p>
                     <img id="barcode-img" class="barcode-img"><br>
                     <button class="btn-print" onclick="window.print()">Print Barcode</button>
                 </div>
@@ -630,7 +645,7 @@ document.addEventListener("DOMContentLoaded",function(){
         .then(data=>{
             if(data.success){
                 document.getElementById("barcode-result").style.display="block";
-                document.getElementById("student-info").textContent=data.info;
+                document.getElementById("barcode-id").textContent="Student Number: " + formData.get("id_number");
                 document.getElementById("barcode-img").src="data:image/png;base64,"+data.barcode;
                 form.reset();
                 document.getElementById("dept-select").value="";
@@ -705,8 +720,12 @@ ADMIN_FRONTEND = """
         .tab-content{display:none;}
         .tab-content.active{display:block;}
         .barcode-img{max-width:300px;margin:18px auto;display:block;padding:14px;background:white;border:1px solid #d8dbe0;border-radius:4px;}
+        .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;}
         .btn-print{background:#1e6b34;}
         .btn-print:hover{background:#175628;}
+        .btn-barcode{background:#8a6d1f;color:white;padding:7px 16px;font-size:12px;border-radius:4px;}
+        .btn-barcode:hover{background:#6e5718;}
+        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:20px;border:0;background:#fff;}.btn-print{display:none !important;}}
         .btn-download{background:#8a6d1f;color:white;}
         .btn-download:hover{background:#6e5718;}
         .btn-edit{background:#3a4f75;color:white;padding:7px 16px;font-size:12px;border-radius:4px;}
@@ -865,7 +884,7 @@ ADMIN_FRONTEND = """
                     </form>
                     <div id="barcode-result" style="display:none;margin-top:28px;text-align:center;padding:26px;background:#f7f8fa;border-radius:6px;border:1px solid #d8dbe0;">
                         <h3>Registration Successful</h3>
-                        <p style="font-size:16px;margin:14px 0;"><strong id="student-info"></strong></p>
+                        <p id="barcode-id" class="barcode-id"></p>
                         <img id="barcode-img" class="barcode-img"><br><br>
                         <button class="btn-print" onclick="window.print()">Print Barcode</button>
                     </div>
@@ -1243,7 +1262,7 @@ function filterStudents() {
                         <td>${s.full_name}</td>
                         <td>${s.id_type}</td>
                         <td>${s.department || "-"}</td>
-                        <td><button class='btn-edit' onclick='editStudent(${s.id})'>Edit</button></td>
+                        <td><button class='btn-barcode' onclick='printStudentBarcode(${JSON.stringify(s.id_number)})'>Print Barcode</button> <button class='btn-edit' onclick='editStudent(${s.id})'>Edit</button></td>
                     </tr>
                 `).join("")}
             </table>
@@ -1251,6 +1270,16 @@ function filterStudents() {
     } else {
         table.innerHTML = '<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
     }
+}
+function printStudentBarcode(idNumber) {
+    const printWindow = window.open("", "_blank", "width=500,height=400");
+    if (!printWindow) {
+        alert("Please allow pop-ups to print the barcode.");
+        return;
+    }
+    const barcodeUrl = "/barcode/" + encodeURIComponent(idNumber);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Barcode - ${idNumber}</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:24px;}img{max-width:360px;margin:18px auto;display:block;}h2{font-size:20px;}</style></head><body><h2>Student Number: ${idNumber}</h2><img src="${barcodeUrl}" onload="window.print()"></body></html>`);
+    printWindow.document.close();
 }
 function editStudent(id) {
     const student = allStudents.find(s => s.id === id);
@@ -1370,7 +1399,7 @@ document.addEventListener("DOMContentLoaded", function() {
             .then(data => {
                 if (data.success) {
                     document.getElementById("barcode-result").style.display = "block";
-                    document.getElementById("student-info").textContent = data.info;
+                    document.getElementById("barcode-id").textContent = "Student Number: " + formData.get("id_number");
                     document.getElementById("barcode-img").src = "data:image/png;base64," + data.barcode;
                     registerForm.reset();
                     document.getElementById("major-select").innerHTML = '<option value="">-- Select Department First --</option>';
