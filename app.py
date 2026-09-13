@@ -12,8 +12,8 @@ app = Flask(__name__)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-ADMIN_USER = "library"
-ADMIN_PASS = "slsu"
+ADMIN_USER = "slsu"
+ADMIN_PASS = "jge"
 USER_USER = "jge"
 USER_PASS = "slsu"
 
@@ -93,6 +93,37 @@ def is_logged_in():
 
 def get_role():
     return request.cookies.get('role', 'user')
+
+PRIVACY_PAGE = """
+<!DOCTYPE html><html><head>
+<title>Privacy Policy - SLSU Library Attendance System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#eef0f3;color:#374151;margin:0;padding:24px;line-height:1.65}.policy{max-width:980px;margin:0 auto;background:#fff;border:1px solid #d8dbe0;padding:34px 42px;box-shadow:0 2px 12px rgba(15,25,43,.08)}h1,h2{font-family:Georgia,'Times New Roman',serif;color:#1b2a41}h1{font-size:26px;margin:0 0 6px}h2{font-size:18px;margin:28px 0 8px;border-bottom:1px solid #eef0f3;padding-bottom:8px}p{margin:8px 0 14px}li{margin:5px 0}table{width:100%;border-collapse:collapse;margin:12px 0 20px}th,td{border:1px solid #d8dbe0;padding:10px;text-align:left;vertical-align:top}th{background:#1b2a41;color:#fff}@media(max-width:600px){body{padding:10px}.policy{padding:22px 18px}table{font-size:12px}}
+</style></head><body><main class="policy">
+<h1>Privacy Policy - SLSU Library Attendance System</h1>
+<p><strong>Developed by:</strong> K.A.V<br><strong>Last Updated:</strong> September 13, 2026</p>
+<h2>1. Who We Are</h2><p>This system - SLSU Library Attendance System - is designed and developed by K.A.V exclusively for Southern Luzon State University (SLSU). It is created to simplify and manage library entry and exit records for students, employees, and authorized visitors.</p>
+<h2>2. Exactly What Information We Collect</h2><p>We collect only the specific fields you enter during registration:</p>
+<table><tr><th>Field</th><th>Purpose</th></tr><tr><td>Full Name</td><td>Identification and record-keeping</td></tr><tr><td>ID Type</td><td>Student / Employee / Visitor categorization</td></tr><tr><td>ID Number</td><td>Unique identifier - this becomes your barcode</td></tr><tr><td>Department</td><td>CT, FBT, BSED, BEED, BSFAS, BSBA, EMPLOYEE - for reporting</td></tr><tr><td>Year Level</td><td>Students only - classification and demographic reporting</td></tr><tr><td>Major / Specialization</td><td>BSED, BSBA, BSIT, Com Tech, Food Tech, Bind Tech - program-specific reporting</td></tr><tr><td>Contact Number</td><td>Library-related announcements only</td></tr><tr><td>Complete Address</td><td>Required per university guidelines</td></tr></table>
+<p><strong>Attendance Data (Automatically Recorded Upon Scan)</strong></p><ul><li>Time In - exact date and time you scan your ID upon entry</li><li>Time Out - exact date and time you scan your ID upon exit</li><li>Date of Visit - automatically recorded for daily and monthly reports</li></ul>
+<p><strong>System Data</strong></p><ul><li>Login timestamp and role</li><li>System logs for troubleshooting and security</li><li>We do not collect passwords, photos, biometrics, location data, browsing history, or financial information.</li></ul>
+<h2>3. How We Use Your Information - Specifically</h2><p>Your data is used only to:</p><ul><li>Verify your identity when registering and generating your barcode</li><li>Record Time In and Time Out when you scan at the library entrance or exit</li><li>Generate daily, weekly, and monthly attendance reports accessible only to Library Staff and Administration</li><li>Track library occupancy and usage patterns</li><li>Comply with SLSU record-keeping and auditing requirements</li><li>Contact you through your provided number for library-related announcements only, never marketing</li></ul>
+<p><strong>We will never:</strong></p><ul><li>Sell, rent, or share your data with any third party</li><li>Send commercial advertisements or marketing messages</li><li>Collect or store your photos, biometrics, or passwords</li><li>Make your personal profile publicly searchable</li></ul>
+<h2>4. Data Storage and Security</h2><ul><li><strong>Database:</strong> PostgreSQL hosted on Render / Supabase Cloud - encrypted and password-protected</li><li><strong>Storage Duration:</strong> Attendance records are retained for one academic year per university policy. Personal data is kept while you are officially enrolled or employed at SLSU.</li><li><strong>Backups:</strong> Automatic daily backups are deleted after 30 days</li><li><strong>Security:</strong> All data is transmitted over HTTPS. Only the System Administrator has full database access.</li></ul>
+<h2>5. Who Can See Your Data - Specifically and Exactly</h2><table><tr><th>User Role</th><th>What They Can See and Do</th></tr><tr><td>System Administrator (slsu)</td><td>Full access to all records - manage users, view attendance, generate reports, correct information, and manage system settings</td></tr><tr><td>Library Staff</td><td>Can view all attendance records for daily/monthly reporting. Cannot edit or delete personal information.</td></tr><tr><td>Individual User</td><td>Can access only the Registration Form and Barcode Generation. Cannot view attendance records, history, logs, or reports.</td></tr><tr><td>Public / Visitors</td><td>No access - login is required.</td></tr></table><p>Your personal information and attendance records are never made public, indexed by search engines, or shared outside SLSU.</p>
+<h2>6. Your Exact Rights</h2><ul><li>Register and create your own barcode</li><li>Request correction of incorrect information</li><li>Request data deletion upon graduation, resignation, or separation from SLSU</li><li>Scan your printed barcode for entry and exit without logging in or viewing records</li><li>Opt out and use the manual paper logbook</li><li>Know that your information is protected and never shared or sold</li></ul>
+<h2>7. Data Sharing - Specifically When It Happens</h2><p>We share your data only when required by SLSU Administration for official reports, audits, and library management, or when required by law through a court order or legal mandate. It is never shared with commercial companies, marketing agencies, or external organizations.</p>
+<h2>8. Barcode / ID Number Usage - Specifically</h2><ul><li>Your Student Number or Employee Number is your unique identifier encoded into your barcode</li><li>Scanning reads only your ID number - no personal details, photos, or contact information are read directly from the card</li><li>The system matches the ID number to your database record and automatically logs Time In or Time Out</li><li>No personal information is stored inside the barcode itself - only your unique ID number</li></ul>
+<h2>9. About the Developer</h2><p>This original system was developed by K.A.V for Southern Luzon State University (SLSU). It streamlines library attendance while prioritizing user privacy and data security.</p>
+<h2>10. Changes to This Policy</h2><p>We may update this Privacy Policy as needed. Changes will be posted here with an updated date. Significant changes will be announced through the system login page. Continued use of the system constitutes acceptance of the updated policy.</p>
+<h2>11. Contact Information</h2><p><strong>System:</strong> SLSU Library Attendance System<br><strong>Developed by:</strong> K.A.V<br><strong>Institution:</strong> Southern Luzon State University - Judge Guillermo Eleazar<br><strong>Office:</strong> SLSU Library - SLSU-JGE</p>
+<p><strong>By registering, generating your barcode, and scanning your ID, you confirm that you have read, understood, and agree to this Privacy Policy.</strong></p>
+</main></body></html>"""
+
+@app.route('/privacy')
+def privacy_policy():
+    return render_template_string(PRIVACY_PAGE)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -521,9 +552,11 @@ USER_FRONTEND = """
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;}
         .btn-print{background:#1e6b34;margin-top:16px;}
         .btn-print:hover{background:#175628;}
-        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:20px;border:0;background:#fff;}.btn-print{display:none !important;}}
+        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:30mm;height:12mm;object-fit:fill;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
         .logout-link{display:block;text-align:center;margin-top:22px;color:#64748b;text-decoration:none;font-size:13px;border-top:1px solid #eef0f3;padding-top:18px;}
         .logout-link:hover{color:#1b2a41;}
+        .privacy-link{display:block;text-align:center;margin-top:12px;color:#1b2a41;text-decoration:none;font-size:13px;}
+        .privacy-link:hover{text-decoration:underline;}
         @media(max-width:600px){.form-row{grid-template-columns:1fr;}.card-body{padding:30px 24px;}}
     </style>
 </head>
@@ -606,6 +639,7 @@ USER_FRONTEND = """
                     <button class="btn-print" onclick="window.print()">Print Barcode</button>
                 </div>
                 <a href="/login" class="logout-link">← Back to Sign In</a>
+                <a href="/privacy" class="privacy-link" target="_blank">Privacy Policy</a>
             </div>
         </div>
     </div>
@@ -725,7 +759,10 @@ ADMIN_FRONTEND = """
         .btn-print:hover{background:#175628;}
         .btn-barcode{background:#8a6d1f;color:white;padding:7px 16px;font-size:12px;border-radius:4px;}
         .btn-barcode:hover{background:#6e5718;}
-        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:20px;border:0;background:#fff;}.btn-print{display:none !important;}}
+        .student-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:18px 0 10px;}
+        .student-actions button{margin:0;}
+        .student-check{width:17px;height:17px;vertical-align:middle;}
+        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:30mm;height:12mm;object-fit:fill;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
         .btn-download{background:#8a6d1f;color:white;}
         .btn-download:hover{background:#6e5718;}
         .btn-edit{background:#3a4f75;color:white;padding:7px 16px;font-size:12px;border-radius:4px;}
@@ -756,6 +793,8 @@ ADMIN_FRONTEND = """
         .privacy-policy table{margin:10px 0 20px;}
         .privacy-policy th,.privacy-policy td{vertical-align:top;}
         .policy-meta{color:#64748b;font-size:13px;margin-bottom:24px;}
+        .privacy-frame{width:100%;height:calc(100vh - 170px);min-height:700px;border:1px solid #d8dbe0;background:#eef0f3;}
+        #privacy>.privacy-policy{display:none;}
         @media(max-width:900px){
             .sidebar{width:74px;}
             .sidebar-header .full-title,.sidebar-header p,.menu-item span.label{display:none;}
@@ -906,6 +945,10 @@ ADMIN_FRONTEND = """
                         <button class="dept-tab" id="dept-Visitor" onclick="switchDept('Visitor')">VISITOR</button>
                     </div>
                     <button class="btn-refresh" onclick="loadStudents()">Refresh List</button>
+                    <div class="student-actions">
+                        <label style="text-transform:none;font-size:13px;margin:0;font-weight:600;"><input class="student-check" type="checkbox" id="select-all-students" onchange="toggleAllStudents(this.checked)"> Select All</label>
+                        <button class="btn-barcode" onclick="printSelectedBarcodes()">Print Selected Barcodes</button>
+                    </div>
                     <div id="students-table"></div>
 
                     <div id="edit-form-container" class="edit-form hidden">
@@ -1016,6 +1059,7 @@ ADMIN_FRONTEND = """
                 </div>
                 <!-- ============= PRIVACY POLICY ============= -->
                 <div id="privacy" class="tab-content">
+                    <iframe class="privacy-frame" src="/privacy" title="Privacy Policy"></iframe>
                     <div class="privacy-policy">
                         <h2>Privacy Policy - SLSU Library Attendance System</h2>
                         <p class="policy-meta"><strong>Developed by:</strong> K.A.V<br><strong>Last Updated:</strong> September 13, 2026</p>
@@ -1036,7 +1080,6 @@ ADMIN_FRONTEND = """
                             <tr><td>Major / Specialization</td><td>Program-specific reporting</td></tr>
                             <tr><td>Contact Number</td><td>Emergency or library-related announcements only</td></tr>
                             <tr><td>Complete Address</td><td>Required per university guidelines</td></tr>
-                            <tr><td>Age and Birthday</td><td>For demographic data and age verification</td></tr>
                         </table>
                         <h4>Attendance / Scan Data</h4>
                         <ul>
@@ -1255,9 +1298,10 @@ function filterStudents() {
     if (filtered.length > 0) {
         table.innerHTML = `
             <table>
-                <tr><th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Action</th></tr>
+                <tr><th>Select</th><th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Action</th></tr>
                 ${filtered.map(s => `
                     <tr>
+                        <td><input class='student-check student-row-check' type='checkbox' value='${s.id_number}'></td>
                         <td><strong>${s.id_number}</strong></td>
                         <td>${s.full_name}</td>
                         <td>${s.id_type}</td>
@@ -1271,6 +1315,41 @@ function filterStudents() {
         table.innerHTML = '<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
     }
 }
+function toggleAllStudents(checked) {
+    document.querySelectorAll(".student-row-check").forEach(checkbox => {
+        checkbox.checked = checked;
+    });
+}
+function printSelectedBarcodes() {
+    const selected = Array.from(document.querySelectorAll(".student-row-check:checked"))
+        .map(checkbox => checkbox.value);
+    if (!selected.length) {
+        alert("Please select at least one student.");
+        return;
+    }
+
+    const printWindow = window.open("", "_blank", "width=600,height=800");
+    if (!printWindow) {
+        alert("Please allow pop-ups to print the barcodes.");
+        return;
+    }
+    const barcodeMarkup = selected.map(idNumber => {
+        const barcodeUrl = "/barcode/" + encodeURIComponent(idNumber);
+        return `<section class="barcode-item"><div>Student Number: ${idNumber}</div><img src="${barcodeUrl}"></section>`;
+    }).join("");
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Selected Student Barcodes</title><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}.barcode-item{display:inline-block;vertical-align:top;width:45mm;margin:3mm 4mm;font-size:10pt;}.barcode-item img{width:30mm;height:12mm;object-fit:fill;margin:3mm auto;display:block;}@media print{.barcode-item{break-inside:avoid;}}</style></head><body>${barcodeMarkup}</body></html>`);
+    printWindow.document.close();
+    const images = printWindow.document.images;
+    let loaded = 0;
+    const printWhenReady = () => {
+        loaded += 1;
+        if (loaded === images.length) printWindow.print();
+    };
+    Array.from(images).forEach(image => {
+        image.onload = printWhenReady;
+        image.onerror = printWhenReady;
+    });
+}
 function printStudentBarcode(idNumber) {
     const printWindow = window.open("", "_blank", "width=500,height=400");
     if (!printWindow) {
@@ -1278,7 +1357,7 @@ function printStudentBarcode(idNumber) {
         return;
     }
     const barcodeUrl = "/barcode/" + encodeURIComponent(idNumber);
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Barcode - ${idNumber}</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:24px;}img{max-width:360px;margin:18px auto;display:block;}h2{font-size:20px;}</style></head><body><h2>Student Number: ${idNumber}</h2><img src="${barcodeUrl}" onload="window.print()"></body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Barcode - ${idNumber}</title><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}img{width:30mm;height:12mm;object-fit:fill;margin:3mm auto;display:block;}h2{font-size:10pt;margin:0;}</style></head><body><h2>Student Number: ${idNumber}</h2><img src="${barcodeUrl}" onload="window.print()"></body></html>`);
     printWindow.document.close();
 }
 function editStudent(id) {
