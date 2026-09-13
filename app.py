@@ -1030,7 +1030,7 @@ ADMIN_FRONTEND = """
                                     <label>Department</label>
                                     <select id="edit-dept" name="department">
                                         <option value="">-- Select --</option>
-                                        <option value="CT">BSIT / Computer Technology</option>
+                                        <option value="CT">BSIT</option>
                                         <option value="BSED">BSED</option>
                                         <option value="BEED">BEED</option>
                                         <option value="BSFAS">BSFAS</option>
