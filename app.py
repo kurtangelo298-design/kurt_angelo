@@ -380,7 +380,8 @@ def get_records():
     c = conn.cursor()
     c.execute("""SELECT a.scan_date, u.full_name, u.department, a.time_in, a.time_out
         FROM attendance a JOIN users u ON a.user_id = u.id
-        ORDER BY a.scan_date DESC, a.id DESC LIMIT 100""")
+        WHERE a.scan_date = %s
+        ORDER BY a.id DESC""", (get_ph_date(),))
     records = [{"scan_date": r[0], "full_name": r[1], "department": r[2], "time_in": r[3], "time_out": r[4]} for r in c.fetchall()]
     conn.close()
     return jsonify({"records": records})
@@ -390,14 +391,20 @@ def get_monthly_history():
     if not is_logged_in():
         return jsonify({"records": []})
     month = request.args.get('month', '').strip()
+    selected_date = request.args.get('date', '').strip()
     conn = get_db()
     if not conn:
         return jsonify({"records": []})
     c = conn.cursor()
-    c.execute("""SELECT a.scan_date, u.full_name, u.id_number, a.time_in, a.time_out
+    query = """SELECT a.scan_date, u.full_name, u.id_number, a.time_in, a.time_out
         FROM attendance a JOIN users u ON a.user_id = u.id
-        WHERE a.scan_date LIKE %s
-        ORDER BY a.scan_date DESC, a.id DESC""", (f"{month}%",))
+        WHERE a.scan_date LIKE %s"""
+    params = (f"{month}%",)
+    if selected_date:
+        query += " AND a.scan_date = %s"
+        params = (f"{month}%", selected_date)
+    query += " ORDER BY a.scan_date DESC, a.id DESC"
+    c.execute(query, params)
     records = [{"scan_date": r[0], "full_name": r[1], "id_number": r[2], "time_in": r[3], "time_out": r[4]} for r in c.fetchall()]
     conn.close()
     return jsonify({"records": records})
@@ -521,6 +528,17 @@ d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td>
 html+='</table>';document.body.innerHTML+=html;
 }})</script>
 </body></html>"""
+
+@app.route('/print-daily')
+def print_daily():
+    if not is_logged_in():
+        return "<script>window.location='/login';</script>"
+    selected_date = request.args.get('date', '').strip() or get_ph_date()
+    return f"""
+<!DOCTYPE html><html><head><title>Daily Attendance Report - {selected_date}</title>
+<style>*{{box-sizing:border-box;}}body{{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1100px;margin:0 auto;color:#1f2937;}}h1{{color:#1b2a41;font-family:Georgia,'Times New Roman',serif;}}.meta{{color:#64748b;font-size:13px;}}table{{width:100%;border-collapse:collapse;margin-top:24px;}}th,td{{border:1px solid #d8dbe0;padding:10px 12px;text-align:left;font-size:13px;}}th{{background:#1b2a41;color:#fff;}}tr:nth-child(even){{background:#f7f8fa;}}button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color:white;border:0;border-radius:4px;font-weight:600;margin-bottom:20px;}}@media print{{button{{display:none;}}body{{padding:0;}}}}</style>
+</head><body><button onclick="window.print()">Print Daily Report</button><h1>Daily Attendance Report - {selected_date}</h1><p class="meta">SLSU-JGE Library Attendance System</p>
+<script>fetch('/get-monthly-history?month={selected_date[:7]}&date={selected_date}').then(r=>r.json()).then(d=>{{let html='<table><tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>';d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.id_number+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');html+='</table>';document.body.innerHTML+=html;}})</script></body></html>"""
 
 USER_FRONTEND = """
 <!DOCTYPE html>
@@ -1027,9 +1045,9 @@ ADMIN_FRONTEND = """
                 </div>
                 <!-- ============= MONTHLY HISTORY ============= -->
                 <div id="history" class="tab-content">
-                    <h2>Monthly Attendance History</h2>
+                    <h2>Attendance History</h2>
                     <div class="month-filter">
-                        <label style="margin-bottom:0;">Select Month:</label>
+                        <label style="margin-bottom:0;">Month:</label>
                         <select id="month-select" onchange="loadMonthlyHistory()">
                             <option value="2026-01">January 2026</option>
                             <option value="2026-02">February 2026</option>
@@ -1044,9 +1062,12 @@ ADMIN_FRONTEND = """
                             <option value="2026-11">November 2026</option>
                             <option value="2026-12">December 2026</option>
                         </select>
-                        <button class="btn-month-print" onclick="printMonthlyReport()">Print Monthly Report</button>
+                        <label style="margin-bottom:0;">Specific day:</label>
+                        <input type="date" id="history-date" onchange="loadMonthlyHistory()">
+                        <button class="btn-month-print" onclick="printSelectedHistory()">Print Selected</button>
                         <button class="btn-download" onclick="downloadMonthlyReport()">Download Word</button>
                     </div>
+                    <p style="font-size:13px;color:#64748b;margin:8px 0 18px;">Choose a month to view monthly records, or choose a specific date to view that day's time in and time out.</p>
                     <button class="btn-refresh" onclick="loadMonthlyHistory()">Load Records</button>
                     <div id="history-table"></div>
                 </div>
@@ -1412,8 +1433,13 @@ function loadRecords() {
         .catch(err => alert("Load Error: " + err));
 }
 function loadMonthlyHistory() {
-    const month = document.getElementById("month-select").value;
-    fetch("/get-monthly-history?month=" + month)
+    const monthSelect = document.getElementById("month-select");
+    const dateInput = document.getElementById("history-date");
+    const selectedDate = dateInput.value;
+    const month = selectedDate ? selectedDate.slice(0, 7) : monthSelect.value;
+    if (selectedDate) monthSelect.value = month;
+    const dateQuery = selectedDate ? "&date=" + encodeURIComponent(selectedDate) : "";
+    fetch("/get-monthly-history?month=" + month + dateQuery)
         .then(res => res.json())
         .then(data => {
             const records = data.records || [];
@@ -1421,7 +1447,7 @@ function loadMonthlyHistory() {
 
             if (records.length > 0) {
                 table.innerHTML = `
-                    <h3 style='margin:18px 0;font-size:16px;'>Records for ${month}</h3>
+                    <h3 style='margin:18px 0;font-size:16px;'>Records for ${selectedDate || month}</h3>
                     <table>
                         <tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>
                         ${records.map(r => `
@@ -1436,14 +1462,19 @@ function loadMonthlyHistory() {
                     </table>
                 `;
             } else {
-                table.innerHTML = `<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records for ${month}.</p>`;
+                table.innerHTML = `<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records for ${selectedDate || month}.</p>`;
             }
         })
         .catch(err => alert("Load Error: " + err));
 }
-function printMonthlyReport() {
+function printSelectedHistory() {
+    const selectedDate = document.getElementById("history-date").value;
+    if (selectedDate) {
+        window.open("/print-daily?date=" + encodeURIComponent(selectedDate), "_blank");
+        return;
+    }
     const month = document.getElementById("month-select").value;
-    window.open("/print-monthly?month=" + month, "_blank");
+    window.open("/print-monthly?month=" + encodeURIComponent(month), "_blank");
 }
 function downloadMonthlyReport() {
     const month = document.getElementById("month-select").value;
