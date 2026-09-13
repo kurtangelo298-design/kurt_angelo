@@ -1064,7 +1064,8 @@ ADMIN_FRONTEND = """
                         </select>
                         <label style="margin-bottom:0;">Specific day:</label>
                         <input type="date" id="history-date" onchange="loadMonthlyHistory()">
-                        <button class="btn-month-print" onclick="printSelectedHistory()">Print Selected</button>
+                        <button class="btn-month-print" onclick="printDailyReport()">Print Daily</button>
+                        <button class="btn-month-print" onclick="printMonthlyReport()">Print Monthly</button>
                         <button class="btn-download" onclick="downloadMonthlyReport()">Download Word</button>
                     </div>
                     <p style="font-size:13px;color:#64748b;margin:8px 0 18px;">Choose a month to view monthly records, or choose a specific date to view that day's time in and time out.</p>
@@ -1467,12 +1468,11 @@ function loadMonthlyHistory() {
         })
         .catch(err => alert("Load Error: " + err));
 }
-function printSelectedHistory() {
-    const selectedDate = document.getElementById("history-date").value;
-    if (selectedDate) {
-        window.open("/print-daily?date=" + encodeURIComponent(selectedDate), "_blank");
-        return;
-    }
+function printDailyReport() {
+    const selectedDate = document.getElementById("history-date").value || new Date().toISOString().slice(0, 10);
+    window.open("/print-daily?date=" + encodeURIComponent(selectedDate), "_blank");
+}
+function printMonthlyReport() {
     const month = document.getElementById("month-select").value;
     window.open("/print-monthly?month=" + encodeURIComponent(month), "_blank");
 }
