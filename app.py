@@ -329,8 +329,11 @@ def get_students():
     if not conn:
         return jsonify({"students": []})
     c = conn.cursor()
-    c.execute("SELECT id, id_type, full_name, department, id_number FROM users ORDER BY full_name")
-    students = [{"id": r[0], "id_type": r[1], "full_name": r[2], "department": r[3], "id_number": r[4]} for r in c.fetchall()]
+    c.execute("""SELECT id, id_type, full_name, department, major, contact_number,
+        address, year_level, id_number FROM users ORDER BY full_name""")
+    students = [{"id": r[0], "id_type": r[1], "full_name": r[2], "department": r[3],
+                 "major": r[4], "contact_number": r[5], "address": r[6],
+                 "year_level": r[7], "id_number": r[8]} for r in c.fetchall()]
     conn.close()
     return jsonify({"students": students})
 
@@ -570,6 +573,8 @@ USER_FRONTEND = """
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;}
         .btn-print{background:#1e6b34;margin-top:16px;}
         .btn-print:hover{background:#175628;}
+        .btn-download-barcode{background:#8a6d1f;margin-top:16px;}
+        .btn-download-barcode:hover{background:#6e5718;}
         @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:30mm;height:12mm;object-fit:fill;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
         .logout-link{display:block;text-align:center;margin-top:22px;color:#64748b;text-decoration:none;font-size:13px;border-top:1px solid #eef0f3;padding-top:18px;}
         .logout-link:hover{color:#1b2a41;}
@@ -655,6 +660,7 @@ USER_FRONTEND = """
                     <p id="barcode-id" class="barcode-id"></p>
                     <img id="barcode-img" class="barcode-img"><br>
                     <button class="btn-print" onclick="window.print()">Print Barcode</button>
+                    <button class="btn-download-barcode" onclick="downloadUserBarcode()">Download Barcode</button>
                 </div>
                 <a href="/login" class="logout-link">← Back to Sign In</a>
                 <a href="/privacy" class="privacy-link" target="_blank">Privacy Policy</a>
@@ -708,6 +714,18 @@ document.addEventListener("DOMContentLoaded",function(){
         .catch(err=>alert("Error: "+err));
     });
 });
+function downloadUserBarcode() {
+    const barcodeImage = document.getElementById("barcode-img");
+    const idNumber = document.getElementById("barcode-id").textContent.replace("Student Number: ", "").trim();
+    if (!barcodeImage.src || !idNumber) return;
+
+    const link = document.createElement("a");
+    link.href = barcodeImage.src;
+    link.download = "barcode_" + idNumber + ".png";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
 </script>
 </body>
 </html>
@@ -789,7 +807,14 @@ ADMIN_FRONTEND = """
         .btn-save:hover{background:#175628;}
         .btn-cancel{background:#5b6472;}
         .btn-cancel:hover{background:#464d59;}
-        .edit-form{background:#f7f8fa;padding:24px;border-radius:6px;margin-top:20px;border:1px solid #d8dbe0;}
+        .edit-form{background:#f7f8fa;padding:24px;border-radius:6px;border:1px solid #d8dbe0;}
+        .edit-modal{position:fixed;inset:0;background:rgba(15,25,43,.58);display:flex;align-items:center;justify-content:center;padding:20px;z-index:100;}
+        .edit-modal.hidden{display:none;}
+        .edit-dialog{background:#fff;width:100%;max-width:760px;max-height:90vh;overflow-y:auto;border-radius:6px;box-shadow:0 12px 40px rgba(15,25,43,.3);padding:28px;}
+        .edit-dialog-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;border-bottom:1px solid #eef0f3;padding-bottom:14px;}
+        .edit-dialog-header h3{margin:0;}
+        .edit-close{background:#5b6472;padding:7px 12px;margin:0;font-size:18px;line-height:1;}
+        .edit-close:hover{background:#464d59;}
         .hidden{display:none !important;}
         .dept-tabs{display:flex;gap:8px;margin:18px 0;flex-wrap:wrap;}
         .dept-tab{padding:9px 16px;background:#f1f3f6;color:#374151;border:1px solid #d8dbe0;border-radius:4px;cursor:pointer;font-weight:600;transition:all 0.2s;font-size:13px;}
@@ -944,6 +969,7 @@ ADMIN_FRONTEND = """
                         <p id="barcode-id" class="barcode-id"></p>
                         <img id="barcode-img" class="barcode-img"><br><br>
                         <button class="btn-print" onclick="window.print()">Print Barcode</button>
+                        <button class="btn-download" onclick="downloadRegisteredBarcode()">Download Barcode</button>
                     </div>
                 </div>
                 <!-- ============= STUDENTS LIST ============= -->
@@ -964,14 +990,22 @@ ADMIN_FRONTEND = """
                     </div>
                     <button class="btn-refresh" onclick="loadStudents()">Refresh List</button>
                     <div class="student-actions">
-                        <label style="text-transform:none;font-size:13px;margin:0;font-weight:600;"><input class="student-check" type="checkbox" id="select-all-students" onchange="toggleAllStudents(this.checked)"> Select All</label>
-                        <button class="btn-barcode" onclick="printSelectedBarcodes()">Print Selected Barcodes</button>
+                        <button class="btn-barcode" id="choose-barcode-btn" onclick="enableBarcodeSelection()">Choose Barcodes to Print</button>
+                        <div id="barcode-selection-actions" class="hidden">
+                            <label style="text-transform:none;font-size:13px;margin:0;font-weight:600;"><input class="student-check" type="checkbox" id="select-all-students" onchange="toggleAllStudents(this.checked)"> Select All</label>
+                            <button class="btn-barcode" onclick="printSelectedBarcodes()">Print Selected</button>
+                            <button class="btn-cancel" onclick="disableBarcodeSelection()">Cancel</button>
+                        </div>
                     </div>
                     <div id="students-table"></div>
 
-                    <div id="edit-form-container" class="edit-form hidden">
-                        <h3>Edit User Information</h3>
-                        <form id="edit-form">
+                    <div id="edit-form-container" class="edit-modal hidden" onclick="if(event.target === this) hideEditForm()">
+                        <div class="edit-dialog">
+                            <div class="edit-dialog-header">
+                                <h3>Edit User Information</h3>
+                                <button type="button" class="edit-close" onclick="hideEditForm()" aria-label="Close">&times;</button>
+                            </div>
+                            <form id="edit-form">
                             <input type="hidden" id="edit-id" name="id">
                             <div class="form-row">
                                 <div class="form-group">
@@ -1034,7 +1068,8 @@ ADMIN_FRONTEND = """
                             </div>
                             <button type="submit" class="btn-save">Save Changes</button>
                             <button type="button" class="btn-cancel" onclick="hideEditForm()">Cancel</button>
-                        </form>
+                            </form>
+                        </div>
                     </div>
                 </div>
                 <!-- ============= DAILY RECORDS ============= -->
@@ -1210,6 +1245,7 @@ const PAGE_TITLES = {
 let editingStudentId = null;
 let currentDept = "ALL";
 let allStudents = [];
+let barcodeSelectionMode = false;
 function toggleSidebar() {
     const sidebar = document.getElementById("sidebar");
     sidebar.classList.toggle("collapsed");
@@ -1320,10 +1356,10 @@ function filterStudents() {
     if (filtered.length > 0) {
         table.innerHTML = `
             <table>
-                <tr><th>Select</th><th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Action</th></tr>
+                <tr>${barcodeSelectionMode ? "<th>Select</th>" : ""}<th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Action</th></tr>
                 ${filtered.map(s => `
                     <tr>
-                        <td><input class='student-check student-row-check' type='checkbox' value='${s.id_number}'></td>
+                        ${barcodeSelectionMode ? `<td><input class='student-check student-row-check' type='checkbox' value='${s.id_number}'></td>` : ""}
                         <td><strong>${s.id_number}</strong></td>
                         <td>${s.full_name}</td>
                         <td>${s.id_type}</td>
@@ -1336,6 +1372,19 @@ function filterStudents() {
     } else {
         table.innerHTML = '<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
     }
+}
+function enableBarcodeSelection() {
+    barcodeSelectionMode = true;
+    document.getElementById("choose-barcode-btn").classList.add("hidden");
+    document.getElementById("barcode-selection-actions").classList.remove("hidden");
+    document.getElementById("select-all-students").checked = false;
+    filterStudents();
+}
+function disableBarcodeSelection() {
+    barcodeSelectionMode = false;
+    document.getElementById("choose-barcode-btn").classList.remove("hidden");
+    document.getElementById("barcode-selection-actions").classList.add("hidden");
+    filterStudents();
 }
 function toggleAllStudents(checked) {
     document.querySelectorAll(".student-row-check").forEach(checkbox => {
@@ -1398,7 +1447,7 @@ function editStudent(id) {
     document.getElementById("edit-address").value = student.address || "";
 
     document.getElementById("edit-form-container").classList.remove("hidden");
-    document.getElementById("edit-form-container").scrollIntoView({ behavior: "smooth" });
+    document.getElementById("edit-fullname").focus();
 }
 function hideEditForm() {
     document.getElementById("edit-form-container").classList.add("hidden");
@@ -1479,6 +1528,18 @@ function printMonthlyReport() {
 function downloadMonthlyReport() {
     const month = document.getElementById("month-select").value;
     window.location.href = "/download-monthly-word?month=" + month;
+}
+function downloadRegisteredBarcode() {
+    const barcodeImage = document.getElementById("barcode-img");
+    const idNumber = document.getElementById("barcode-id").textContent.replace("Student Number: ", "").trim();
+    if (!barcodeImage.src || !idNumber) return;
+
+    const link = document.createElement("a");
+    link.href = barcodeImage.src;
+    link.download = "barcode_" + idNumber + ".png";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
 }
 document.addEventListener("DOMContentLoaded", function() {
     const scanInput = document.getElementById("scan-input");
