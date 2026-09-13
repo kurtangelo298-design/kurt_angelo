@@ -39,10 +39,7 @@ def init_db():
         return
     c = conn.cursor()
 
-    c.execute("DROP TABLE IF EXISTS attendance;")
-    c.execute("DROP TABLE IF EXISTS users;")
-
-    c.execute("""CREATE TABLE users (
+    c.execute("""CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         id_type TEXT NOT NULL,
         full_name TEXT NOT NULL,
@@ -55,7 +52,7 @@ def init_db():
         registered_at TEXT NOT NULL
     )""")
 
-    c.execute("""CREATE TABLE attendance (
+    c.execute("""CREATE TABLE IF NOT EXISTS attendance (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id),
         time_in TEXT,
@@ -110,8 +107,9 @@ def login():
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
-        body{background:#eef0f3;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;}
-        .card{background:#ffffff;padding:0;border-radius:6px;border:1px solid #d8dbe0;box-shadow:0 2px 12px rgba(15,25,43,0.08);width:100%;max-width:440px;overflow:hidden;}
+        body{background:#172236 url('/static/jge.jpg') center/cover no-repeat fixed;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;position:relative;}
+        body:before{content:"";position:fixed;inset:0;background:rgba(10,20,35,.58);z-index:0;}
+        .card{position:relative;z-index:1;background:rgba(255,255,255,.97);padding:0;border-radius:6px;border:1px solid #d8dbe0;box-shadow:0 8px 30px rgba(0,0,0,0.25);width:100%;max-width:440px;overflow:hidden;}
         .card-top{height:5px;background:#1b2a41;}
         .card-body{padding:44px 40px;}
         h1{text-align:center;color:#1b2a41;margin-bottom:10px;font-size:22px;font-weight:700;font-family:Georgia,'Times New Roman',serif;}
@@ -142,8 +140,9 @@ def login():
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
-        body{background:#eef0f3;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;}
-        .card{background:#ffffff;padding:0;border-radius:6px;border:1px solid #d8dbe0;box-shadow:0 2px 12px rgba(15,25,43,0.08);width:100%;max-width:440px;overflow:hidden;}
+        body{background:#172236 url('/static/jge.jpg') center/cover no-repeat fixed;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;position:relative;}
+        body:before{content:"";position:fixed;inset:0;background:rgba(10,20,35,.58);z-index:0;}
+        .card{position:relative;z-index:1;background:rgba(255,255,255,.97);padding:0;border-radius:6px;border:1px solid #d8dbe0;box-shadow:0 8px 30px rgba(0,0,0,0.25);width:100%;max-width:440px;overflow:hidden;}
         .card-top{height:5px;background:#1b2a41;}
         .card-body{padding:44px 40px;}
         .brand-mark{width:56px;height:56px;margin:0 auto 18px auto;background:#1b2a41;color:#e8c766;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:13px;letter-spacing:.5px;}
@@ -176,7 +175,6 @@ def login():
                 </div>
                 <button type="submit">Sign In</button>
             </form>
-            <p class="hint">Administrator: slsu / jge<br>Staff User: jge / slsu</p>
         </div>
     </div>
 </body>
@@ -336,10 +334,10 @@ def get_records():
     if not conn:
         return jsonify({"records": []})
     c = conn.cursor()
-    c.execute("""SELECT a.scan_date, u.full_name, u.id_number, a.time_in, a.time_out
+    c.execute("""SELECT a.scan_date, u.full_name, u.department, a.time_in, a.time_out
         FROM attendance a JOIN users u ON a.user_id = u.id
         ORDER BY a.scan_date DESC, a.id DESC LIMIT 100""")
-    records = [{"scan_date": r[0], "full_name": r[1], "id_number": r[2], "time_in": r[3], "time_out": r[4]} for r in c.fetchall()]
+    records = [{"scan_date": r[0], "full_name": r[1], "department": r[2], "time_in": r[3], "time_out": r[4]} for r in c.fetchall()]
     conn.close()
     return jsonify({"records": records})
 
@@ -549,11 +547,20 @@ USER_FRONTEND = """
                                 <option value="CT">BSIT</option>
                                 <option value="BSED">BSED</option>
                                 <option value="BEED">BEED</option>
-                                <option value="BSFI">BSFI</option>
+                                <option value="BSFAS">BSFAS</option>
                                 <option value="BSBA">BSBA</option>
+                                <option value="BPA">BPA</option>
                                 <option value="EMPLOYEE">EMPLOYEE</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label>Major / Specialization</label>
+                            <select name="major" id="major-select">
+                                <option value="">-- Select Department First --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
                         <div class="form-group">
                             <label>Year Level</label>
                             <select name="year_level" id="year-select">
@@ -590,6 +597,31 @@ USER_FRONTEND = """
 <script>
 document.addEventListener("DOMContentLoaded",function(){
     const form = document.getElementById("register-form");
+    const majors = {
+        "BSBA": ["Marketing Management", "Financial Management"],
+        "BSED": ["English", "Mathematics", "Science"],
+        "CT": ["Computer Technology", "Food Technology", "BINDTECH", "CULINARY"],
+    };
+    const departmentSelect = document.getElementById("dept-select");
+    const majorSelect = document.getElementById("major-select");
+    const yearSelect = document.getElementById("year-select");
+
+    departmentSelect.addEventListener("change", function(){
+        const department = departmentSelect.value;
+        majorSelect.innerHTML = '<option value="">-- Select Major --</option>';
+        (majors[department] || []).forEach(function(major){
+            const option = document.createElement("option");
+            option.value = major;
+            option.textContent = major;
+            majorSelect.appendChild(option);
+        });
+        const notApplicable = department === "EMPLOYEE" || department === "BPA" || department === "";
+        majorSelect.disabled = notApplicable;
+        yearSelect.disabled = false;
+    });
+
+    majorSelect.disabled = true;
+
     form.addEventListener("submit",function(e){
         e.preventDefault();
         const formData = new FormData(form);
@@ -695,6 +727,16 @@ ADMIN_FRONTEND = """
         .month-filter select{max-width:200px;}
         .btn-month-print{background:#5b3a75;color:white;}
         .btn-month-print:hover{background:#452b59;}
+        .privacy-policy{color:#374151;line-height:1.65;font-size:14px;max-width:980px;}
+        .privacy-policy h2{margin-top:0;}
+        .privacy-policy h3{margin:26px 0 8px;font-size:16px;}
+        .privacy-policy h4{margin:18px 0 6px;color:#1b2a41;}
+        .privacy-policy p{margin:8px 0 14px;}
+        .privacy-policy ul{margin:8px 0 18px 22px;}
+        .privacy-policy li{margin:5px 0;}
+        .privacy-policy table{margin:10px 0 20px;}
+        .privacy-policy th,.privacy-policy td{vertical-align:top;}
+        .policy-meta{color:#64748b;font-size:13px;margin-bottom:24px;}
         @media(max-width:900px){
             .sidebar{width:74px;}
             .sidebar-header .full-title,.sidebar-header p,.menu-item span.label{display:none;}
@@ -732,6 +774,9 @@ ADMIN_FRONTEND = """
                 </div>
                 <div class="menu-item" onclick="showContent('export')">
                     <span class="badge">06</span> <span class="label">Export Reports</span>
+                </div>
+                <div class="menu-item" onclick="showContent('privacy')">
+                    <span class="badge">07</span> <span class="label">Privacy Policy</span>
                 </div>
             </div>
             <div class="sidebar-footer">
@@ -778,10 +823,10 @@ ADMIN_FRONTEND = """
                                 <label>Department</label>
                                 <select name="department" id="dept-select">
                                     <option value="">-- Select Department --</option>
-                                    <option value="CT">BSIT / Computer Technology</option>
+                                    <option value="CT">BSIT</option>
                                     <option value="BSED">BSED</option>
                                     <option value="BEED">BEED</option>
-                                    <option value="BSFI">BSFI / BSAF</option>
+                                    <option value="BSFAS">BSFAS</option>
                                     <option value="BSBA">BSBA</option>
                                     <option value="BPA">BPA</option>
                                     <option value="EMPLOYEE">EMPLOYEE</option>
@@ -836,7 +881,7 @@ ADMIN_FRONTEND = """
                         <button class="dept-tab" id="dept-CT" onclick="switchDept('CT')">CT</button>
                         <button class="dept-tab" id="dept-BSED" onclick="switchDept('BSED')">BSED</button>
                         <button class="dept-tab" id="dept-BEED" onclick="switchDept('BEED')">BEED</button>
-                        <button class="dept-tab" id="dept-BSFI" onclick="switchDept('BSFI')">BSFI</button>
+                        <button class="dept-tab" id="dept-BSFAS" onclick="switchDept('BSFAS')">BSFAS</button>
                         <button class="dept-tab" id="dept-BSBA" onclick="switchDept('BSBA')">BSBA</button>
                         <button class="dept-tab" id="dept-EMPLOYEE" onclick="switchDept('EMPLOYEE')">EMPLOYEE</button>
                         <button class="dept-tab" id="dept-Visitor" onclick="switchDept('Visitor')">VISITOR</button>
@@ -874,7 +919,7 @@ ADMIN_FRONTEND = """
                                         <option value="CT">BSIT / Computer Technology</option>
                                         <option value="BSED">BSED</option>
                                         <option value="BEED">BEED</option>
-                                        <option value="BSFI">BSFI / BSAF</option>
+                                        <option value="BSFAS">BSFAS</option>
                                         <option value="BSBA">BSBA</option>
                                         <option value="BPA">BPA</option>
                                         <option value="EMPLOYEE">EMPLOYEE</option>
@@ -950,6 +995,116 @@ ADMIN_FRONTEND = """
                     <button class="btn-download" onclick="window.location.href='/download-word'">Download Today's Report</button><br><br>
                     <button class="btn-print" onclick="window.print()">Print Page</button>
                 </div>
+                <!-- ============= PRIVACY POLICY ============= -->
+                <div id="privacy" class="tab-content">
+                    <div class="privacy-policy">
+                        <h2>Privacy Policy - SLSU Library Attendance System</h2>
+                        <p class="policy-meta"><strong>Developed by:</strong> K.A.V<br><strong>Last Updated:</strong> September 13, 2026</p>
+
+                        <h3>1. Who We Are</h3>
+                        <p>This system - SLSU Library Attendance System - is designed and developed by K.A.V exclusively for Southern Luzon State University (SLSU). It is created to simplify and manage the library entry and exit records for students, employees, and authorized visitors of the university.</p>
+
+                        <h3>2. Exactly What Information We Collect</h3>
+                        <p>We collect only the specific fields you enter during registration and scan:</p>
+                        <h4>Registration Data</h4>
+                        <table>
+                            <tr><th>Field</th><th>Purpose</th></tr>
+                            <tr><td>Full Name</td><td>Identification and record-keeping</td></tr>
+                            <tr><td>ID Type</td><td>Student / Employee / Visitor - to categorize users</td></tr>
+                            <tr><td>ID Number</td><td>Unique identifier - this becomes your barcode/QR code</td></tr>
+                            <tr><td>Department</td><td>CT, FBT, BSED, BEED, BSFAS, BSBA, BPA, EMPLOYEE - for reporting</td></tr>
+                            <tr><td>Year Level</td><td>Students-only classification and demographic reporting</td></tr>
+                            <tr><td>Major / Specialization</td><td>Program-specific reporting</td></tr>
+                            <tr><td>Contact Number</td><td>Emergency or library-related announcements only</td></tr>
+                            <tr><td>Complete Address</td><td>Required per university guidelines</td></tr>
+                            <tr><td>Age and Birthday</td><td>For demographic data and age verification</td></tr>
+                        </table>
+                        <h4>Attendance / Scan Data</h4>
+                        <ul>
+                            <li>Time In - exact date and time you scan your ID upon entry</li>
+                            <li>Time Out - exact date and time you scan your ID upon exit</li>
+                            <li>Date of Visit - automatically recorded for daily and monthly reports</li>
+                            <li>Scan Source - barcode/QR code scan log for audit purposes</li>
+                        </ul>
+                        <h4>System Data (Automatically Collected)</h4>
+                        <ul>
+                            <li>Login timestamp and role (Admin / User)</li>
+                            <li>System logs for troubleshooting and security</li>
+                            <li>We do not collect passwords, credit card information, location data, camera images, browsing history, or social media accounts.</li>
+                        </ul>
+
+                        <h3>3. How We Use Your Information - Specifically</h3>
+                        <p>Your data is used only for these exact purposes:</p>
+                        <ul>
+                            <li>Record your Time In and Time Out every time you enter or exit the library</li>
+                            <li>Generate daily, weekly, and monthly attendance reports by department, year level, or ID type</li>
+                            <li>Track how many times you have visited the library within a month</li>
+                            <li>Verify your identity when scanning your ID</li>
+                            <li>Monitor library occupancy and usage patterns</li>
+                            <li>Comply with SLSU record-keeping and auditing requirements</li>
+                            <li>Contact you through your provided number only for library-related announcements, never for marketing or promotions</li>
+                        </ul>
+                        <p><strong>We will never:</strong></p>
+                        <ul>
+                            <li>Sell, rent, or share your data with any third party</li>
+                            <li>Send you commercial advertisements or marketing messages</li>
+                            <li>Collect or store your photos, biometrics, or passwords</li>
+                            <li>Make your personal profile publicly searchable</li>
+                        </ul>
+
+                        <h3>4. Where and How Your Data Is Stored</h3>
+                        <ul>
+                            <li><strong>Database:</strong> PostgreSQL database hosted on Render / Supabase Cloud</li>
+                            <li><strong>Storage Duration:</strong> Attendance records are kept for one academic year, then archived or deleted per university policy. Student personal data is retained while you are officially enrolled at SLSU.</li>
+                            <li><strong>Backups:</strong> Automatic daily backups are performed to prevent data loss; backups are deleted after 30 days.</li>
+                            <li><strong>Security:</strong> All data is transmitted over encrypted HTTPS connections. The database is password-protected and accessible only to the System Administrator.</li>
+                        </ul>
+
+                        <h3>5. Who Can See Your Data - Specifically</h3>
+                        <table>
+                            <tr><th>User Role</th><th>What They Can See</th></tr>
+                            <tr><td>System Administrator (slsu)</td><td>Full access to all records - for official library management only</td></tr>
+                            <tr><td>Library Staff / User Role</td><td>Can view attendance records; cannot edit or delete personal information</td></tr>
+                            <tr><td>Individual User</td><td>Can view only their own attendance history; cannot see others' data</td></tr>
+                            <tr><td>Public / Visitors</td><td>Cannot see any data; the system requires login for all access</td></tr>
+                        </table>
+                        <p>Your data is never made public, indexed by search engines, or shared outside SLSU.</p>
+
+                        <h3>6. Your Exact Rights</h3>
+                        <p>You have the right to:</p>
+                        <ul>
+                            <li>View your own record - attendance history, personal information, and visit count</li>
+                            <li>Request correction - ask the Admin to update incorrect details</li>
+                            <li>Request deletion - upon graduation or separation from SLSU, request removal from the active database</li>
+                            <li>Know who accessed your data - ask the Admin for access logs</li>
+                            <li>Opt out - choose not to use the system, though this may limit your entry method to a manual logbook</li>
+                        </ul>
+
+                        <h3>7. Data Sharing - When It Happens</h3>
+                        <ul>
+                            <li>Required by SLSU administration for official university reports and audits</li>
+                            <li>Required by law through a court order or legal mandate</li>
+                            <li>Never to commercial companies, marketing agencies, or external organizations</li>
+                        </ul>
+
+                        <h3>8. Barcode / ID Number Usage</h3>
+                        <ul>
+                            <li>Your Student Number or Employee Number is your unique identifier and is encoded into your barcode/QR code.</li>
+                            <li>Scanning your ID only reads your ID number; it does not read your name, photo, or phone directly from the card.</li>
+                            <li>The system matches that ID number to your database record to log your Time In and Time Out.</li>
+                        </ul>
+
+                        <h3>9. About the Developer</h3>
+                        <p>This system is an original project developed by K.A.V for SLSU. It is built to improve the library's attendance process while respecting user privacy and data security.</p>
+
+                        <h3>10. Changes to This Policy</h3>
+                        <p>If this policy is updated, the new version will be posted here with a new date. Significant changes will be announced through the library system login page.</p>
+
+                        <h3>11. Contact Us</h3>
+                        <p><strong>System:</strong> SLSU Library Attendance System<br><strong>Developed by:</strong> K.A.V<br><strong>Institution:</strong> Southern Luzon State University</p>
+                        <p><strong>By scanning your ID and using this system, you confirm that you have read, understood, and agree to this Privacy Policy.</strong></p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -957,8 +1112,7 @@ ADMIN_FRONTEND = """
 const MAJORS = {
     "BSBA": ["Marketing Management", "Financial Management"],
     "BSED": ["English", "Mathematics", "Science"],
-    "CT": ["Computer Technology", "Food Technology"],
-    "BSFI": ["Food Service Management", "Hospitality Management"],
+    "CT": ["Computer Technology", "Food Technology", "BINDTECH", "CULINARY"],
 };
 const PAGE_TITLES = {
     scan: "Scan / Attendance",
@@ -966,7 +1120,8 @@ const PAGE_TITLES = {
     students: "Registered Users",
     records: "Daily Attendance Records",
     history: "Monthly Attendance History",
-    export: "Export & Print Reports"
+    export: "Export & Print Reports",
+    privacy: "Privacy Policy"
 };
 let editingStudentId = null;
 let currentDept = "ALL";
@@ -985,7 +1140,7 @@ function logout() {
 function showContent(pageId) {
     document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
     document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
-    const menuIndex = ["scan", "register", "students", "records", "history", "export"].indexOf(pageId);
+    const menuIndex = ["scan", "register", "students", "records", "history", "export", "privacy"].indexOf(pageId);
     if (menuIndex !== -1) {
         document.querySelectorAll(".menu-item")[menuIndex].classList.add("active");
     }
@@ -1014,12 +1169,14 @@ function updateMajorOptions(deptSelectId, majorSelectId, yearSelectId) {
 
     majorSelect.innerHTML = '<option value="">-- Select Major --</option>';
 
-    if (dept === "Visitor" || dept === "EMPLOYEE" || !dept) {
-        if (yearSelect) { yearSelect.value = "N/A"; yearSelect.disabled = true; }
+    if (yearSelect) yearSelect.disabled = false;
+
+    if (dept === "Visitor" || dept === "EMPLOYEE" || dept === "BPA" || !dept) {
+        majorSelect.disabled = true;
         return;
     }
 
-    if (yearSelect) yearSelect.disabled = false;
+    majorSelect.disabled = false;
 
     if (MAJORS[dept]) {
         MAJORS[dept].forEach(major => {
@@ -1128,12 +1285,12 @@ function loadRecords() {
             if (records.length > 0) {
                 table.innerHTML = `
                     <table>
-                        <tr><th>Date</th><th>Full Name</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>
+                        <tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>
                         ${records.map(r => `
                             <tr>
                                 <td><strong>${r.scan_date}</strong></td>
                                 <td>${r.full_name}</td>
-                                <td>${r.id_number}</td>
+                                <td>${r.department || "-"}</td>
                                 <td style='color:#1e6b34;font-weight:600;'>${r.time_in || "-"}</td>
                                 <td style='color:#8a1f1f;font-weight:600;'>${r.time_out || "-"}</td>
                             </tr>
