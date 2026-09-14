@@ -1262,6 +1262,9 @@ ADMIN_FRONTEND = """
                         <button class="btn-month-print" onclick="printDailyReport()">Print Daily</button>
                         <button class="btn-month-print" onclick="printMonthlyReport()">Print Monthly</button>
                         <button class="btn-download" onclick="downloadMonthlyReport()">Download Word</button>
+                        <select id="delete-history-date" aria-label="Select day to delete" title="Select day to delete">
+                            <option value="">Select day to delete</option>
+                        </select>
                         <button class="btn-delete-daily" onclick="deleteDailyHistory()">Delete Daily History</button>
                     </div>
                     <p style="font-size:13px;color:#64748b;margin:8px 0 18px;">Choose a month to view monthly records, or choose a specific date to view that day's time in and time out.</p>
@@ -1740,6 +1743,10 @@ function loadMonthlyHistory() {
         .then(res => res.json())
         .then(data => {
             const records = data.records || [];
+            const deleteDateSelect = document.getElementById("delete-history-date");
+            const availableDates = [...new Set(records.map(record => record.scan_date))];
+            deleteDateSelect.innerHTML = '<option value="">Select day to delete</option>' +
+                availableDates.map(date => `<option value="${date}">${date}</option>`).join("");
             const table = document.getElementById("history-table");
 
             if (records.length > 0) {
@@ -1783,9 +1790,9 @@ function downloadMonthlyReport() {
     window.location.href = "/download-monthly-word?month=" + month;
 }
 function deleteDailyHistory() {
-    const selectedDate = document.getElementById("history-date").value;
+    const selectedDate = document.getElementById("delete-history-date").value;
     if (!selectedDate) {
-        alert("Please select a specific date first.");
+        alert("Please select a day to delete first.");
         return;
     }
     if (!confirm(`Delete all attendance records for ${selectedDate}? This cannot be undone.`)) {
