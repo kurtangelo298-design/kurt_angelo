@@ -880,6 +880,9 @@ ADMIN_FRONTEND = """
         .btn-barcode:hover{background:#6e5718;}
         .student-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:18px 0 10px;}
         .student-actions button{margin:0;}
+        .student-actions .btn-barcode,
+        .student-actions .btn-download,
+        .student-actions .btn-delete{width:150px;min-height:38px;padding:9px 12px;}
         .student-check{width:17px;height:17px;vertical-align:middle;}
         @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:30mm;height:12mm;object-fit:fill;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
         .btn-download{background:#8a6d1f;color:white;}
@@ -1464,7 +1467,7 @@ function filterStudents() {
                         <td>${s.full_name}</td>
                         <td>${s.id_type}</td>
                         <td>${s.department || "-"}</td>
-                        <td><button class='btn-barcode' onclick='printStudentBarcode(${JSON.stringify(s.id_number)})'>Print Barcode</button> <button class='btn-download' onclick='downloadStudentBarcode(${JSON.stringify(s.id_number)})'>Download Barcode</button> <button class='btn-edit' onclick='editStudent(${s.id})'>Edit</button></td>
+                        <td><button class='btn-edit' onclick='editStudent(${s.id})'>Edit</button></td>
                     </tr>
                 `).join("")}
             </table>
