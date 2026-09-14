@@ -1488,7 +1488,7 @@ function filterStudents() {
     if (filtered.length > 0) {
         table.innerHTML = `
             <table>
-                <tr>${barcodeSelectionMode ? "<th>Select</th>" : ""}<th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Year Level</th><th>Action</th></tr>
+                <tr>${barcodeSelectionMode ? "<th>Select</th>" : ""}<th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Major</th><th>Action</th></tr>
                 ${filtered.map(s => `
                     <tr>
                         ${barcodeSelectionMode ? `<td><input class='student-check student-row-check' type='checkbox' value='${s.id_number}'></td>` : ""}
@@ -1496,7 +1496,7 @@ function filterStudents() {
                         <td>${s.full_name}</td>
                         <td>${s.id_type}</td>
                         <td>${s.department_display}</td>
-                        <td>${s.year_level || "-"}</td>
+                        <td>${s.major || "-"}</td>
                         <td><button class='btn-edit' onclick='editStudent(${s.id})'>Edit</button></td>
                     </tr>
                 `).join("")}
@@ -1823,3 +1823,4 @@ document.addEventListener("DOMContentLoaded", function() {
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=False)
+
