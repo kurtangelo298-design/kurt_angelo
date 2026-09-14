@@ -569,16 +569,21 @@ def download_monthly_word():
     doc.add_paragraph(f'Generated on: {get_ph_date()} {get_ph_time()}')
     doc.add_paragraph('SLSU–JGE Library Attendance System')
 
-    table = doc.add_table(rows=1, cols=5)
-    table.style = 'Table Grid'
-    hdr = table.rows[0].cells
-    hdr[0].text = 'Date'
-    hdr[1].text = 'Full Name'
-    hdr[2].text = 'Department'
-    hdr[3].text = 'Time In'
-    hdr[4].text = 'Time Out'
-
+    current_date = None
+    table = None
     for rec in records:
+        if rec[4] != current_date:
+            current_date = rec[4]
+            doc.add_heading(current_date, level=2)
+            table = doc.add_table(rows=1, cols=5)
+            table.style = 'Table Grid'
+            hdr = table.rows[0].cells
+            hdr[0].text = 'Date'
+            hdr[1].text = 'Full Name'
+            hdr[2].text = 'Department'
+            hdr[3].text = 'Time In'
+            hdr[4].text = 'Time Out'
+
         row = table.add_row().cells
         row[0].text = rec[4]
         row[1].text = rec[0]
@@ -621,9 +626,17 @@ button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color
 </div>
 <button onclick="window.print()">Print Report</button>
 <script>fetch('/get-monthly-history?month={month}').then(r=>r.json()).then(d=>{{
-let html='<table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';
-d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');
-html+='</table>';document.body.innerHTML+=html;
+const grouped = d.records.reduce((days, record) => {{
+    (days[record.scan_date] ||= []).push(record);
+    return days;
+}}, {{}});
+let html='';
+Object.entries(grouped).forEach(([date, records]) => {{
+    html+='<h2 style="margin-top:28px;">'+date+'</h2><table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';
+    records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');
+    html+='</table>';
+}});
+document.body.innerHTML+=html;
 }})</script>
 </body></html>"""
 
@@ -1699,21 +1712,27 @@ function loadMonthlyHistory() {
             const table = document.getElementById("history-table");
 
             if (records.length > 0) {
-                table.innerHTML = `
-                    <h3 style='margin:18px 0;font-size:16px;'>Records for ${selectedDate || month}</h3>
-                    <table>
-                        <tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>
-                        ${records.map(r => `
-                            <tr>
-                                <td><strong>${r.scan_date}</strong></td>
-                                <td>${r.full_name}</td>
-                                <td>${r.department || "-"}</td>
-                                <td style='color:#1e6b34;font-weight:600;'>${r.time_in || "-"}</td>
-                                <td style='color:#8a1f1f;font-weight:600;'>${r.time_out || "-"}</td>
-                            </tr>
-                        `).join("")}
-                    </table>
-                `;
+                const grouped = records.reduce((days, record) => {
+                    (days[record.scan_date] ||= []).push(record);
+                    return days;
+                }, {});
+                table.innerHTML = Object.entries(grouped).map(([date, dayRecords]) => `
+                    <section class="daily-history-group">
+                        <h3>Records for ${date}</h3>
+                        <table>
+                            <tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>
+                            ${dayRecords.map(r => `
+                                <tr>
+                                    <td><strong>${r.scan_date}</strong></td>
+                                    <td>${r.full_name}</td>
+                                    <td>${r.department || "-"}</td>
+                                    <td style='color:#1e6b34;font-weight:600;'>${r.time_in || "-"}</td>
+                                    <td style='color:#8a1f1f;font-weight:600;'>${r.time_out || "-"}</td>
+                                </tr>
+                            `).join("")}
+                        </table>
+                    </section>
+                `).join("");
             } else {
                 table.innerHTML = `<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records for ${selectedDate || month}.</p>`;
             }
