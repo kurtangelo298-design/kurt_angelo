@@ -161,6 +161,34 @@ def delete_students():
         print(f"DELETE STUDENTS ERROR: {e}")
         return jsonify({"error": "Unable to delete selected students."}), 500
 
+@app.route('/delete-daily-history', methods=['POST'])
+def delete_daily_history():
+    if not is_logged_in() or get_role() != 'admin':
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        payload = request.get_json(silent=True, force=True) or {}
+        selected_date = str(payload.get('date', '')).strip()
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", selected_date):
+            return jsonify({"error": "Please select a valid specific date."}), 400
+
+        conn = get_db()
+        if not conn:
+            return jsonify({"error": "Database connection failed."}), 500
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM attendance WHERE scan_date = %s", (selected_date,))
+            deleted_count = cursor.rowcount
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        return jsonify({"success": True, "deleted_count": deleted_count, "date": selected_date})
+    except Exception as e:
+        print(f"DELETE DAILY HISTORY ERROR: {e}")
+        return jsonify({"error": "Unable to delete daily history."}), 500
+
 def is_logged_in():
     return request.cookies.get('logged_in') == 'true'
 
@@ -929,6 +957,8 @@ ADMIN_FRONTEND = """
         .btn-download:hover{background:#6e5718;}
         .btn-delete{background:#a52b2b;color:white;}
         .btn-delete:hover{background:#7f2020;}
+        .btn-delete-daily{background:#8f2525;color:white;}
+        .btn-delete-daily:hover{background:#6f1c1c;}
         .btn-edit{background:#3a4f75;color:white;padding:7px 16px;font-size:12px;border-radius:4px;}
         .btn-edit:hover{background:#2c3c59;}
         .btn-save{background:#1e6b34;}
@@ -1232,6 +1262,7 @@ ADMIN_FRONTEND = """
                         <button class="btn-month-print" onclick="printDailyReport()">Print Daily</button>
                         <button class="btn-month-print" onclick="printMonthlyReport()">Print Monthly</button>
                         <button class="btn-download" onclick="downloadMonthlyReport()">Download Word</button>
+                        <button class="btn-delete-daily" onclick="deleteDailyHistory()">Delete Daily History</button>
                     </div>
                     <p style="font-size:13px;color:#64748b;margin:8px 0 18px;">Choose a month to view monthly records, or choose a specific date to view that day's time in and time out.</p>
                     <button class="btn-refresh" onclick="loadMonthlyHistory()">Load Records</button>
@@ -1750,6 +1781,29 @@ function printMonthlyReport() {
 function downloadMonthlyReport() {
     const month = document.getElementById("month-select").value;
     window.location.href = "/download-monthly-word?month=" + month;
+}
+function deleteDailyHistory() {
+    const selectedDate = document.getElementById("history-date").value;
+    if (!selectedDate) {
+        alert("Please select a specific date first.");
+        return;
+    }
+    if (!confirm(`Delete all attendance records for ${selectedDate}? This cannot be undone.`)) {
+        return;
+    }
+
+    fetch("/delete-daily-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: selectedDate })
+    })
+        .then(response => response.json().then(data => ({ ok: response.ok, data })))
+        .then(result => {
+            if (!result.ok) throw new Error(result.data.error || "Unable to delete daily history.");
+            alert(`${result.data.deleted_count} record${result.data.deleted_count === 1 ? "" : "s"} deleted for ${result.data.date}.`);
+            loadMonthlyHistory();
+        })
+        .catch(error => alert(error.message));
 }
 function downloadRegisteredBarcode() {
     const barcodeImage = document.getElementById("barcode-img");
