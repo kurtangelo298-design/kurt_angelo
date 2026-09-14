@@ -557,7 +557,7 @@ def download_monthly_word():
     if not conn:
         return "Database error"
     c = conn.cursor()
-    c.execute("""SELECT u.full_name, u.id_number, u.id_type, u.department, u.year_level,
+    c.execute("""SELECT u.full_name, u.id_type, u.department, u.year_level,
         a.scan_date, a.time_in, a.time_out
         FROM attendance a JOIN users u ON a.user_id = u.id
         WHERE a.scan_date LIKE %s ORDER BY a.scan_date, a.id""", (f"{month}%",))
@@ -569,24 +569,22 @@ def download_monthly_word():
     doc.add_paragraph(f'Generated on: {get_ph_date()} {get_ph_time()}')
     doc.add_paragraph('SLSU–JGE Library Attendance System')
 
-    table = doc.add_table(rows=1, cols=6)
+    table = doc.add_table(rows=1, cols=5)
     table.style = 'Table Grid'
     hdr = table.rows[0].cells
     hdr[0].text = 'Date'
     hdr[1].text = 'Full Name'
     hdr[2].text = 'Department'
-    hdr[3].text = 'ID Number'
-    hdr[4].text = 'Time In'
-    hdr[5].text = 'Time Out'
+    hdr[3].text = 'Time In'
+    hdr[4].text = 'Time Out'
 
     for rec in records:
         row = table.add_row().cells
-        row[0].text = rec[5]
+        row[0].text = rec[4]
         row[1].text = rec[0]
-        row[2].text = get_student_code(rec[2], rec[3], rec[4])
-        row[3].text = rec[1]
+        row[2].text = get_student_code(rec[1], rec[2], rec[3])
+        row[3].text = rec[5] or '-'
         row[4].text = rec[6] or '-'
-        row[5].text = rec[7] or '-'
 
     buffer = BytesIO()
     doc.save(buffer)
@@ -623,8 +621,8 @@ button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color
 </div>
 <button onclick="window.print()">Print Report</button>
 <script>fetch('/get-monthly-history?month={month}').then(r=>r.json()).then(d=>{{
-let html='<table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>';
-d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+r.id_number+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');
+let html='<table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';
+d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');
 html+='</table>';document.body.innerHTML+=html;
 }})</script>
 </body></html>"""
@@ -638,7 +636,7 @@ def print_daily():
 <!DOCTYPE html><html><head><title>Daily Attendance Report - {selected_date}</title>
 <style>*{{box-sizing:border-box;}}body{{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1100px;margin:0 auto;color:#1f2937;}}h1{{color:#1b2a41;font-family:Georgia,'Times New Roman',serif;}}.meta{{color:#64748b;font-size:13px;}}table{{width:100%;border-collapse:collapse;margin-top:24px;}}th,td{{border:1px solid #d8dbe0;padding:10px 12px;text-align:left;font-size:13px;}}th{{background:#1b2a41;color:#fff;}}tr:nth-child(even){{background:#f7f8fa;}}button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color:white;border:0;border-radius:4px;font-weight:600;margin-bottom:20px;}}@media print{{button{{display:none;}}body{{padding:0;}}}}</style>
 </head><body><button onclick="window.print()">Print Daily Report</button><h1>Daily Attendance Report - {selected_date}</h1><p class="meta">SLSU-JGE Library Attendance System</p>
-<script>fetch('/get-monthly-history?month={selected_date[:7]}&date={selected_date}').then(r=>r.json()).then(d=>{{let html='<table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>';d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+r.id_number+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');html+='</table>';document.body.innerHTML+=html;}})</script></body></html>"""
+<script>fetch('/get-monthly-history?month={selected_date[:7]}&date={selected_date}').then(r=>r.json()).then(d=>{{let html='<table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');html+='</table>';document.body.innerHTML+=html;}})</script></body></html>"""
 
 USER_FRONTEND = """
 <!DOCTYPE html>
@@ -1704,12 +1702,12 @@ function loadMonthlyHistory() {
                 table.innerHTML = `
                     <h3 style='margin:18px 0;font-size:16px;'>Records for ${selectedDate || month}</h3>
                     <table>
-                        <tr><th>Date</th><th>Full Name</th><th>Department</th><th>ID Number</th><th>Time In</th><th>Time Out</th></tr>
+                        <tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>
                         ${records.map(r => `
                             <tr>
                                 <td><strong>${r.scan_date}</strong></td>
                                 <td>${r.full_name}</td>
-                                <td>${r.id_number}</td>
+                                <td>${r.department || "-"}</td>
                                 <td style='color:#1e6b34;font-weight:600;'>${r.time_in || "-"}</td>
                                 <td style='color:#8a1f1f;font-weight:600;'>${r.time_out || "-"}</td>
                             </tr>
@@ -1823,4 +1821,3 @@ document.addEventListener("DOMContentLoaded", function() {
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=False)
-
