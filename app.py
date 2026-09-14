@@ -198,6 +198,9 @@ def get_role():
 PRIVACY_PAGE = """
 <!DOCTYPE html><html><head>
 <title>Privacy Policy - SLSU Library Attendance System</title>
+<link rel="icon" type="image/png" href="/static/app-icon.png">
+<link rel="apple-touch-icon" href="/static/app-icon.png">
+<meta name="theme-color" content="#006633">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 *{box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#eef0f3;color:#374151;margin:0;padding:24px;line-height:1.65}.policy{max-width:980px;margin:0 auto;background:#fff;border:1px solid #d8dbe0;padding:34px 42px;box-shadow:0 2px 12px rgba(15,25,43,.08)}h1,h2{font-family:Georgia,'Times New Roman',serif;color:#1b2a41}h1{font-size:26px;margin:0 0 6px}h2{font-size:18px;margin:28px 0 8px;border-bottom:1px solid #eef0f3;padding-bottom:8px}p{margin:8px 0 14px}li{margin:5px 0}table{width:100%;border-collapse:collapse;margin:12px 0 20px}th,td{border:1px solid #d8dbe0;padding:10px;text-align:left;vertical-align:top}th{background:#1b2a41;color:#fff}@media(max-width:600px){body{padding:10px}.policy{padding:22px 18px}table{font-size:12px}}
@@ -250,6 +253,9 @@ def login():
 <head>
     <title>Sign In — Library Attendance System</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="/static/app-icon.png">
+    <link rel="apple-touch-icon" href="/static/app-icon.png">
+    <meta name="theme-color" content="#006633">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
         body{background:#172236 url('/static/jge.jpg') center/cover no-repeat fixed;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;position:relative;}
@@ -283,6 +289,9 @@ def login():
 <head>
     <title>Sign In — Library Attendance System</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="/static/app-icon.png">
+    <link rel="apple-touch-icon" href="/static/app-icon.png">
+    <meta name="theme-color" content="#006633">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
         body{background:#172236 url('/static/jge.jpg') center/cover no-repeat fixed;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;position:relative;}
@@ -634,6 +643,9 @@ def print_monthly():
     month = request.args.get('month', '').strip()
     return f"""
 <!DOCTYPE html><html><head><title>Monthly Report — {month}</title>
+<link rel="icon" type="image/png" href="/static/app-icon.png">
+<link rel="apple-touch-icon" href="/static/app-icon.png">
+<meta name="theme-color" content="#006633">
 <style>
 *{{box-sizing:border-box;}}
 body{{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1100px;margin:0 auto;color:#1f2937;}}
@@ -675,6 +687,9 @@ def print_daily():
     selected_date = request.args.get('date', '').strip() or get_ph_date()
     return f"""
 <!DOCTYPE html><html><head><title>Daily Attendance Report - {selected_date}</title>
+<link rel="icon" type="image/png" href="/static/app-icon.png">
+<link rel="apple-touch-icon" href="/static/app-icon.png">
+<meta name="theme-color" content="#006633">
 <style>*{{box-sizing:border-box;}}body{{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1100px;margin:0 auto;color:#1f2937;}}h1{{color:#1b2a41;font-family:Georgia,'Times New Roman',serif;}}.meta{{color:#64748b;font-size:13px;}}table{{width:100%;border-collapse:collapse;margin-top:24px;}}th,td{{border:1px solid #d8dbe0;padding:10px 12px;text-align:left;font-size:13px;}}th{{background:#1b2a41;color:#fff;}}tr:nth-child(even){{background:#f7f8fa;}}button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color:white;border:0;border-radius:4px;font-weight:600;margin-bottom:20px;}}@media print{{button{{display:none;}}body{{padding:0;}}}}</style>
 </head><body><button onclick="window.print()">Print Daily Report</button><h1>Daily Attendance Report - {selected_date}</h1><p class="meta">SLSU-JGE Library Attendance System</p>
 <script>fetch('/get-monthly-history?month={selected_date[:7]}&date={selected_date}').then(r=>r.json()).then(d=>{{let html='<table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');html+='</table>';document.body.innerHTML+=html;}})</script></body></html>"""
@@ -685,6 +700,9 @@ USER_FRONTEND = """
 <head>
     <title>User Registration — SLSU-JGE</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="/static/app-icon.png">
+    <link rel="apple-touch-icon" href="/static/app-icon.png">
+    <meta name="theme-color" content="#006633">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
         body{background:#eef0f3;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:30px;}
@@ -888,6 +906,9 @@ ADMIN_FRONTEND = """
 <head>
     <title>Library Attendance — SLSU-JGE Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="/static/app-icon.png">
+    <link rel="apple-touch-icon" href="/static/app-icon.png">
+    <meta name="theme-color" content="#006633">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
         body{background:#eef0f3;min-height:100vh;}
@@ -1586,7 +1607,7 @@ function printSelectedBarcodes() {
         const barcodeUrl = "/barcode/" + encodeURIComponent(idNumber);
         return `<section class="barcode-item"><div>Student Number: ${idNumber}</div><img src="${barcodeUrl}"></section>`;
     }).join("");
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Selected Student Barcodes</title><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}.barcode-item{display:inline-block;vertical-align:top;width:45mm;margin:3mm 4mm;font-size:10pt;}.barcode-item img{width:30mm;height:12mm;object-fit:fill;margin:3mm auto;display:block;}@media print{.barcode-item{break-inside:avoid;}}</style></head><body>${barcodeMarkup}</body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Selected Student Barcodes</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}.barcode-item{display:inline-block;vertical-align:top;width:45mm;margin:3mm 4mm;font-size:10pt;}.barcode-item img{width:30mm;height:12mm;object-fit:fill;margin:3mm auto;display:block;}@media print{.barcode-item{break-inside:avoid;}}</style></head><body>${barcodeMarkup}</body></html>`);
     printWindow.document.close();
     const images = printWindow.document.images;
     let loaded = 0;
@@ -1660,7 +1681,7 @@ function printStudentBarcode(idNumber) {
         return;
     }
     const barcodeUrl = "/barcode/" + encodeURIComponent(idNumber);
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Barcode - ${idNumber}</title><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}img{width:30mm;height:12mm;object-fit:fill;margin:3mm auto;display:block;}h2{font-size:10pt;margin:0;}</style></head><body><h2>Student Number: ${idNumber}</h2><img src="${barcodeUrl}" onload="window.print()"></body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Barcode - ${idNumber}</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}img{width:30mm;height:12mm;object-fit:fill;margin:3mm auto;display:block;}h2{font-size:10pt;margin:0;}</style></head><body><h2>Student Number: ${idNumber}</h2><img src="${barcodeUrl}" onload="window.print()"></body></html>`);
     printWindow.document.close();
 }
 function downloadStudentBarcode(idNumber) {
