@@ -12,10 +12,10 @@ app = Flask(__name__)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-ADMIN_USER = "slsu"
-ADMIN_PASS = "jge"
-USER_USER = "jge"
-USER_PASS = "slsu"
+ADMIN_USER = "library"
+ADMIN_PASS = "slsu"
+USER_USER = "slsu"
+USER_PASS = "library"
 
 def get_db():
     try:
@@ -287,14 +287,20 @@ def register():
         full_name = request.form.get('full_name', '').strip()
         department = request.form.get('department', '').strip() or None
         major = request.form.get('major', '').strip() or None
-        contact_number = request.form.get('contact_number', '').strip() or None
-        address = request.form.get('address', '').strip() or None
+        contact_number = request.form.get('contact_number', '').strip()
+        address = request.form.get('address', '').strip()
         year_level = request.form.get('year_level', '').strip() or None
         id_number = request.form.get('id_number', '').strip().upper()
         registered_at = get_ph_date() + " " + get_ph_time()
 
-        if not id_type or not full_name or not id_number:
-            return jsonify({"success": False, "error": "Please complete all required fields."}), 400
+        if id_type not in {"Student", "Employee", "Visitor"}:
+            return jsonify({"success": False, "error": "Please select a valid ID type."}), 400
+        if not full_name or not id_number or not contact_number or not address:
+            return jsonify({"success": False, "error": "Full name, ID number, contact number, and address are required."}), 400
+        if id_type in {"Employee", "Visitor"}:
+            department = None
+            major = None
+            year_level = None
 
         conn = get_db()
         if not conn:
@@ -352,8 +358,14 @@ def update_student():
         address = request.form.get('address', '').strip() or None
         year_level = request.form.get('year_level', '').strip() or None
 
-        if not all([student_id, id_type, id_number, full_name]):
-            return jsonify({"success": False, "error": "Missing required fields."}), 400
+        if id_type not in {"Student", "Employee", "Visitor"}:
+            return jsonify({"success": False, "error": "Please select a valid ID type."}), 400
+        if not all([student_id, id_number, full_name, contact_number, address]):
+            return jsonify({"success": False, "error": "Full name, ID number, contact number, and address are required."}), 400
+        if id_type in {"Employee", "Visitor"}:
+            department = None
+            major = None
+            year_level = None
 
         conn = get_db()
         if not conn:
@@ -610,8 +622,9 @@ USER_FRONTEND = """
                         <label>Full Name *</label>
                         <input type="text" name="full_name" required placeholder="Last, First Middle">
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
+                    <div id="student-fields">
+                        <div class="form-row">
+                                <div class="form-group" id="student-department-group">
                             <label>Department</label>
                             <select name="department" id="dept-select">
                                 <option value="">-- Select Department --</option>
@@ -623,16 +636,16 @@ USER_FRONTEND = """
                                 <option value="BPA">BPA</option>
                                 <option value="EMPLOYEE">EMPLOYEE</option>
                             </select>
-                        </div>
-                        <div class="form-group">
+                            </div>
+                            <div class="form-group">
                             <label>Major / Specialization</label>
                             <select name="major" id="major-select">
                                 <option value="">-- Select Department First --</option>
                             </select>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
+                        <div class="form-row">
+                                <div class="form-group" id="student-year-group">
                             <label>Year Level</label>
                             <select name="year_level" id="year-select">
                                 <option value="1st Year">1st Year</option>
@@ -641,16 +654,17 @@ USER_FRONTEND = """
                                 <option value="4th Year">4th Year</option>
                                 <option value="N/A">N/A — Not Applicable</option>
                             </select>
+                            </div>
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Contact Number</label>
-                            <input type="text" name="contact_number" placeholder="09XX-XXX-XXXX">
+                            <input type="text" name="contact_number" required placeholder="09XX-XXX-XXXX">
                         </div>
                         <div class="form-group">
                             <label>Address</label>
-                            <input type="text" name="address" placeholder="City, Province">
+                            <input type="text" name="address" required placeholder="City, Province">
                         </div>
                     </div>
                     <button type="submit">Register & Generate Barcode</button>
@@ -678,6 +692,16 @@ document.addEventListener("DOMContentLoaded",function(){
     const departmentSelect = document.getElementById("dept-select");
     const majorSelect = document.getElementById("major-select");
     const yearSelect = document.getElementById("year-select");
+    const idTypeSelect = document.getElementById("id-type-select");
+    const studentFields = document.getElementById("student-fields");
+
+    function updateFieldsByIdType() {
+        const isStudent = idTypeSelect.value === "Student";
+        studentFields.style.display = isStudent ? "" : "none";
+        studentFields.querySelectorAll("input, select").forEach(field => {
+            field.disabled = !isStudent;
+        });
+    }
 
     departmentSelect.addEventListener("change", function(){
         const department = departmentSelect.value;
@@ -694,6 +718,8 @@ document.addEventListener("DOMContentLoaded",function(){
     });
 
     majorSelect.disabled = true;
+    idTypeSelect.addEventListener("change", updateFieldsByIdType);
+    updateFieldsByIdType();
 
     form.addEventListener("submit",function(e){
         e.preventDefault();
@@ -703,10 +729,11 @@ document.addEventListener("DOMContentLoaded",function(){
         .then(data=>{
             if(data.success){
                 document.getElementById("barcode-result").style.display="block";
-                document.getElementById("barcode-id").textContent="Student Number: " + formData.get("id_number");
+                document.getElementById("barcode-id").textContent="ID Number: " + formData.get("id_number");
                 document.getElementById("barcode-img").src="data:image/png;base64,"+data.barcode;
                 form.reset();
                 document.getElementById("dept-select").value="";
+                updateFieldsByIdType();
             }else{
                 alert(data.error);
             }
@@ -716,7 +743,7 @@ document.addEventListener("DOMContentLoaded",function(){
 });
 function downloadUserBarcode() {
     const barcodeImage = document.getElementById("barcode-img");
-    const idNumber = document.getElementById("barcode-id").textContent.replace("Student Number: ", "").trim();
+    const idNumber = document.getElementById("barcode-id").textContent.replace("ID Number: ", "").trim();
     if (!barcodeImage.src || !idNumber) return;
 
     const link = document.createElement("a");
@@ -920,7 +947,7 @@ ADMIN_FRONTEND = """
                                 <label>Full Name *</label>
                                 <input type="text" name="full_name" required placeholder="Last, First Middle">
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" id="student-department-group">
                                 <label>Department</label>
                                 <select name="department" id="dept-select">
                                     <option value="">-- Select Department --</option>
@@ -941,7 +968,7 @@ ADMIN_FRONTEND = """
                                     <option value="">-- Select Department First --</option>
                                 </select>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" id="student-year-group">
                                 <label>Year Level</label>
                                 <select name="year_level" id="year-select">
                                     <option value="1st Year">1st Year</option>
@@ -955,11 +982,11 @@ ADMIN_FRONTEND = """
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Contact Number</label>
-                                <input type="text" name="contact_number" placeholder="09XX-XXX-XXXX">
+                                <input type="text" name="contact_number" required placeholder="09XX-XXX-XXXX">
                             </div>
                             <div class="form-group">
                                 <label>Complete Address</label>
-                                <input type="text" name="address" placeholder="City, Province">
+                                <input type="text" name="address" required placeholder="City, Province">
                             </div>
                         </div>
                         <button type="submit" class="btn-primary">Register & Generate Barcode</button>
@@ -1030,7 +1057,7 @@ ADMIN_FRONTEND = """
                                     <label>Department</label>
                                     <select id="edit-dept" name="department">
                                         <option value="">-- Select --</option>
-                                        <option value="CT">BSIT</option>
+                                        <option value="CT">BSIT / Computer Technology</option>
                                         <option value="BSED">BSED</option>
                                         <option value="BEED">BEED</option>
                                         <option value="BSFAS">BSFAS</option>
@@ -1307,6 +1334,19 @@ function updateMajorOptions(deptSelectId, majorSelectId, yearSelectId) {
         });
     }
 }
+function updateAdminFieldsByIdType() {
+    const isStudent = document.getElementById("id-type-select").value === "Student";
+    const departmentGroup = document.getElementById("student-department-group");
+    const majorRow = document.getElementById("major-row");
+    const yearGroup = document.getElementById("student-year-group");
+    [departmentGroup, majorRow, yearGroup].forEach(element => {
+        if (element) element.style.display = isStudent ? "" : "none";
+    });
+    ["dept-select", "major-select", "year-select"].forEach(id => {
+        const field = document.getElementById(id);
+        if (field) field.disabled = !isStudent;
+    });
+}
 function submitScan() {
     const input = document.getElementById("scan-input");
     const idNumber = input.value.trim();
@@ -1531,7 +1571,7 @@ function downloadMonthlyReport() {
 }
 function downloadRegisteredBarcode() {
     const barcodeImage = document.getElementById("barcode-img");
-    const idNumber = document.getElementById("barcode-id").textContent.replace("Student Number: ", "").trim();
+    const idNumber = document.getElementById("barcode-id").textContent.replace("ID Number: ", "").trim();
     if (!barcodeImage.src || !idNumber) return;
 
     const link = document.createElement("a");
@@ -1552,6 +1592,11 @@ document.addEventListener("DOMContentLoaded", function() {
     if (deptSelect) {
         deptSelect.addEventListener("change", () => updateMajorOptions("dept-select", "major-select", "year-select"));
     }
+    const idTypeSelect = document.getElementById("id-type-select");
+    if (idTypeSelect) {
+        idTypeSelect.addEventListener("change", updateAdminFieldsByIdType);
+        updateAdminFieldsByIdType();
+    }
     const editDeptSelect = document.getElementById("edit-dept");
     if (editDeptSelect) {
         editDeptSelect.addEventListener("change", () => updateMajorOptions("edit-dept", "edit-major", "edit-year"));
@@ -1570,10 +1615,11 @@ document.addEventListener("DOMContentLoaded", function() {
             .then(data => {
                 if (data.success) {
                     document.getElementById("barcode-result").style.display = "block";
-                    document.getElementById("barcode-id").textContent = "Student Number: " + formData.get("id_number");
+                    document.getElementById("barcode-id").textContent = "ID Number: " + formData.get("id_number");
                     document.getElementById("barcode-img").src = "data:image/png;base64," + data.barcode;
                     registerForm.reset();
                     document.getElementById("major-select").innerHTML = '<option value="">-- Select Department First --</option>';
+                    updateAdminFieldsByIdType();
                 } else {
                     alert("Error: " + data.error);
                 }
