@@ -6,6 +6,7 @@ import barcode
 from barcode.writer import ImageWriter
 import base64
 from io import BytesIO
+import zipfile
 from docx import Document
 
 app = Flask(__name__)
@@ -83,10 +84,65 @@ def barcode_image(id_number):
         image_data = base64.b64decode(generate_barcode_b64(id_number))
         response = make_response(image_data)
         response.headers['Content-Type'] = 'image/png'
+        response.headers['Content-Disposition'] = f'attachment; filename="barcode_{id_number}.png"'
         response.headers['Cache-Control'] = 'no-store'
         return response
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+@app.route('/download-barcodes', methods=['POST'])
+def download_barcodes():
+    if not is_logged_in():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        payload = request.get_json(silent=True, force=True) or {}
+        id_numbers = payload.get('id_numbers', [])
+        id_numbers = list(dict.fromkeys(str(value).strip() for value in id_numbers if str(value).strip()))
+        if not id_numbers:
+            return jsonify({"error": "Please select at least one student."}), 400
+
+        archive = BytesIO()
+        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for id_number in id_numbers:
+                image_data = base64.b64decode(generate_barcode_b64(id_number))
+                zip_file.writestr(f"barcode_{id_number}.png", image_data)
+        archive.seek(0)
+        response = make_response(archive.getvalue())
+        response.headers['Content-Type'] = 'application/zip'
+        response.headers['Content-Disposition'] = 'attachment; filename="student_barcodes.zip"'
+        return response
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/delete-students', methods=['POST'])
+def delete_students():
+    if not is_logged_in() or get_role() != 'admin':
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        payload = request.get_json(silent=True, force=True) or {}
+        id_numbers = list(dict.fromkeys(
+            str(value).strip() for value in payload.get('id_numbers', []) if str(value).strip()
+        ))
+        if not id_numbers:
+            return jsonify({"error": "Please select at least one student."}), 400
+
+        conn = get_db()
+        if not conn:
+            return jsonify({"error": "Database connection failed."}), 500
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM attendance WHERE user_id IN (SELECT id FROM users WHERE id_number = ANY(%s))", (id_numbers,))
+            cursor.execute("DELETE FROM users WHERE id_number = ANY(%s)", (id_numbers,))
+            deleted_count = cursor.rowcount
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        return jsonify({"success": True, "deleted_count": deleted_count})
+    except Exception as e:
+        print(f"DELETE STUDENTS ERROR: {e}")
+        return jsonify({"error": "Unable to delete selected students."}), 500
 
 def is_logged_in():
     return request.cookies.get('logged_in') == 'true'
@@ -102,8 +158,8 @@ PRIVACY_PAGE = """
 *{box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#eef0f3;color:#374151;margin:0;padding:24px;line-height:1.65}.policy{max-width:980px;margin:0 auto;background:#fff;border:1px solid #d8dbe0;padding:34px 42px;box-shadow:0 2px 12px rgba(15,25,43,.08)}h1,h2{font-family:Georgia,'Times New Roman',serif;color:#1b2a41}h1{font-size:26px;margin:0 0 6px}h2{font-size:18px;margin:28px 0 8px;border-bottom:1px solid #eef0f3;padding-bottom:8px}p{margin:8px 0 14px}li{margin:5px 0}table{width:100%;border-collapse:collapse;margin:12px 0 20px}th,td{border:1px solid #d8dbe0;padding:10px;text-align:left;vertical-align:top}th{background:#1b2a41;color:#fff}@media(max-width:600px){body{padding:10px}.policy{padding:22px 18px}table{font-size:12px}}
 </style></head><body><main class="policy">
 <h1>Privacy Policy - SLSU Library Attendance System</h1>
-<p><strong>Developed by:</strong> K.A.V<br><strong>Last Updated:</strong> September 13, 2026</p>
-<h2>1. Who We Are</h2><p>This system - SLSU Library Attendance System - is designed and developed by K.A.V exclusively for Southern Luzon State University (SLSU). It is created to simplify and manage library entry and exit records for students, employees, and authorized visitors.</p>
+<p><strong>Last Updated:</strong> September 13, 2026</p>
+<h2>1. Who We Are</h2><p>This system - SLSU Library Attendance System - is designed exclusively for Southern Luzon State University (SLSU). It is created to simplify and manage library entry and exit records for students, employees, and authorized visitors.</p>
 <h2>2. Exactly What Information We Collect</h2><p>We collect only the specific fields you enter during registration:</p>
 <table><tr><th>Field</th><th>Purpose</th></tr><tr><td>Full Name</td><td>Identification and record-keeping</td></tr><tr><td>ID Type</td><td>Student / Employee / Visitor categorization</td></tr><tr><td>ID Number</td><td>Unique identifier - this becomes your barcode</td></tr><tr><td>Department</td><td>CT, FBT, BSED, BEED, BSFAS, BSBA, EMPLOYEE - for reporting</td></tr><tr><td>Year Level</td><td>Students only - classification and demographic reporting</td></tr><tr><td>Major / Specialization</td><td>BSED, BSBA, BSIT, Com Tech, Food Tech, Bind Tech - program-specific reporting</td></tr><tr><td>Contact Number</td><td>Library-related announcements only</td></tr><tr><td>Complete Address</td><td>Required per university guidelines</td></tr></table>
 <p><strong>Attendance Data (Automatically Recorded Upon Scan)</strong></p><ul><li>Time In - exact date and time you scan your ID upon entry</li><li>Time Out - exact date and time you scan your ID upon exit</li><li>Date of Visit - automatically recorded for daily and monthly reports</li></ul>
@@ -115,9 +171,9 @@ PRIVACY_PAGE = """
 <h2>6. Your Exact Rights</h2><ul><li>Register and create your own barcode</li><li>Request correction of incorrect information</li><li>Request data deletion upon graduation, resignation, or separation from SLSU</li><li>Scan your printed barcode for entry and exit without logging in or viewing records</li><li>Opt out and use the manual paper logbook</li><li>Know that your information is protected and never shared or sold</li></ul>
 <h2>7. Data Sharing - Specifically When It Happens</h2><p>We share your data only when required by SLSU Administration for official reports, audits, and library management, or when required by law through a court order or legal mandate. It is never shared with commercial companies, marketing agencies, or external organizations.</p>
 <h2>8. Barcode / ID Number Usage - Specifically</h2><ul><li>Your Student Number or Employee Number is your unique identifier encoded into your barcode</li><li>Scanning reads only your ID number - no personal details, photos, or contact information are read directly from the card</li><li>The system matches the ID number to your database record and automatically logs Time In or Time Out</li><li>No personal information is stored inside the barcode itself - only your unique ID number</li></ul>
-<h2>9. About the Developer</h2><p>This original system was developed by K.A.V for Southern Luzon State University (SLSU). It streamlines library attendance while prioritizing user privacy and data security.</p>
+<h2>9. About the System</h2><p>This system was created for Southern Luzon State University (SLSU) to streamline library attendance while prioritizing user privacy and data security.</p>
 <h2>10. Changes to This Policy</h2><p>We may update this Privacy Policy as needed. Changes will be posted here with an updated date. Significant changes will be announced through the system login page. Continued use of the system constitutes acceptance of the updated policy.</p>
-<h2>11. Contact Information</h2><p><strong>System:</strong> SLSU Library Attendance System<br><strong>Developed by:</strong> K.A.V<br><strong>Institution:</strong> Southern Luzon State University - Judge Guillermo Eleazar<br><strong>Office:</strong> SLSU Library - SLSU-JGE</p>
+<h2>11. Contact Information</h2><p><strong>System:</strong> SLSU Library Attendance System<br><strong>Institution:</strong> Southern Luzon State University - Judge Guillermo Eleazar<br><strong>Office:</strong> SLSU Library - SLSU-JGE</p>
 <p><strong>By registering, generating your barcode, and scanning your ID, you confirm that you have read, understood, and agree to this Privacy Policy.</strong></p>
 </main></body></html>"""
 
@@ -828,6 +884,8 @@ ADMIN_FRONTEND = """
         @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:30mm;height:12mm;object-fit:fill;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
         .btn-download{background:#8a6d1f;color:white;}
         .btn-download:hover{background:#6e5718;}
+        .btn-delete{background:#a52b2b;color:white;}
+        .btn-delete:hover{background:#7f2020;}
         .btn-edit{background:#3a4f75;color:white;padding:7px 16px;font-size:12px;border-radius:4px;}
         .btn-edit:hover{background:#2c3c59;}
         .btn-save{background:#1e6b34;}
@@ -1017,10 +1075,12 @@ ADMIN_FRONTEND = """
                     </div>
                     <button class="btn-refresh" onclick="loadStudents()">Refresh List</button>
                     <div class="student-actions">
-                        <button class="btn-barcode" id="choose-barcode-btn" onclick="enableBarcodeSelection()">Choose Barcodes to Print</button>
+                        <button class="btn-barcode" id="choose-barcode-btn" onclick="enableBarcodeSelection()">Select Students</button>
                         <div id="barcode-selection-actions" class="hidden">
                             <label style="text-transform:none;font-size:13px;margin:0;font-weight:600;"><input class="student-check" type="checkbox" id="select-all-students" onchange="toggleAllStudents(this.checked)"> Select All</label>
                             <button class="btn-barcode" onclick="printSelectedBarcodes()">Print Selected</button>
+                            <button class="btn-download" onclick="downloadSelectedBarcodes()">Download Selected</button>
+                            <button class="btn-delete" onclick="deleteSelectedStudents()">Delete Selected</button>
                             <button class="btn-cancel" onclick="disableBarcodeSelection()">Cancel</button>
                         </div>
                     </div>
@@ -1146,10 +1206,10 @@ ADMIN_FRONTEND = """
                     <iframe class="privacy-frame" src="/privacy" title="Privacy Policy"></iframe>
                     <div class="privacy-policy">
                         <h2>Privacy Policy - SLSU Library Attendance System</h2>
-                        <p class="policy-meta"><strong>Developed by:</strong> K.A.V<br><strong>Last Updated:</strong> September 13, 2026</p>
+                        <p class="policy-meta"><strong>Last Updated:</strong> September 13, 2026</p>
 
                         <h3>1. Who We Are</h3>
-                        <p>This system - SLSU Library Attendance System - is designed and developed by K.A.V exclusively for Southern Luzon State University (SLSU). It is created to simplify and manage the library entry and exit records for students, employees, and authorized visitors of the university.</p>
+                        <p>This system - SLSU Library Attendance System - is designed exclusively for Southern Luzon State University (SLSU). It is created to simplify and manage the library entry and exit records for students, employees, and authorized visitors of the university.</p>
 
                         <h3>2. Exactly What Information We Collect</h3>
                         <p>We collect only the specific fields you enter during registration and scan:</p>
@@ -1240,14 +1300,14 @@ ADMIN_FRONTEND = """
                             <li>The system matches that ID number to your database record to log your Time In and Time Out.</li>
                         </ul>
 
-                        <h3>9. About the Developer</h3>
-                        <p>This system is an original project developed by K.A.V for SLSU. It is built to improve the library's attendance process while respecting user privacy and data security.</p>
+                        <h3>9. About the System</h3>
+                        <p>This system was created for SLSU to improve the library's attendance process while respecting user privacy and data security.</p>
 
                         <h3>10. Changes to This Policy</h3>
                         <p>If this policy is updated, the new version will be posted here with a new date. Significant changes will be announced through the library system login page.</p>
 
                         <h3>11. Contact Us</h3>
-                        <p><strong>System:</strong> SLSU Library Attendance System<br><strong>Developed by:</strong> K.A.V<br><strong>Institution:</strong> Southern Luzon State University</p>
+                        <p><strong>System:</strong> SLSU Library Attendance System<br><strong>Institution:</strong> Southern Luzon State University</p>
                         <p><strong>By scanning your ID and using this system, you confirm that you have read, understood, and agree to this Privacy Policy.</strong></p>
                     </div>
                 </div>
@@ -1404,7 +1464,7 @@ function filterStudents() {
                         <td>${s.full_name}</td>
                         <td>${s.id_type}</td>
                         <td>${s.department || "-"}</td>
-                        <td><button class='btn-barcode' onclick='printStudentBarcode(${JSON.stringify(s.id_number)})'>Print Barcode</button> <button class='btn-edit' onclick='editStudent(${s.id})'>Edit</button></td>
+                        <td><button class='btn-barcode' onclick='printStudentBarcode(${JSON.stringify(s.id_number)})'>Print Barcode</button> <button class='btn-download' onclick='downloadStudentBarcode(${JSON.stringify(s.id_number)})'>Download Barcode</button> <button class='btn-edit' onclick='editStudent(${s.id})'>Edit</button></td>
                     </tr>
                 `).join("")}
             </table>
@@ -1461,6 +1521,60 @@ function printSelectedBarcodes() {
         image.onerror = printWhenReady;
     });
 }
+function downloadSelectedBarcodes() {
+    const selected = Array.from(document.querySelectorAll(".student-row-check:checked"))
+        .map(checkbox => checkbox.value);
+    if (!selected.length) {
+        alert("Please select at least one student.");
+        return;
+    }
+
+    fetch("/download-barcodes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_numbers: selected })
+    })
+        .then(response => {
+            if (!response.ok) throw new Error("Unable to download selected barcodes.");
+            return response.blob();
+        })
+        .then(blob => {
+            const link = document.createElement("a");
+            const objectUrl = URL.createObjectURL(blob);
+            link.href = objectUrl;
+            link.download = "student_barcodes.zip";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(objectUrl);
+        })
+        .catch(error => alert(error.message));
+}
+function deleteSelectedStudents() {
+    const selected = Array.from(document.querySelectorAll(".student-row-check:checked"))
+        .map(checkbox => checkbox.value);
+    if (!selected.length) {
+        alert("Please select at least one student.");
+        return;
+    }
+    if (!confirm(`Delete ${selected.length} selected student${selected.length === 1 ? "" : "s"}? This will also delete their attendance records.`)) {
+        return;
+    }
+
+    fetch("/delete-students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_numbers: selected })
+    })
+        .then(response => response.json().then(data => ({ ok: response.ok, data })))
+        .then(result => {
+            if (!result.ok) throw new Error(result.data.error || "Unable to delete selected students.");
+            alert(`${result.data.deleted_count} student${result.data.deleted_count === 1 ? "" : "s"} deleted.`);
+            disableBarcodeSelection();
+            loadStudents();
+        })
+        .catch(error => alert(error.message));
+}
 function printStudentBarcode(idNumber) {
     const printWindow = window.open("", "_blank", "width=500,height=400");
     if (!printWindow) {
@@ -1470,6 +1584,24 @@ function printStudentBarcode(idNumber) {
     const barcodeUrl = "/barcode/" + encodeURIComponent(idNumber);
     printWindow.document.write(`<!DOCTYPE html><html><head><title>Barcode - ${idNumber}</title><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}img{width:30mm;height:12mm;object-fit:fill;margin:3mm auto;display:block;}h2{font-size:10pt;margin:0;}</style></head><body><h2>Student Number: ${idNumber}</h2><img src="${barcodeUrl}" onload="window.print()"></body></html>`);
     printWindow.document.close();
+}
+function downloadStudentBarcode(idNumber) {
+    fetch("/barcode/" + encodeURIComponent(idNumber))
+        .then(response => {
+            if (!response.ok) throw new Error("Unable to download barcode.");
+            return response.blob();
+        })
+        .then(blob => {
+            const link = document.createElement("a");
+            const objectUrl = URL.createObjectURL(blob);
+            link.href = objectUrl;
+            link.download = "barcode_" + idNumber.replace(/[^a-z0-9_-]/gi, "_") + ".png";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(objectUrl);
+        })
+        .catch(error => alert(error.message));
 }
 function editStudent(id) {
     const student = allStudents.find(s => s.id === id);
