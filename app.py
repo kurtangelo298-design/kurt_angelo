@@ -8,6 +8,8 @@ import base64
 from io import BytesIO
 import zipfile
 import re
+import secrets
+from PIL import Image
 from docx import Document
 
 app = Flask(__name__)
@@ -18,6 +20,7 @@ ADMIN_USER = "library"
 ADMIN_PASS = "slsu"
 USER_USER = "slsu"
 USER_PASS = "library"
+SCANNER_API_KEY = os.environ.get("SCANNER_API_KEY", "").strip()
 
 def get_db():
     try:
@@ -87,10 +90,23 @@ init_db()
 def generate_barcode_b64(id_number):
     code128 = barcode.get_barcode_class("code128")
     writer = ImageWriter()
-    writer.set_options({"module_width":0.3, "module_height":10, "font_size":8, "text_distance":2})
+    writer.set_options({
+        "module_width": 0.22,
+        "module_height": 13,
+        "font_size": 7,
+        "text_distance": 1.5,
+        "quiet_zone": 2.5,
+        "dpi": 300,
+    })
     img = code128(id_number, writer=writer).render()
+    target_size = (round(38 / 25.4 * 300), round(20 / 25.4 * 300))
+    img.thumbnail(target_size, Image.Resampling.LANCZOS)
+    canvas = Image.new("RGB", target_size, "white")
+    left = (target_size[0] - img.width) // 2
+    top = (target_size[1] - img.height) // 2
+    canvas.paste(img, (left, top))
     buffered = BytesIO()
-    img.save(buffered, format="PNG")
+    canvas.save(buffered, format="PNG", dpi=(300, 300), optimize=True)
     return base64.b64encode(buffered.getvalue()).decode()
 
 @app.route('/barcode/<path:id_number>')
@@ -194,6 +210,14 @@ def is_logged_in():
 
 def get_role():
     return request.cookies.get('role', 'user')
+
+def is_scan_authorized():
+    if is_logged_in():
+        return True
+    if not SCANNER_API_KEY:
+        return False
+    provided_key = request.headers.get('X-Scanner-Key', '').strip()
+    return bool(provided_key) and secrets.compare_digest(provided_key, SCANNER_API_KEY)
 
 PRIVACY_PAGE = """
 <!DOCTYPE html><html><head>
@@ -349,12 +373,18 @@ def home():
     return render_template_string(ADMIN_FRONTEND)
 
 @app.route('/scan', methods=['POST'])
+@app.route('/api/scan', methods=['POST'])
 def scan():
-    if not is_logged_in():
-        return jsonify({"success": False, "message": "Unauthorized"}), 401
+    if not is_scan_authorized():
+        message = "Unauthorized. Log in or provide the X-Scanner-Key header."
+        if not SCANNER_API_KEY and not is_logged_in():
+            message = "Scanner API is not configured. Set the SCANNER_API_KEY environment variable."
+        return jsonify({"success": False, "message": message}), 401
 
-    data = request.get_json()
-    id_number = data.get('id_number', '').strip()
+    data = request.get_json(silent=True) or request.form
+    id_number = str(data.get('id_number', '')).strip()
+    if not id_number:
+        return jsonify({"success": False, "message": "id_number is required."}), 400
 
     conn = get_db()
     if not conn:
@@ -386,6 +416,10 @@ def scan():
         conn.commit()
         conn.close()
         return jsonify({"success": True, "message": f"TIME OUT recorded — {full_name} — {now}"})
+
+@app.route('/health')
+def health():
+    return jsonify({"status": "ok"})
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -729,7 +763,7 @@ USER_FRONTEND = """
         .btn-print:hover{background:#175628;}
         .btn-download-barcode{background:#8a6d1f;margin-top:16px;}
         .btn-download-barcode:hover{background:#6e5718;}
-        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:30mm;height:12mm;object-fit:fill;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
+        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:38mm;height:20mm;object-fit:contain;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
         .logout-link{display:block;text-align:center;margin-top:22px;color:#64748b;text-decoration:none;font-size:13px;border-top:1px solid #eef0f3;padding-top:18px;}
         .logout-link:hover{color:#1b2a41;}
         .privacy-link{display:block;text-align:center;margin-top:12px;color:#1b2a41;text-decoration:none;font-size:13px;}
@@ -973,7 +1007,7 @@ ADMIN_FRONTEND = """
         .student-actions .btn-download,
         .student-actions .btn-delete{width:150px;min-height:38px;padding:9px 12px;}
         .student-check{width:17px;height:17px;vertical-align:middle;}
-        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:30mm;height:12mm;object-fit:fill;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
+        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:38mm;height:20mm;object-fit:contain;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
         .btn-download{background:#8a6d1f;color:white;}
         .btn-download:hover{background:#6e5718;}
         .btn-delete{background:#a52b2b;color:white;}
