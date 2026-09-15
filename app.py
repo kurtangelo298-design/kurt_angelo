@@ -100,7 +100,7 @@ def generate_barcode_b64(id_number):
     })
     img = code128(id_number, writer=writer).render()
     target_size = (round(38 / 25.4 * 300), round(20 / 25.4 * 300))
-    img.thumbnail(target_size, Image.Resampling.LANCZOS)
+    img.thumbnail(target_size, Image.Resampling.NEAREST)
     canvas = Image.new("RGB", target_size, "white")
     left = (target_size[0] - img.width) // 2
     top = (target_size[1] - img.height) // 2
@@ -995,7 +995,7 @@ ADMIN_FRONTEND = """
         tr:hover{background:#eef1f5;}
         .tab-content{display:none;}
         .tab-content.active{display:block;}
-        .barcode-img{max-width:300px;margin:18px auto;display:block;padding:14px;background:white;border:1px solid #d8dbe0;border-radius:4px;}
+        .barcode-img{width:38mm;height:20mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;}
         .btn-print{background:#1e6b34;}
         .btn-print:hover{background:#175628;}
@@ -1641,7 +1641,7 @@ function printSelectedBarcodes() {
         const barcodeUrl = "/barcode/" + encodeURIComponent(idNumber);
         return `<section class="barcode-item"><div>Student Number: ${idNumber}</div><img src="${barcodeUrl}"></section>`;
     }).join("");
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Selected Student Barcodes</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}.barcode-item{display:inline-block;vertical-align:top;width:45mm;margin:3mm 4mm;font-size:10pt;}.barcode-item img{width:30mm;height:12mm;object-fit:fill;margin:3mm auto;display:block;}@media print{.barcode-item{break-inside:avoid;}}</style></head><body>${barcodeMarkup}</body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Selected Student Barcodes</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}.barcode-item{display:inline-block;vertical-align:top;width:45mm;margin:3mm 4mm;font-size:10pt;}.barcode-item img{width:38mm;height:20mm;object-fit:contain;image-rendering:crisp-edges;margin:3mm auto;display:block;}@media print{.barcode-item{break-inside:avoid;}}</style></head><body>${barcodeMarkup}</body></html>`);
     printWindow.document.close();
     const images = printWindow.document.images;
     let loaded = 0;
@@ -1715,7 +1715,7 @@ function printStudentBarcode(idNumber) {
         return;
     }
     const barcodeUrl = "/barcode/" + encodeURIComponent(idNumber);
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Barcode - ${idNumber}</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}img{width:30mm;height:12mm;object-fit:fill;margin:3mm auto;display:block;}h2{font-size:10pt;margin:0;}</style></head><body><h2>Student Number: ${idNumber}</h2><img src="${barcodeUrl}" onload="window.print()"></body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Barcode - ${idNumber}</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}img{width:38mm;height:20mm;object-fit:contain;image-rendering:crisp-edges;margin:3mm auto;display:block;}h2{font-size:10pt;margin:0;}</style></head><body><h2>Student Number: ${idNumber}</h2><img src="${barcodeUrl}" onload="window.print()"></body></html>`);
     printWindow.document.close();
 }
 function downloadStudentBarcode(idNumber) {
