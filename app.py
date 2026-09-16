@@ -1516,6 +1516,7 @@ let barcodeSelectionMode = false;
 let scannerBuffer = "";
 let scannerLastKeyAt = 0;
 let scannerResetTimer = null;
+let recordsRefreshInProgress = false;
 function toggleSidebar() {
     const sidebar = document.getElementById("sidebar");
     sidebar.classList.toggle("collapsed");
@@ -1815,6 +1816,8 @@ function hideEditForm() {
     document.getElementById("edit-form").reset();
 }
 function loadRecords() {
+    if (recordsRefreshInProgress) return;
+    recordsRefreshInProgress = true;
     fetch("/get-records")
         .then(res => res.json())
         .then(data => {
@@ -1840,7 +1843,10 @@ function loadRecords() {
                 table.innerHTML = '<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No attendance records yet.</p>';
             }
         })
-        .catch(err => alert("Load Error: " + err));
+        .catch(err => console.error("Load Error:", err))
+        .finally(() => {
+            recordsRefreshInProgress = false;
+        });
 }
 function loadMonthlyHistory() {
     const monthSelect = document.getElementById("month-select");
@@ -1935,6 +1941,11 @@ function downloadRegisteredBarcode() {
     link.remove();
 }
 document.addEventListener("DOMContentLoaded", function() {
+    window.setInterval(() => {
+        const recordsTab = document.getElementById("records");
+        if (recordsTab?.classList.contains("active")) loadRecords();
+    }, 500);
+
     const scanInput = document.getElementById("scan-input");
     if (scanInput) {
         scanInput.addEventListener("keypress", e => {
