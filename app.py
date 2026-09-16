@@ -1503,6 +1503,9 @@ let editingStudentId = null;
 let currentDept = "ALL";
 let allStudents = [];
 let barcodeSelectionMode = false;
+let scannerBuffer = "";
+let scannerLastKeyAt = 0;
+let scannerResetTimer = null;
 function toggleSidebar() {
     const sidebar = document.getElementById("sidebar");
     sidebar.classList.toggle("collapsed");
@@ -1581,6 +1584,9 @@ function submitScan() {
     const input = document.getElementById("scan-input");
     const idNumber = input.value.trim();
     if (!idNumber) return;
+    submitScannedId(idNumber);
+}
+function submitScannedId(idNumber) {
     fetch("/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1591,7 +1597,8 @@ function submitScan() {
         const statusBox = document.getElementById("status-box");
         statusBox.className = "status " + (data.success ? "success" : "error");
         statusBox.textContent = data.message;
-        input.value = "";
+        const input = document.getElementById("scan-input");
+        if (input) input.value = "";
     })
     .catch(err => {
         document.getElementById("status-box").className = "status error";
@@ -1924,6 +1931,34 @@ document.addEventListener("DOMContentLoaded", function() {
             if (e.key === "Enter") submitScan();
         });
     }
+    document.addEventListener("keydown", e => {
+        const target = e.target;
+        if (target.id === "scan-input") return;
+        const isEditable = target.matches("input, textarea, select") && target.id !== "scan-input";
+        if (isEditable) return;
+
+        const now = performance.now();
+        if (now - scannerLastKeyAt > 120) scannerBuffer = "";
+        scannerLastKeyAt = now;
+
+        if (e.key === "Enter") {
+            const scannedId = scannerBuffer.trim();
+            scannerBuffer = "";
+            if (scannedId) {
+                e.preventDefault();
+                submitScannedId(scannedId);
+            }
+            return;
+        }
+
+        if (e.key.length === 1) {
+            scannerBuffer += e.key;
+            clearTimeout(scannerResetTimer);
+            scannerResetTimer = setTimeout(() => {
+                scannerBuffer = "";
+            }, 250);
+        }
+    });
     const deptSelect = document.getElementById("dept-select");
     if (deptSelect) {
         deptSelect.addEventListener("change", () => updateMajorOptions("dept-select", "major-select", "year-select"));
