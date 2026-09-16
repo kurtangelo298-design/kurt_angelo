@@ -100,7 +100,7 @@ def generate_barcode_b64(id_number):
         "dpi": 300,
     })
     img = code128(id_number, writer=writer).render()
-    target_size = (round(38 / 25.4 * 300), round(12 / 25.4 * 300))
+    target_size = (round(50 / 25.4 * 300), round(12 / 25.4 * 300))
     img.thumbnail(target_size, Image.Resampling.NEAREST)
     canvas = Image.new("RGB", target_size, "white")
     left = (target_size[0] - img.width) // 2
@@ -144,7 +144,7 @@ def download_barcodes():
         grid_height = rows * box_height + (rows - 1) * gap
         grid_left = (page_size[0] - grid_width) // 2
         grid_top = (page_size[1] - grid_height) // 2
-        barcode_size = (round(38 / 25.4 * 300), round(12 / 25.4 * 300))
+        barcode_size = (round(50 / 25.4 * 300), round(12 / 25.4 * 300))
         pages = []
 
         for page_start in range(0, len(id_numbers), columns * rows):
@@ -805,13 +805,13 @@ USER_FRONTEND = """
         #barcode-result{display:none;margin-top:28px;text-align:center;padding:26px;background:#f7f8fa;border-radius:6px;border:1px solid #d8dbe0;}
         #barcode-result h3{color:#1b2a41;margin-bottom:12px;font-size:16px;font-family:Georgia,'Times New Roman',serif;}
         #student-info{font-size:15px;color:#1f2937;}
-        .barcode-img{width:38mm;height:12mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
+        .barcode-img{width:50mm;height:12mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;}
         .btn-print{background:#1e6b34;margin-top:16px;}
         .btn-print:hover{background:#175628;}
         .btn-download-barcode{background:#8a6d1f;margin-top:16px;}
         .btn-download-barcode:hover{background:#6e5718;}
-        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:50mm;height:25mm;margin:0;padding:0;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:38mm;height:12mm;object-fit:contain;padding:0;border:0;margin:7mm auto 0;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print{display:none !important;}}
+        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:50mm;height:25mm;margin:0;padding:0;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:50mm;height:12mm;object-fit:contain;padding:0;border:0;margin:7mm auto 0;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print{display:none !important;}}
         .logout-link{display:block;text-align:center;margin-top:22px;color:#64748b;text-decoration:none;font-size:13px;border-top:1px solid #eef0f3;padding-top:18px;}
         .logout-link:hover{color:#1b2a41;}
         .privacy-link{display:block;text-align:center;margin-top:12px;color:#1b2a41;text-decoration:none;font-size:13px;}
@@ -1043,7 +1043,7 @@ ADMIN_FRONTEND = """
         tr:hover{background:#eef1f5;}
         .tab-content{display:none;}
         .tab-content.active{display:block;}
-        .barcode-img{width:38mm;height:12mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
+        .barcode-img{width:50mm;height:12mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;}
         .btn-print{background:#1e6b34;}
         .btn-print:hover{background:#175628;}
@@ -1055,7 +1055,7 @@ ADMIN_FRONTEND = """
         .student-actions .btn-download,
         .student-actions .btn-delete{width:150px;min-height:38px;padding:9px 12px;}
         .student-check{width:17px;height:17px;vertical-align:middle;}
-        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:50mm;height:25mm;margin:0;padding:0;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:38mm;height:12mm;object-fit:contain;padding:0;border:0;margin:7mm auto 0;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print{display:none !important;}}
+        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:50mm;height:25mm;margin:0;padding:0;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:50mm;height:12mm;object-fit:contain;padding:0;border:0;margin:7mm auto 0;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print{display:none !important;}}
         .btn-download{background:#8a6d1f;color:white;}
         .btn-download:hover{background:#6e5718;}
         .btn-delete{background:#a52b2b;color:white;}
@@ -1696,7 +1696,7 @@ function printSelectedBarcodes() {
         const barcodeUrl = "/barcode/" + encodeURIComponent(idNumber);
         return `<section class="barcode-item"><div>Student Number: ${idNumber}</div><img src="${barcodeUrl}"></section>`;
     }).join("");
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Selected Student Barcodes</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>*{box-sizing:border-box;}@page{size:A4;margin:1mm;}body{font-family:Arial,sans-serif;text-align:center;padding:0;display:grid;grid-template-columns:repeat(4,50mm);grid-auto-rows:25mm;gap:2mm;justify-content:center;align-content:start;}.barcode-item{width:50mm;height:25mm;border:1px solid #000;font-size:8pt;display:flex;flex-direction:column;align-items:center;padding:1mm 0;}.barcode-item img{width:38mm;height:12mm;object-fit:contain;image-rendering:crisp-edges;margin:1mm auto 0;display:block;}@media print{.barcode-item{break-inside:avoid;}}</style></head><body>${barcodeMarkup}</body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Selected Student Barcodes</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>*{box-sizing:border-box;}@page{size:A4;margin:1mm;}body{font-family:Arial,sans-serif;text-align:center;padding:0;display:grid;grid-template-columns:repeat(4,50mm);grid-auto-rows:25mm;gap:2mm;justify-content:center;align-content:start;}.barcode-item{width:50mm;height:25mm;border:1px solid #000;font-size:8pt;display:flex;flex-direction:column;align-items:center;padding:1mm 0;}.barcode-item img{width:50mm;height:12mm;object-fit:contain;image-rendering:crisp-edges;margin:1mm auto 0;display:block;}@media print{.barcode-item{break-inside:avoid;}}</style></head><body>${barcodeMarkup}</body></html>`);
     printWindow.document.close();
     const images = printWindow.document.images;
     let loaded = 0;
@@ -1770,7 +1770,7 @@ function printStudentBarcode(idNumber) {
         return;
     }
     const barcodeUrl = "/barcode/" + encodeURIComponent(idNumber);
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Barcode - ${idNumber}</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>*{box-sizing:border-box;}@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:0;width:50mm;height:25mm;border:1px solid #000;}img{width:38mm;height:12mm;object-fit:contain;image-rendering:crisp-edges;margin:1mm auto 0;display:block;}h2{font-size:8pt;margin:1mm 0 0;}</style></head><body><h2>Student Number: ${idNumber}</h2><img src="${barcodeUrl}" onload="window.print()"></body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Barcode - ${idNumber}</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>*{box-sizing:border-box;}@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:0;width:50mm;height:25mm;border:1px solid #000;}img{width:50mm;height:12mm;object-fit:contain;image-rendering:crisp-edges;margin:1mm auto 0;display:block;}h2{font-size:8pt;margin:1mm 0 0;}</style></head><body><h2>Student Number: ${idNumber}</h2><img src="${barcodeUrl}" onload="window.print()"></body></html>`);
     printWindow.document.close();
 }
 function downloadStudentBarcode(idNumber) {
