@@ -9,7 +9,7 @@ from io import BytesIO
 import zipfile
 import re
 import secrets
-from PIL import Image
+from PIL import Image, ImageDraw
 from docx import Document
 
 app = Flask(__name__)
@@ -133,15 +133,53 @@ def download_barcodes():
         if not id_numbers:
             return jsonify({"error": "Please select at least one student."}), 400
 
-        archive = BytesIO()
-        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            for id_number in id_numbers:
-                image_data = base64.b64decode(generate_barcode_b64(id_number))
-                zip_file.writestr(f"barcode_{id_number}.png", image_data)
-        archive.seek(0)
-        response = make_response(archive.getvalue())
-        response.headers['Content-Type'] = 'application/zip'
-        response.headers['Content-Disposition'] = 'attachment; filename="student_barcodes.zip"'
+        page_size = (2550, 3300)  # Letter size at 300 DPI
+        columns = 2
+        rows = 4
+        cell_width = page_size[0] // columns
+        cell_height = page_size[1] // rows
+        pages = []
+
+        for page_start in range(0, len(id_numbers), columns * rows):
+            page = Image.new('RGB', page_size, 'white')
+            draw = ImageDraw.Draw(page)
+            page_ids = id_numbers[page_start:page_start + columns * rows]
+
+            for index, id_number in enumerate(page_ids):
+                column = index % columns
+                row = index // columns
+                cell_left = column * cell_width
+                cell_top = row * cell_height
+
+                barcode_image = Image.open(BytesIO(base64.b64decode(generate_barcode_b64(id_number))))
+                barcode_image.thumbnail((round(cell_width * 0.72), round(cell_height * 0.48)), Image.Resampling.NEAREST)
+                barcode_left = cell_left + (cell_width - barcode_image.width) // 2
+                barcode_top = cell_top + round(cell_height * 0.32)
+                page.paste(barcode_image, (barcode_left, barcode_top))
+
+                label = f"ID Number: {id_number}"
+                label_box = draw.textbbox((0, 0), label)
+                label_width = label_box[2] - label_box[0]
+                draw.text(
+                    (cell_left + (cell_width - label_width) // 2, cell_top + round(cell_height * 0.18)),
+                    label,
+                    fill='black'
+                )
+
+            for column in range(columns + 1):
+                x = column * cell_width
+                draw.line((x, 0, x, page_size[1]), fill='black', width=4)
+            for row in range(rows + 1):
+                y = row * cell_height
+                draw.line((0, y, page_size[0], y), fill='black', width=4)
+            pages.append(page)
+
+        output = BytesIO()
+        pages[0].save(output, format='PDF', resolution=300.0, save_all=True, append_images=pages[1:])
+        output.seek(0)
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = 'attachment; filename="student_barcodes.pdf"'
         return response
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -1675,7 +1713,7 @@ function downloadSelectedBarcodes() {
             const link = document.createElement("a");
             const objectUrl = URL.createObjectURL(blob);
             link.href = objectUrl;
-            link.download = "student_barcodes.zip";
+            link.download = "student_barcodes.pdf";
             document.body.appendChild(link);
             link.click();
             link.remove();
