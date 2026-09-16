@@ -91,15 +91,16 @@ def generate_barcode_b64(id_number):
     code128 = barcode.get_barcode_class("code128")
     writer = ImageWriter()
     writer.set_options({
-        "module_width": 0.22,
-        "module_height": 13,
-        "font_size": 7,
-        "text_distance": 1.5,
-        "quiet_zone": 2.5,
+        "module_width": 0.33,
+        "module_height": 12.0,
+        "font_size": 8,
+        "text_distance": 2.0,
+        "quiet_zone": 3.0,
+        "center_text": True,
         "dpi": 300,
     })
     img = code128(id_number, writer=writer).render()
-    target_size = (round(38 / 25.4 * 300), round(20 / 25.4 * 300))
+    target_size = (round(38 / 25.4 * 300), round(12 / 25.4 * 300))
     img.thumbnail(target_size, Image.Resampling.NEAREST)
     canvas = Image.new("RGB", target_size, "white")
     left = (target_size[0] - img.width) // 2
@@ -138,6 +139,7 @@ def download_barcodes():
         rows = 4
         cell_width = page_size[0] // columns
         cell_height = page_size[1] // rows
+        barcode_size = (round(38 / 25.4 * 300), round(12 / 25.4 * 300))
         pages = []
 
         for page_start in range(0, len(id_numbers), columns * rows):
@@ -152,7 +154,7 @@ def download_barcodes():
                 cell_top = row * cell_height
 
                 barcode_image = Image.open(BytesIO(base64.b64decode(generate_barcode_b64(id_number))))
-                barcode_image.thumbnail((round(cell_width * 0.72), round(cell_height * 0.48)), Image.Resampling.NEAREST)
+                barcode_image = barcode_image.resize(barcode_size, Image.Resampling.NEAREST)
                 barcode_left = cell_left + (cell_width - barcode_image.width) // 2
                 barcode_top = cell_top + round(cell_height * 0.32)
                 page.paste(barcode_image, (barcode_left, barcode_top))
@@ -801,7 +803,7 @@ USER_FRONTEND = """
         .btn-print:hover{background:#175628;}
         .btn-download-barcode{background:#8a6d1f;margin-top:16px;}
         .btn-download-barcode:hover{background:#6e5718;}
-        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:38mm;height:20mm;object-fit:contain;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
+        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:38mm;height:12mm;object-fit:contain;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
         .logout-link{display:block;text-align:center;margin-top:22px;color:#64748b;text-decoration:none;font-size:13px;border-top:1px solid #eef0f3;padding-top:18px;}
         .logout-link:hover{color:#1b2a41;}
         .privacy-link{display:block;text-align:center;margin-top:12px;color:#1b2a41;text-decoration:none;font-size:13px;}
@@ -1033,7 +1035,7 @@ ADMIN_FRONTEND = """
         tr:hover{background:#eef1f5;}
         .tab-content{display:none;}
         .tab-content.active{display:block;}
-        .barcode-img{width:38mm;height:20mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
+        .barcode-img{width:38mm;height:12mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;}
         .btn-print{background:#1e6b34;}
         .btn-print:hover{background:#175628;}
@@ -1045,7 +1047,7 @@ ADMIN_FRONTEND = """
         .student-actions .btn-download,
         .student-actions .btn-delete{width:150px;min-height:38px;padding:9px 12px;}
         .student-check{width:17px;height:17px;vertical-align:middle;}
-        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:38mm;height:20mm;object-fit:contain;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
+        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:100%;margin:0;padding:5mm;border:0;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:38mm;height:12mm;object-fit:contain;padding:0;border:0;margin:3mm auto;}.barcode-id{font-size:10pt;margin:0;}.btn-print{display:none !important;}}
         .btn-download{background:#8a6d1f;color:white;}
         .btn-download:hover{background:#6e5718;}
         .btn-delete{background:#a52b2b;color:white;}
@@ -1686,7 +1688,7 @@ function printSelectedBarcodes() {
         const barcodeUrl = "/barcode/" + encodeURIComponent(idNumber);
         return `<section class="barcode-item"><div>Student Number: ${idNumber}</div><img src="${barcodeUrl}"></section>`;
     }).join("");
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Selected Student Barcodes</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}.barcode-item{display:inline-block;vertical-align:top;width:45mm;margin:3mm 4mm;font-size:10pt;}.barcode-item img{width:38mm;height:20mm;object-fit:contain;image-rendering:crisp-edges;margin:3mm auto;display:block;}@media print{.barcode-item{break-inside:avoid;}}</style></head><body>${barcodeMarkup}</body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Selected Student Barcodes</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}.barcode-item{display:inline-block;vertical-align:top;width:45mm;margin:3mm 4mm;font-size:10pt;}.barcode-item img{width:38mm;height:12mm;object-fit:contain;image-rendering:crisp-edges;margin:3mm auto;display:block;}@media print{.barcode-item{break-inside:avoid;}}</style></head><body>${barcodeMarkup}</body></html>`);
     printWindow.document.close();
     const images = printWindow.document.images;
     let loaded = 0;
@@ -1760,7 +1762,7 @@ function printStudentBarcode(idNumber) {
         return;
     }
     const barcodeUrl = "/barcode/" + encodeURIComponent(idNumber);
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Barcode - ${idNumber}</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}img{width:38mm;height:20mm;object-fit:contain;image-rendering:crisp-edges;margin:3mm auto;display:block;}h2{font-size:10pt;margin:0;}</style></head><body><h2>Student Number: ${idNumber}</h2><img src="${barcodeUrl}" onload="window.print()"></body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Barcode - ${idNumber}</title><link rel="icon" type="image/png" href="/static/app-icon.png"><link rel="apple-touch-icon" href="/static/app-icon.png"><meta name="theme-color" content="#006633"><style>@page{size:auto;margin:5mm;}body{font-family:Arial,sans-serif;text-align:center;padding:5mm;}img{width:38mm;height:12mm;object-fit:contain;image-rendering:crisp-edges;margin:3mm auto;display:block;}h2{font-size:10pt;margin:0;}</style></head><body><h2>Student Number: ${idNumber}</h2><img src="${barcodeUrl}" onload="window.print()"></body></html>`);
     printWindow.document.close();
 }
 function downloadStudentBarcode(idNumber) {
