@@ -23,7 +23,6 @@ STUDENT_USER = "student"
 STUDENT_PASS = "student"
 SCANNER_API_KEY = os.environ.get("SCANNER_API_KEY", "").strip()
 
-
 def get_db():
     try:
         conn = psycopg2.connect(DATABASE_URL)
@@ -32,15 +31,12 @@ def get_db():
         print(f"DB Connect Error: {e}")
         return None
 
-
 def get_ph_time():
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
     return now.strftime("%I:%M %p")
 
-
 def get_ph_date():
     return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d")
-
 
 DEPARTMENT_CODES = {
     "CT": "CPT",
@@ -51,14 +47,12 @@ DEPARTMENT_CODES = {
     "BPA": "BPA",
 }
 
-
 def get_student_code(id_type, department, year_level):
     if id_type != "Student" or not department or not year_level:
         return "-"
     year_match = re.search(r"([1-4])", year_level)
     department_code = DEPARTMENT_CODES.get(department, department.upper())
     return f"{department_code}{year_match.group(1)}" if year_match else "-"
-
 
 def init_db():
     conn = get_db()
@@ -112,9 +106,7 @@ def init_db():
     conn.close()
     print("DATABASE READY")
 
-
 init_db()
-
 
 def generate_barcode_b64(id_number):
     code128 = barcode.get_barcode_class("code128")
@@ -139,7 +131,6 @@ def generate_barcode_b64(id_number):
     canvas.save(buffered, format="PNG", dpi=(300, 300), optimize=True)
     return base64.b64encode(buffered.getvalue()).decode()
 
-
 def generate_qr_b64(data):
     qr = qrcode.QRCode(
         version=None,
@@ -154,7 +145,6 @@ def generate_qr_b64(data):
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
-
 def book_status_info(book_id, quantity):
     """Return (active_borrow_count, available_qty, status_label)."""
     conn = get_db()
@@ -167,7 +157,6 @@ def book_status_info(book_id, quantity):
     available = max(0, int(quantity) - active)
     status = "Available" if available > 0 else "Borrowed"
     return active, available, status
-
 
 @app.route('/barcode/<path:id_number>')
 def barcode_image(id_number):
@@ -183,7 +172,6 @@ def barcode_image(id_number):
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-
 @app.route('/book-qr/<path:access_code>')
 def book_qr_image(access_code):
     if not is_logged_in():
@@ -197,7 +185,6 @@ def book_qr_image(access_code):
         return response
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-
 
 @app.route('/download-barcodes', methods=['POST'])
 def download_barcodes():
@@ -262,7 +249,6 @@ def download_barcodes():
         return response
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-
 
 @app.route('/download-book-qrcodes', methods=['POST'])
 def download_book_qrcodes():
@@ -339,7 +325,6 @@ def download_book_qrcodes():
         print(f"DOWNLOAD BOOK QR ERROR: {e}")
         return jsonify({"error": str(e)}), 400
 
-
 @app.route('/delete-students', methods=['POST'])
 def delete_students():
     if not is_logged_in() or get_role() != 'admin':
@@ -371,7 +356,6 @@ def delete_students():
         print(f"DELETE STUDENTS ERROR: {e}")
         return jsonify({"error": "Unable to delete selected students."}), 500
 
-
 @app.route('/delete-daily-history', methods=['POST'])
 def delete_daily_history():
     if not is_logged_in() or get_role() != 'admin':
@@ -399,14 +383,11 @@ def delete_daily_history():
         print(f"DELETE DAILY HISTORY ERROR: {e}")
         return jsonify({"error": "Unable to delete daily history."}), 500
 
-
 def is_logged_in():
     return request.cookies.get('logged_in') == 'true'
 
-
 def get_role():
     return request.cookies.get('role', 'user')
-
 
 def is_scan_authorized():
     if is_logged_in():
@@ -416,11 +397,9 @@ def is_scan_authorized():
     provided_key = request.headers.get('X-Scanner-Key', '').strip()
     return bool(provided_key) and secrets.compare_digest(provided_key, SCANNER_API_KEY)
 
-
 # ============================================================
 #  BOOK MANAGEMENT ROUTES (Admin)
 # ============================================================
-
 @app.route('/register-book', methods=['POST'])
 def register_book():
     if not is_logged_in() or get_role() != 'admin':
@@ -466,7 +445,6 @@ def register_book():
         print(f"REGISTER BOOK ERROR: {e}")
         return jsonify({"success": False, "error": f"An error occurred: {str(e)}"}), 500
 
-
 @app.route('/get-books')
 def get_books():
     if not is_logged_in():
@@ -489,7 +467,6 @@ def get_books():
         })
     conn.close()
     return jsonify({"books": books})
-
 
 @app.route('/update-book', methods=['POST'])
 def update_book():
@@ -525,7 +502,6 @@ def update_book():
         print(f"UPDATE BOOK ERROR: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-
 @app.route('/delete-book', methods=['POST'])
 def delete_book():
     if not is_logged_in() or get_role() != 'admin':
@@ -558,11 +534,9 @@ def delete_book():
         print(f"DELETE BOOK ERROR: {e}")
         return jsonify({"success": False, "error": "Unable to delete selected books."}), 500
 
-
 # ============================================================
 #  BORROW / RETURN / SMART SCAN
 # ============================================================
-
 @app.route('/api/smart-scan', methods=['POST'])
 def smart_scan():
     """Unified scan: detect if code is a Book QR or a User ID (attendance)."""
@@ -625,7 +599,6 @@ def smart_scan():
                         "message": f"TIME OUT recorded — {full_name} — {now}",
                         "user": {"full_name": full_name, "id_number": code, "date": today, "time_in": last_attendance[1], "time_out": now}})
 
-
 @app.route('/api/borrow-book', methods=['POST'])
 def borrow_book():
     if not is_scan_authorized():
@@ -665,7 +638,6 @@ def borrow_book():
                     "message": f"BORROWED: '{book[1]}' by {full_name} at {now}",
                     "book_title": book[1], "borrower": full_name, "date": today, "time": now})
 
-
 @app.route('/api/return-book', methods=['POST'])
 def return_book():
     if not is_scan_authorized():
@@ -694,7 +666,6 @@ def return_book():
     return jsonify({"success": True,
                     "message": f"RETURNED: '{rec[1]}' (borrowed by {rec[2]}) at {now}",
                     "book_title": rec[1], "borrower": rec[2], "date": today, "time": now})
-
 
 @app.route('/get-borrow-records')
 def get_borrow_records():
@@ -736,11 +707,9 @@ def get_borrow_records():
     conn.close()
     return jsonify({"records": records})
 
-
 # ============================================================
 #  EXISTING ROUTES (unchanged)
 # ============================================================
-
 PRIVACY_PAGE = """
 <!DOCTYPE html><html><head>
 <title>Privacy Policy - SLSU Library Attendance System</title>
@@ -749,19 +718,19 @@ PRIVACY_PAGE = """
 <meta name="theme-color" content="#006633">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-*{box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#eef0f3;color:#374151;margin:0;padding:24px;line-height:1.65}.policy{max-width:980px;margin:0 auto;background:#fff;border:1px solid #d8dbe0;padding:34px 42px;box-shadow:0 2px 12px rgba(15,25,43,.08)}h1,h2{font-family:Georgia,'Times New Roman',serif;color:#1b2a41}h1{font-size:26px;margin:0 0 6px}h2{font-size:18px;margin:28px 0 8px;border-bottom:1px solid #eef0f3;padding-bottom:8px}p{margin:8px 0 14px}li{margin:5px 0}table{width:100%;border-collapse:collapse;margin:12px 0 20px}th,td{border:1px solid #d8dbe0;padding:10px;text-align:left;vertical-align:top}th{background:#1b2a41;color:#fff}@media(max-width:600px){body{padding:10px}.policy{padding:22px 18px}table{font-size:12px}}
+*{box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#eef0f3;color:#374151;margin:0;padding:24px;line-height:1.65;overflow-x:hidden}.policy{max-width:980px;margin:0 auto;background:#fff;border:1px solid #d8dbe0;padding:34px 42px;box-shadow:0 2px 12px rgba(15,25,43,.08)}h1,h2{font-family:Georgia,'Times New Roman',serif;color:#1b2a41}h1{font-size:26px;margin:0 0 6px}h2{font-size:18px;margin:28px 0 8px;border-bottom:1px solid #eef0f3;padding-bottom:8px}p{margin:8px 0 14px}li{margin:5px 0}.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}table{width:100%;border-collapse:collapse;margin:12px 0 20px;min-width:520px}th,td{border:1px solid #d8dbe0;padding:10px;text-align:left;vertical-align:top;word-break:break-word}th{background:#1b2a41;color:#fff}@media(max-width:600px){body{padding:10px}.policy{padding:22px 18px}table{font-size:12px}}
 </style></head><body><main class="policy">
 <h1>Privacy Policy - SLSU Library Attendance System</h1>
 <p><strong>Last Updated:</strong> September 13, 2026</p>
 <h2>1. Who We Are</h2><p>This system - SLSU Library Attendance System - is designed exclusively for Southern Luzon State University (SLSU). It is created to simplify and manage library entry and exit records for students, employees, and authorized visitors.</p>
 <h2>2. Exactly What Information We Collect</h2><p>We collect only the specific fields you enter during registration:</p>
-<table><tr><th>Field</th><th>Purpose</th></tr><tr><td>Full Name</td><td>Identification and record-keeping</td></tr><tr><td>ID Type</td><td>Student / Employee / Visitor categorization</td></tr><tr><td>ID Number</td><td>Unique identifier - this becomes your barcode</td></tr><tr><td>Department</td><td>CT, FBT, BSED, BEED, BSFAS, BSBA, EMPLOYEE - for reporting</td></tr><tr><td>Year Level</td><td>Students only - classification and demographic reporting</td></tr><tr><td>Major / Specialization</td><td>BSED, BSBA, BSIT, Com Tech, Food Tech, Bind Tech - program-specific reporting</td></tr><tr><td>Contact Number</td><td>Library-related announcements only</td></tr><tr><td>Complete Address</td><td>Required per university guidelines</td></tr></table>
+<div class="table-wrap"><table><tr><th>Field</th><th>Purpose</th></tr><tr><td>Full Name</td><td>Identification and record-keeping</td></tr><tr><td>ID Type</td><td>Student / Employee / Visitor categorization</td></tr><tr><td>ID Number</td><td>Unique identifier - this becomes your barcode</td></tr><tr><td>Department</td><td>CT, FBT, BSED, BEED, BSFAS, BSBA, EMPLOYEE - for reporting</td></tr><tr><td>Year Level</td><td>Students only - classification and demographic reporting</td></tr><tr><td>Major / Specialization</td><td>BSED, BSBA, BSIT, Com Tech, Food Tech, Bind Tech - program-specific reporting</td></tr><tr><td>Contact Number</td><td>Library-related announcements only</td></tr><tr><td>Complete Address</td><td>Required per university guidelines</td></tr></table></div>
 <p><strong>Attendance Data (Automatically Recorded Upon Scan)</strong></p><ul><li>Time In - exact date and time you scan your ID upon entry</li><li>Time Out - exact date and time you scan your ID upon exit</li><li>Date of Visit - automatically recorded for daily and monthly reports</li></ul>
 <p><strong>System Data</strong></p><ul><li>Login timestamp and role</li><li>System logs for troubleshooting and security</li><li>We do not collect passwords, photos, biometrics, location data, browsing history, or financial information.</li></ul>
 <h2>3. How We Use Your Information - Specifically</h2><p>Your data is used only to:</p><ul><li>Verify your identity when registering and generating your barcode</li><li>Record Time In and Time Out when you scan at the library entrance or exit</li><li>Generate daily, weekly, and monthly attendance reports accessible only to Library Staff and Administration</li><li>Track library occupancy and usage patterns</li><li>Comply with SLSU record-keeping and auditing requirements</li><li>Contact you through your provided number for library-related announcements only, never marketing</li></ul>
 <p><strong>We will never:</strong></p><ul><li>Sell, rent, or share your data with any third party</li><li>Send commercial advertisements or marketing messages</li><li>Collect or store your photos, biometrics, or passwords</li><li>Make your personal profile publicly searchable</li></ul>
 <h2>4. Data Storage and Security</h2><ul><li><strong>Database:</strong> PostgreSQL hosted on Render / Supabase Cloud - encrypted and password-protected</li><li><strong>Storage Duration:</strong> Attendance records are retained for one academic year per university policy. Personal data is kept while you are officially enrolled or employed at SLSU.</li><li><strong>Backups:</strong> Automatic daily backups are deleted after 30 days</li><li><strong>Security:</strong> All data is transmitted over HTTPS. Only the System Administrator has full database access.</li></ul>
-<h2>5. Who Can See Your Data - Specifically and Exactly</h2><table><tr><th>User Role</th><th>What They Can See and Do</th></tr><tr><td>System Administrator (slsu)</td><td>Full access to all records - manage users, view attendance, generate reports, correct information, and manage system settings</td></tr><tr><td>Library Staff</td><td>Can view all attendance records for daily/monthly reporting. Cannot edit or delete personal information.</td></tr><tr><td>Individual User</td><td>Can access only the Registration Form and Barcode Generation. Cannot view attendance records, history, logs, or reports.</td></tr><tr><td>Public / Visitors</td><td>No access - login is required.</td></tr></table><p>Your personal information and attendance records are never made public, indexed by search engines, or shared outside SLSU.</p>
+<h2>5. Who Can See Your Data - Specifically and Exactly</h2><div class="table-wrap"><table><tr><th>User Role</th><th>What They Can See and Do</th></tr><tr><td>System Administrator (slsu)</td><td>Full access to all records - manage users, view attendance, generate reports, correct information, and manage system settings</td></tr><tr><td>Library Staff</td><td>Can view all attendance records for daily/monthly reporting. Cannot edit or delete personal information.</td></tr><tr><td>Individual User</td><td>Can access only the Registration Form and Barcode Generation. Cannot view attendance records, history, logs, or reports.</td></tr><tr><td>Public / Visitors</td><td>No access - login is required.</td></tr></table></div><p>Your personal information and attendance records are never made public, indexed by search engines, or shared outside SLSU.</p>
 <h2>6. Your Exact Rights</h2><ul><li>Register and create your own barcode</li><li>Request correction of incorrect information</li><li>Request data deletion upon graduation, resignation, or separation from SLSU</li><li>Scan your printed barcode for entry and exit without logging in or viewing records</li><li>Opt out and use the manual paper logbook</li><li>Know that your information is protected and never shared or sold</li></ul>
 <h2>7. Data Sharing - Specifically When It Happens</h2><p>We share your data only when required by SLSU Administration for official reports, audits, and library management, or when required by law through a court order or legal mandate. It is never shared with commercial companies, marketing agencies, or external organizations.</p>
 <h2>8. Barcode / ID Number Usage - Specifically</h2><ul><li>Your Student Number or Employee Number is your unique identifier encoded into your barcode</li><li>Scanning reads only your ID number - no personal details, photos, or contact information are read directly from the card</li><li>The system matches the ID number to your database record and automatically logs Time In or Time Out</li><li>No personal information is stored inside the barcode itself - only your unique ID number</li></ul>
@@ -771,11 +740,9 @@ PRIVACY_PAGE = """
 <p><strong>By registering, generating your barcode, and scanning your ID, you confirm that you have read, understood, and agree to this Privacy Policy.</strong></p>
 </main></body></html>"""
 
-
 @app.route('/privacy')
 def privacy_policy():
     return render_template_string(PRIVACY_PAGE)
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -808,16 +775,17 @@ def login():
     <meta name="theme-color" content="#006633">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
-        body{background:#172236 url('/static/jge.jpg') center/cover no-repeat fixed;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;position:relative;}
+        body{background:#172236 url('/static/jge.jpg') center/cover no-repeat fixed;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;position:relative;overflow-x:hidden;}
         body:before{content:"";position:fixed;inset:0;background:rgba(10,20,35,.58);z-index:0;}
         .card{position:relative;z-index:1;background:rgba(255,255,255,.97);padding:0;border-radius:6px;border:1px solid #d8dbe0;box-shadow:0 8px 30px rgba(0,0,0,0.25);width:100%;max-width:440px;overflow:hidden;}
         .card-top{height:5px;background:#1b2a41;}
         .card-body{padding:44px 40px;}
         h1{text-align:center;color:#1b2a41;margin-bottom:10px;font-size:22px;font-weight:700;font-family:Georgia,'Times New Roman',serif;}
         .subtitle{text-align:center;color:#64748b;margin-bottom:30px;font-size:14px;}
-        .error-box{background:#fbeaea;color:#8a1f1f;padding:14px 16px;border-left:3px solid #c0392b;border-radius:4px;margin-bottom:26px;text-align:left;font-size:14px;}
+        .error-box{background:#fbeaea;color:#8a1f1f;padding:14px 16px;border-left:3px solid #c0392b;border-radius:4px;margin-bottom:26px;text-align:left;font-size:14px;word-break:break-word;}
         a.back-link{display:block;text-align:center;padding:13px;background:#1b2a41;color:#fff;border-radius:4px;text-decoration:none;font-weight:600;font-size:14px;letter-spacing:.3px;transition:background 0.2s;}
         a.back-link:hover{background:#10192b;}
+        @media(max-width:600px){.card-body{padding:32px 22px;}input{font-size:16px;}}
     </style>
 </head>
 <body>
@@ -843,7 +811,7 @@ def login():
     <meta name="theme-color" content="#006633">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
-        body{background:#172236 url('/static/jge.jpg') center/cover no-repeat fixed;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;position:relative;}
+        body{background:#172236 url('/static/jge.jpg') center/cover no-repeat fixed;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;position:relative;overflow-x:hidden;}
         body:before{content:"";position:fixed;inset:0;background:rgba(10,20,35,.58);z-index:0;}
         .card{position:relative;z-index:1;background:rgba(255,255,255,.97);padding:0;border-radius:6px;border:1px solid #d8dbe0;box-shadow:0 8px 30px rgba(0,0,0,0.25);width:100%;max-width:440px;overflow:hidden;}
         .card-top{height:5px;background:#1b2a41;}
@@ -857,7 +825,8 @@ def login():
         input:focus{outline:none;border-color:#1b2a41;background:#fff;box-shadow:0 0 0 3px rgba(27,42,65,0.1);}
         button{width:100%;padding:14px;background:#1b2a41;color:white;border:none;border-radius:4px;font-size:15px;font-weight:600;cursor:pointer;transition:background 0.2s;letter-spacing:.3px;margin-top:6px;}
         button:hover{background:#10192b;}
-        .hint{margin-top:22px;text-align:center;font-size:12px;color:#94a3b8;line-height:1.7;border-top:1px solid #eef0f3;padding-top:16px;}
+        .hint{margin-top:22px;text-align:center;font-size:12px;color:#94a3b8;line-height:1.7;border-top:1px solid #eef0f3;padding-top:16px;word-break:break-word;}
+        @media(max-width:600px){.card-body{padding:32px 22px;}input{font-size:16px;}h1{font-size:21px;}}
     </style>
 </head>
 <body>
@@ -883,7 +852,6 @@ def login():
 </body>
 </html>"""
 
-
 @app.route('/user')
 def user_panel():
     if not is_logged_in() or get_role() != 'user':
@@ -896,7 +864,6 @@ def student_panel():
         return "<script>window.location='/login';</script>"
     return render_template_string(STUDENT_FRONTEND)
 
-
 @app.route('/')
 def home():
     if not is_logged_in():
@@ -904,7 +871,6 @@ def home():
     if get_role() != 'admin':
         return "<script>window.location='/user';</script>"
     return render_template_string(ADMIN_FRONTEND)
-
 
 @app.route('/scan', methods=['POST'])
 @app.route('/api/scan', methods=['POST'])
@@ -943,11 +909,9 @@ def scan():
         conn.close()
         return jsonify({"success": True, "message": f"TIME OUT recorded — {full_name} — {now}"})
 
-
 @app.route('/health')
 def health():
     return jsonify({"status": "ok"})
-
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -979,7 +943,7 @@ def register():
         if c.fetchone():
             conn.close()
             return jsonify({"success": False, "error": "This ID number is already registered."}), 400
-        c.execute("""INSERT INTO users 
+        c.execute("""INSERT INTO users
             (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (id_type, full_name, department, major, contact_number, address, year_level, id_number, registered_at))
@@ -991,7 +955,6 @@ def register():
     except Exception as e:
         print(f"REGISTER ERROR: {e}")
         return jsonify({"success": False, "error": f"An error occurred: {str(e)}"}), 500
-
 
 @app.route('/get-students')
 def get_students():
@@ -1009,7 +972,6 @@ def get_students():
                  "department_display": get_student_code(r[1], r[3], r[7])} for r in c.fetchall()]
     conn.close()
     return jsonify({"students": students})
-
 
 @app.route('/update-student', methods=['POST'])
 def update_student():
@@ -1037,8 +999,8 @@ def update_student():
         if not conn:
             return jsonify({"success": False, "error": "Database error."}), 500
         c = conn.cursor()
-        c.execute("""UPDATE users SET 
-            id_type = %s, id_number = %s, full_name = %s, department = %s, 
+        c.execute("""UPDATE users SET
+            id_type = %s, id_number = %s, full_name = %s, department = %s,
             major = %s, contact_number = %s, address = %s, year_level = %s
             WHERE id = %s""",
             (id_type, id_number, full_name, department, major, contact_number, address, year_level, student_id))
@@ -1048,7 +1010,6 @@ def update_student():
     except Exception as e:
         print(f"UPDATE ERROR: {e}")
         return jsonify({"success": False, "error": f"An error occurred: {str(e)}"}), 500
-
 
 @app.route('/get-records')
 def get_records():
@@ -1067,7 +1028,6 @@ def get_records():
                 "time_in": r[5], "time_out": r[6]} for r in c.fetchall()]
     conn.close()
     return jsonify({"records": records})
-
 
 @app.route('/get-monthly-history')
 def get_monthly_history():
@@ -1094,7 +1054,6 @@ def get_monthly_history():
                 "id_number": r[5], "time_in": r[6], "time_out": r[7]} for r in c.fetchall()]
     conn.close()
     return jsonify({"records": records})
-
 
 @app.route('/download-word')
 def download_word():
@@ -1136,7 +1095,6 @@ def download_word():
     resp.headers['Content-Disposition'] = f'attachment; filename=attendance_report_{today}.docx'
     resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     return resp
-
 
 @app.route('/download-monthly-word')
 def download_monthly_word():
@@ -1185,7 +1143,6 @@ def download_monthly_word():
     resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     return resp
 
-
 @app.route('/print-monthly')
 def print_monthly():
     if not is_logged_in():
@@ -1196,17 +1153,20 @@ def print_monthly():
 <link rel="icon" type="image/png" href="/static/app-icon.png">
 <link rel="apple-touch-icon" href="/static/app-icon.png">
 <meta name="theme-color" content="#006633">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 *{{box-sizing:border-box;}}
-body{{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1100px;margin:0 auto;color:#1f2937;}}
+body{{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1100px;margin:0 auto;color:#1f2937;overflow-x:hidden;}}
 .report-header{{border-bottom:3px solid #1b2a41;padding-bottom:16px;margin-bottom:24px;}}
-h1{{color:#1b2a41;font-family:Georgia,'Times New Roman',serif;font-size:24px;margin-bottom:6px;}}
+h1{{color:#1b2a41;font-family:Georgia,'Times New Roman',serif;font-size:24px;margin-bottom:6px;word-break:break-word;}}
 .meta{{color:#64748b;font-size:13px;}}
-table{{width:100%;border-collapse:collapse;margin-top:10px;}}
-th,td{{border:1px solid #d8dbe0;padding:10px 12px;text-align:left;font-size:13px;}}
+.table-wrap{{overflow-x:auto;-webkit-overflow-scrolling:touch;}}
+table{{width:100%;border-collapse:collapse;margin-top:10px;min-width:560px;}}
+th,td{{border:1px solid #d8dbe0;padding:10px 12px;text-align:left;font-size:13px;word-break:break-word;}}
 th{{background:#1b2a41;color:#fff;font-weight:600;}}
 tr:nth-child(even){{background:#f7f8fa;}}
 button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color:white;border:none;border-radius:4px;font-weight:600;margin-bottom:20px;}}
+@media(max-width:600px){{body{{padding:14px;}}h1{{font-size:19px;}}table{{font-size:12px;}}}}
 @media print{{button{{display:none;}}body{{padding:0;}}}}
 </style>
 </head><body>
@@ -1215,6 +1175,7 @@ button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color
 <p class="meta">SLSU–JGE Library Attendance System &nbsp;•&nbsp; Generated: {get_ph_date()} {get_ph_time()}</p>
 </div>
 <button onclick="window.print()">Print Report</button>
+<div id="report-area"></div>
 <script>fetch('/get-monthly-history?month={month}').then(r=>r.json()).then(d=>{{
 const grouped = d.records.reduce((days, record) => {{
     (days[record.scan_date] ||= []).push(record);
@@ -1222,14 +1183,13 @@ const grouped = d.records.reduce((days, record) => {{
 }}, {{}});
 let html='';
 Object.entries(grouped).forEach(([date, records]) => {{
-    html+='<h2 style="margin-top:28px;">'+date+'</h2><table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';
+    html+='<h2 style="margin-top:28px;word-break:break-word;">'+date+'</h2><div class="table-wrap"><table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';
     records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');
-    html+='</table>';
+    html+='</table></div>';
 }});
-document.body.innerHTML+=html;
+document.getElementById('report-area').innerHTML=html || '<p style="color:#64748b;padding:20px;">No records.</p>';
 }})</script>
 </body></html>"""
-
 
 @app.route('/print-daily')
 def print_daily():
@@ -1241,10 +1201,11 @@ def print_daily():
 <link rel="icon" type="image/png" href="/static/app-icon.png">
 <link rel="apple-touch-icon" href="/static/app-icon.png">
 <meta name="theme-color" content="#006633">
-<style>*{{box-sizing:border-box;}}body{{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1100px;margin:0 auto;color:#1f2937;}}h1{{color:#1b2a41;font-family:Georgia,'Times New Roman',serif;}}.meta{{color:#64748b;font-size:13px;}}table{{width:100%;border-collapse:collapse;margin-top:24px;}}th,td{{border:1px solid #d8dbe0;padding:10px 12px;text-align:left;font-size:13px;}}th{{background:#1b2a41;color:#fff;}}tr:nth-child(even){{background:#f7f8fa;}}button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color:white;border:0;border-radius:4px;font-weight:600;margin-bottom:20px;}}@media print{{button{{display:none;}}body{{padding:0;}}}}</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>*{{box-sizing:border-box;}}body{{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1100px;margin:0 auto;color:#1f2937;overflow-x:hidden;}}h1{{color:#1b2a41;font-family:Georgia,'Times New Roman',serif;word-break:break-word;}}.meta{{color:#64748b;font-size:13px;}}.table-wrap{{overflow-x:auto;-webkit-overflow-scrolling:touch;}}table{{width:100%;border-collapse:collapse;margin-top:24px;min-width:560px;}}th,td{{border:1px solid #d8dbe0;padding:10px 12px;text-align:left;font-size:13px;word-break:break-word;}}th{{background:#1b2a41;color:#fff;}}tr:nth-child(even){{background:#f7f8fa;}}button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color:white;border:0;border-radius:4px;font-weight:600;margin-bottom:20px;}}@media(max-width:600px){{body{{padding:14px;}}table{{font-size:12px;}}}}@media print{{button{{display:none;}}body{{padding:0;}}}}</style>
 </head><body><button onclick="window.print()">Print Daily Report</button><h1>Daily Attendance Report - {selected_date}</h1><p class="meta">SLSU-JGE Library Attendance System</p>
-<script>fetch('/get-monthly-history?month={selected_date[:7]}&date={selected_date}').then(r=>r.json()).then(d=>{{let html='<table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');html+='</table>';document.body.innerHTML+=html;}})</script></body></html>"""
-
+<div class="table-wrap" id="daily-table-wrap"></div>
+<script>fetch('/get-monthly-history?month={selected_date[:7]}&date={selected_date}').then(r=>r.json()).then(d=>{{let html='<table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');html+='</table>';document.getElementById('daily-table-wrap').innerHTML=html;}})</script></body></html>"""
 
 # ============================================================
 #  STUDENT FRONTEND — registration form ONLY (nothing else)
@@ -1260,13 +1221,13 @@ STUDENT_FRONTEND = """
     <meta name="theme-color" content="#006633">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
-        body{background:#eef0f3;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:30px 16px;}
+        body{background:#eef0f3;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:30px 16px;overflow-x:hidden;}
         .container{width:100%;max-width:560px;}
         .card{background:#ffffff;border-radius:6px;border:1px solid #d8dbe0;box-shadow:0 2px 12px rgba(15,25,43,0.08);overflow:hidden;}
         .card-top{height:5px;background:#1b2a41;}
         .card-body{padding:42px 40px;}
         .brand-mark{width:52px;height:52px;margin:0 auto 16px auto;background:#1b2a41;color:#e8c766;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:12px;text-align:center;line-height:1.2;}
-        h1{text-align:center;color:#1b2a41;margin-bottom:6px;font-size:22px;font-weight:700;font-family:Georgia,'Times New Roman',serif;}
+        h1{text-align:center;color:#1b2a41;margin-bottom:6px;font-size:22px;font-weight:700;font-family:Georgia,'Times New Roman',serif;word-break:break-word;}
         .subtitle{text-align:center;color:#64748b;margin-bottom:32px;font-size:14px;}
         .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
         .form-group{margin-bottom:18px;}
@@ -1278,7 +1239,7 @@ STUDENT_FRONTEND = """
         #barcode-result{display:none;margin-top:28px;text-align:center;padding:26px;background:#f7f8fa;border-radius:6px;border:1px solid #d8dbe0;}
         #barcode-result h3{color:#1b2a41;margin-bottom:12px;font-size:16px;font-family:Georgia,'Times New Roman',serif;}
         .barcode-img{width:50mm;height:12mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
-        .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;}
+        .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;word-break:break-word;}
         .btn-print{background:#1e6b34;color:#fff;border:none;padding:12px 22px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;margin:4px;}
         .btn-print:hover{background:#175628;}
         .btn-download-barcode{background:#8a6d1f;color:#fff;border:none;padding:12px 22px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;margin:4px;}
@@ -1288,7 +1249,7 @@ STUDENT_FRONTEND = """
         .privacy-link{display:block;text-align:center;margin-top:12px;color:#1b2a41;text-decoration:none;font-size:13px;}
         .privacy-link:hover{text-decoration:underline;}
         @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:50mm;height:25mm;margin:0;padding:0;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:50mm;height:12mm;object-fit:contain;padding:0;border:0;margin:7mm auto 0;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print{display:none !important;}}
-        @media(max-width:600px){.form-row{grid-template-columns:1fr;}.card-body{padding:30px 22px;}}
+        @media(max-width:600px){.form-row{grid-template-columns:1fr;}.card-body{padding:30px 22px;}input,select{font-size:16px;}body{padding:16px 10px;}}
     </style>
 </head>
 <body>
@@ -1459,11 +1420,11 @@ USER_FRONTEND = """
     <meta name="theme-color" content="#006633">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
-        body{background:#eef0f3;min-height:100vh;}
+        body{background:#eef0f3;min-height:100vh;overflow-x:hidden;}
         .topnav{background:#1b2a41;display:flex;align-items:center;flex-wrap:wrap;padding:0 20px;box-shadow:0 2px 8px rgba(15,25,43,.18);position:sticky;top:0;z-index:50;}
         .brand{display:flex;align-items:center;gap:12px;padding:14px 0;color:#fff;margin-right:auto;}
         .brand-mark{width:40px;height:40px;background:#24344f;color:#e8c766;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:11px;text-align:center;line-height:1.2;flex:0 0 40px;}
-        .brand-text h1{font-size:16px;font-family:Georgia,'Times New Roman',serif;color:#f1f3f6;}
+        .brand-text h1{font-size:16px;font-family:Georgia,'Times New Roman',serif;color:#f1f3f6;word-break:break-word;}
         .brand-text p{font-size:11px;color:#8b9bb5;letter-spacing:.3px;}
         .nav-tabs{display:flex;gap:2px;flex-wrap:wrap;}
         .nav-tab{padding:14px 18px;color:#c3cede;cursor:pointer;font-size:14px;font-weight:600;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;}
@@ -1480,7 +1441,7 @@ USER_FRONTEND = """
         .card-top{height:5px;background:#1b2a41;}
         .card-body{padding:42px 40px;}
         .reg-brand-mark{width:52px;height:52px;margin:0 auto 16px auto;background:#1b2a41;color:#e8c766;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:12px;text-align:center;line-height:1.2;}
-        h1.reg-title{text-align:center;color:#1b2a41;margin-bottom:6px;font-size:22px;font-weight:700;font-family:Georgia,'Times New Roman',serif;}
+        h1.reg-title{text-align:center;color:#1b2a41;margin-bottom:6px;font-size:22px;font-weight:700;font-family:Georgia,'Times New Roman',serif;word-break:break-word;}
         .subtitle{text-align:center;color:#64748b;margin-bottom:32px;font-size:14px;}
         .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
         .form-group{margin-bottom:18px;}
@@ -1492,7 +1453,7 @@ USER_FRONTEND = """
         #barcode-result{display:none;margin-top:28px;text-align:center;padding:26px;background:#f7f8fa;border-radius:6px;border:1px solid #d8dbe0;}
         #barcode-result h3{color:#1b2a41;margin-bottom:12px;font-size:16px;font-family:Georgia,'Times New Roman',serif;}
         .barcode-img{width:50mm;height:12mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
-        .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;}
+        .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;word-break:break-word;}
         .btn-print{background:#1e6b34;color:#fff;border:none;padding:12px 22px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;margin:4px;}
         .btn-print:hover{background:#175628;}
         .btn-download-barcode{background:#8a6d1f;color:#fff;border:none;padding:12px 22px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;margin:4px;}
@@ -1504,21 +1465,24 @@ USER_FRONTEND = """
         @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:50mm;height:25mm;margin:0;padding:0;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:50mm;height:12mm;object-fit:contain;padding:0;border:0;margin:7mm auto 0;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print{display:none !important;}}
         /* ---- scan / book panels ---- */
         .panel-card{background:#fff;border:1px solid #d8dbe0;border-radius:6px;padding:28px;box-shadow:0 2px 12px rgba(15,25,43,.08);}
-        h2.panel-title{color:#1b2a41;font-size:19px;font-family:Georgia,'Times New Roman',serif;margin-bottom:18px;border-bottom:1px solid #eef0f3;padding-bottom:12px;}
+        h2.panel-title{color:#1b2a41;font-size:19px;font-family:Georgia,'Times New Roman',serif;margin-bottom:18px;border-bottom:1px solid #eef0f3;padding-bottom:12px;word-break:break-word;}
         .scan-area{text-align:center;padding:30px;background:#f7f8fa;border-radius:6px;margin-bottom:18px;border:1px solid #d8dbe0;}
         .scan-input{font-size:20px;text-align:center;padding:14px;width:100%;max-width:480px;border-radius:4px;border:1px solid #b9c2cf;}
-        .status{font-size:15px;font-weight:600;margin-top:16px;padding:14px;border-radius:4px;border-left:4px solid;}
+        .status{font-size:15px;font-weight:600;margin-top:16px;padding:14px;border-radius:4px;border-left:4px solid;word-break:break-word;}
         .success{background:#e8f5ec;color:#1e6b34;border-color:#2f8a4e;}
         .info{background:#eaf1f8;color:#1b4f72;border-color:#3a75a3;}
         .error{background:#fbeaea;color:#8a1f1f;border-color:#c0392b;}
         .warning{background:#fdf6e3;color:#8a6d1f;border-color:#c9a227;}
+        /* responsive: data tables scroll horizontally on small screens */
+        #today-records-table, #borrow-history-table{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+        #today-records-table table, #borrow-history-table table{min-width:560px;}
         table{width:100%;border-collapse:collapse;margin-top:16px;}
-        th,td{padding:11px 12px;text-align:left;border:1px solid #e5e7eb;font-size:13px;}
+        th,td{padding:11px 12px;text-align:left;border:1px solid #e5e7eb;font-size:13px;word-break:break-word;vertical-align:top;}
         th{background:#1b2a41;color:#fff;font-weight:600;}
         tr:nth-child(even){background:#f7f8fa;}
         .book-detail{background:#f7f8fa;border:1px solid #d8dbe0;border-radius:6px;padding:22px;margin-top:18px;}
-        .book-detail h3{color:#1b2a41;font-family:Georgia,'Times New Roman',serif;font-size:18px;margin-bottom:10px;}
-        .book-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px 18px;margin:12px 0 18px;font-size:13px;}
+        .book-detail h3{color:#1b2a41;font-family:Georgia,'Times New Roman',serif;font-size:18px;margin-bottom:10px;word-break:break-word;}
+        .book-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 18px;margin:12px 0 18px;font-size:13px;}
         .book-meta div strong{color:#1b2a41;display:block;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin-bottom:2px;}
         .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;}
         .badge-avail{background:#e8f5ec;color:#1e6b34;}
@@ -1530,12 +1494,24 @@ USER_FRONTEND = """
         .btn-return:hover{background:#175628;}
         .btn-cancel{background:#5b6472;color:#fff;border:none;padding:11px 22px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;}
         .btn-cancel:hover{background:#464d59;}
-        .awaiting-box{background:#fdf6e3;border:2px dashed #c9a227;border-radius:6px;padding:18px;text-align:center;margin-top:14px;font-weight:600;color:#8a6d1f;}
-        .borrower-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;margin-top:8px;font-size:13px;flex-wrap:wrap;gap:8px;}
+        .awaiting-box{background:#fdf6e3;border:2px dashed #c9a227;border-radius:6px;padding:18px;text-align:center;margin-top:14px;font-weight:600;color:#8a6d1f;word-break:break-word;}
+        .borrower-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;margin-top:8px;font-size:13px;flex-wrap:wrap;gap:8px;word-break:break-word;}
         #toast{position:fixed;top:70px;right:20px;max-width:360px;z-index:200;display:flex;flex-direction:column;gap:8px;}
-        .toast-item{padding:14px 18px;border-radius:6px;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(15,25,43,.25);border-left:4px solid;animation:slideIn .25s ease;}
+        .toast-item{padding:14px 18px;border-radius:6px;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(15,25,43,.25);border-left:4px solid;animation:slideIn .25s ease;word-break:break-word;}
         @keyframes slideIn{from{transform:translateX(40px);opacity:0;}to{transform:translateX(0);opacity:1;}}
-        @media(max-width:700px){.form-row{grid-template-columns:1fr;}.card-body{padding:30px 22px;}.nav-tab{padding:12px 12px;font-size:13px;}.staff-content{padding:18px 10px 40px;}.panel-card{padding:18px;}}
+        @media(max-width:700px){
+            .form-row{grid-template-columns:1fr;}
+            .card-body{padding:30px 22px;}
+            .nav-tab{padding:12px 14px;font-size:13px;}
+            .staff-content{padding:18px 10px 40px;}
+            .panel-card{padding:18px 14px;}
+            input,select,textarea{font-size:16px;}
+            .scan-input{font-size:18px;padding:12px;}
+            .scan-area{padding:20px 12px;}
+            .topnav{padding:0 12px;}
+            .logout-btn{margin-left:0;margin-top:6px;margin-bottom:6px;width:100%;}
+        }
+        @media(max-width:480px){ #toast{left:12px;right:12px;max-width:none;top:60px;} }
     </style>
 </head>
 <body>
@@ -1679,7 +1655,6 @@ let pendingBook = null;
 let scannerBuffer = "";
 let scannerLastKeyAt = 0;
 let scannerResetTimer = null;
-
 function logout(){
     document.cookie = "logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     document.cookie = "role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
@@ -1918,9 +1893,9 @@ document.addEventListener("DOMContentLoaded", function(){
 </html>
 """
 
-
 # ============================================================
 #  ADMIN FRONTEND — original + Manage Books + Book Records
+#  RESPONSIVE: sidebar becomes slide-over drawer on mobile
 # ============================================================
 ADMIN_FRONTEND = """
 <!DOCTYPE html>
@@ -1933,9 +1908,9 @@ ADMIN_FRONTEND = """
     <meta name="theme-color" content="#006633">
     <style>
         *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
-        body{background:#eef0f3;min-height:100vh;}
-        .app-container{display:flex;height:100vh;}
-        .sidebar{width:270px;background:#1b2a41;display:flex;flex-direction:column;padding:0;position:relative;transition:width 0.25s ease;border-right:1px solid #10192b;}
+        body{background:#eef0f3;min-height:100vh;overflow-x:hidden;}
+        .app-container{display:flex;min-height:100vh;position:relative;}
+        .sidebar{width:270px;background:#1b2a41;display:flex;flex-direction:column;padding:0;position:relative;transition:width 0.25s ease;border-right:1px solid #10192b;flex:0 0 auto;}
         .sidebar.collapsed{width:74px;}
         .toggle-btn{position:absolute;right:-14px;top:26px;width:28px;height:28px;background:#1b2a41;border:1px solid #34455f;border-radius:50%;color:#e8c766;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;transition:transform 0.2s;}
         .sidebar.collapsed .toggle-btn{transform:rotate(180deg);}
@@ -1957,12 +1932,14 @@ ADMIN_FRONTEND = """
         .sidebar.collapsed .sidebar-footer{padding:18px 8px;}
         .logout-btn{width:100%;padding:12px;background:#7a1f1f;color:white;border:none;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;letter-spacing:.3px;}
         .logout-btn:hover{background:#5e1717;}
-        .main-content{flex:1;padding:28px;overflow-y:auto;}
-        .content-header{margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #d8dbe0;}
-        .content-header h1{color:#1b2a41;font-size:22px;font-weight:700;font-family:Georgia,'Times New Roman',serif;}
+        .main-content{flex:1;padding:28px;overflow-x:hidden;min-width:0;}
+        .content-header{margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #d8dbe0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+        .content-header h1{color:#1b2a41;font-size:22px;font-weight:700;font-family:Georgia,'Times New Roman',serif;word-break:break-word;}
+        .hamburger{display:none;background:#1b2a41;color:#e8c766;border:1px solid #34455f;border-radius:4px;padding:8px 14px;font-size:16px;cursor:pointer;font-weight:600;}
+        .sidebar-overlay{display:none;}
         .content-card{background:#ffffff;border-radius:6px;border:1px solid #d8dbe0;padding:32px;min-height:calc(100vh - 150px);}
-        h2{color:#1b2a41;margin-bottom:22px;font-size:18px;font-weight:700;font-family:Georgia,'Times New Roman',serif;border-bottom:1px solid #eef0f3;padding-bottom:14px;}
-        h3{font-family:Georgia,'Times New Roman',serif;color:#1b2a41;}
+        h2{color:#1b2a41;margin-bottom:22px;font-size:18px;font-weight:700;font-family:Georgia,'Times New Roman',serif;border-bottom:1px solid #eef0f3;padding-bottom:14px;word-break:break-word;}
+        h3{font-family:Georgia,'Times New Roman',serif;color:#1b2a41;word-break:break-word;}
         .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
         .form-group{margin-bottom:18px;}
         label{display:block;margin-bottom:7px;color:#374151;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px;}
@@ -1972,21 +1949,24 @@ ADMIN_FRONTEND = """
         button:hover{background:#10192b;}
         .scan-area{text-align:center;padding:36px;background:#f7f8fa;border-radius:6px;margin-bottom:20px;border:1px solid #d8dbe0;}
         #scan-input{font-size:20px;text-align:center;padding:16px;width:100%;max-width:460px;border-radius:4px;border:1px solid #b9c2cf;}
-        .status{font-size:16px;font-weight:600;margin-top:18px;padding:16px;border-radius:4px;border-left:4px solid;}
+        .status{font-size:16px;font-weight:600;margin-top:18px;padding:16px;border-radius:4px;border-left:4px solid;word-break:break-word;}
         .success{background:#e8f5ec;color:#1e6b34;border-color:#2f8a4e;}
         .info{background:#eaf1f8;color:#1b4f72;border-color:#3a75a3;}
         .error{background:#fbeaea;color:#8a1f1f;border-color:#c0392b;}
         .warning{background:#fdf6e3;color:#8a6d1f;border-color:#c9a227;}
+        /* responsive: all data tables scroll horizontally on small screens */
+        #students-table, #records-table, #history-table, #books-table, #borrow-records-table{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+        #students-table table, #records-table table, #history-table table, #books-table table, #borrow-records-table table{min-width:620px;}
         table{width:100%;border-collapse:collapse;margin-top:18px;}
-        th,td{padding:11px 12px;text-align:left;border:1px solid #e5e7eb;font-size:13px;vertical-align:top;}
-        th{background:#1b2a41;color:#fff;font-weight:600;}
+        th,td{padding:11px 12px;text-align:left;border:1px solid #e5e7eb;font-size:13px;vertical-align:top;word-break:break-word;}
+        th{background:#1b2a41;color:#fff;font-weight:600;white-space:nowrap;}
         tr:nth-child(even){background:#f7f8fa;}
         tr:hover{background:#eef1f5;}
         .tab-content{display:none;}
         .tab-content.active{display:block;}
         .barcode-img{width:50mm;height:12mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
-        .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;}
-        .book-qr-img{width:160px;height:160px;object-fit:contain;image-rendering:crisp-edges;margin:10px auto;display:block;background:#fff;border:1px solid #d8dbe0;padding:6px;border-radius:4px;}
+        .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;word-break:break-word;}
+        .book-qr-img{width:160px;height:160px;max-width:100%;object-fit:contain;image-rendering:crisp-edges;margin:10px auto;display:block;background:#fff;border:1px solid #d8dbe0;padding:6px;border-radius:4px;}
         .btn-print{background:#1e6b34;color:white;}
         .btn-print:hover{background:#175628;}
         .btn-barcode{background:#8a6d1f;color:white;padding:7px 16px;font-size:12px;border-radius:4px;}
@@ -2021,7 +2001,7 @@ ADMIN_FRONTEND = """
         .edit-close:hover{background:#464d59;}
         .hidden{display:none !important;}
         .dept-tabs{display:flex;gap:8px;margin:18px 0;flex-wrap:wrap;}
-        .dept-tab{padding:9px 16px;background:#f1f3f6;color:#374151;border:1px solid #d8dbe0;border-radius:4px;cursor:pointer;font-weight:600;transition:all 0.2s;font-size:13px;}
+        .dept-tab{padding:9px 16px;background:#f1f3f6;color:#374151;border:1px solid #d8dbe0;border-radius:4px;cursor:pointer;font-weight:600;transition:all 0.2s;font-size:13px;white-space:nowrap;}
         .dept-tab:hover{background:#e5e8ec;}
         .dept-tab.active{background:#1b2a41;color:white;border-color:#1b2a41;}
         .search-box{margin-bottom:18px;}
@@ -2035,24 +2015,47 @@ ADMIN_FRONTEND = """
         .badge-avail{background:#e8f5ec;color:#1e6b34;}
         .badge-borrowed{background:#fbeaea;color:#8a1f1f;}
         .book-detail{background:#f7f8fa;border:1px solid #d8dbe0;border-radius:6px;padding:22px;margin-top:18px;}
-        .book-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 18px;margin:12px 0 16px;font-size:13px;}
+        .book-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px 18px;margin:12px 0 16px;font-size:13px;}
         .book-meta div strong{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin-bottom:2px;}
-        .borrower-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;margin-top:8px;font-size:13px;flex-wrap:wrap;gap:8px;}
-        .awaiting-box{background:#fdf6e3;border:2px dashed #c9a227;border-radius:6px;padding:16px;text-align:center;margin-top:14px;font-weight:600;color:#8a6d1f;}
+        .borrower-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;margin-top:8px;font-size:13px;flex-wrap:wrap;gap:8px;word-break:break-word;}
+        .awaiting-box{background:#fdf6e3;border:2px dashed #c9a227;border-radius:6px;padding:16px;text-align:center;margin-top:14px;font-weight:600;color:#8a6d1f;word-break:break-word;}
         .qr-result{display:none;margin-top:24px;text-align:center;padding:24px;background:#f7f8fa;border-radius:6px;border:1px solid #d8dbe0;}
         .action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+        /* ===== MOBILE / TABLET RESPONSIVE ===== */
         @media(max-width:900px){
-            .sidebar{width:74px;}
-            .sidebar-header .full-title,.sidebar-header p,.menu-item span.label{display:none;}
-            .menu-item{justify-content:center;padding:12px 0;}
+            .hamburger{display:inline-block;}
+            .toggle-btn{display:none;}
+            .sidebar{position:fixed;left:0;top:0;bottom:0;width:270px;z-index:200;transform:translateX(-105%);transition:transform .25s ease;box-shadow:4px 0 20px rgba(0,0,0,.3);height:100vh;}
+            .sidebar.open{transform:translateX(0);}
+            .sidebar.collapsed{width:270px;}
+            .sidebar-header .full-title,.sidebar-header p,.menu-item span.label{display:block !important;}
+            .menu-item{justify-content:flex-start !important;padding:12px 14px !important;}
+            .sidebar-overlay.open{display:block;position:fixed;inset:0;background:rgba(10,15,25,.55);z-index:150;}
             .form-row{grid-template-columns:1fr;}
-            .main-content{padding:14px;}
-            .content-card{padding:20px;}
+            .main-content{padding:14px 10px;}
+            .content-card{padding:18px 14px;min-height:auto;}
+            .content-header h1{font-size:19px;}
+            .edit-dialog{padding:20px 14px;}
+            .dept-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;}
+            .dept-tab{flex:0 0 auto;}
+            .scan-area{padding:24px 12px;}
+            #scan-input{font-size:18px;padding:12px;}
+            .student-actions .btn-barcode,.student-actions .btn-download,.student-actions .btn-delete{width:auto;flex:1 1 auto;min-width:120px;}
+            .month-filter select,.filter-row select,.filter-row input{max-width:100%;flex:1 1 140px;}
+            .privacy-frame{min-height:500px;height:70vh;}
+            input,select,textarea{font-size:16px;}
+            h2{font-size:16px;}
+        }
+        @media(max-width:480px){
+            button{padding:10px 16px;font-size:13px;}
+            .content-card{padding:14px 10px;}
+            .book-meta{grid-template-columns:1fr 1fr;}
         }
     </style>
 </head>
 <body>
     <div class="app-container">
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
         <div class="sidebar" id="sidebar">
             <button class="toggle-btn" onclick="toggleSidebar()">◀</button>
             <div class="sidebar-header">
@@ -2074,7 +2077,10 @@ ADMIN_FRONTEND = """
             <div class="sidebar-footer"><button class="logout-btn" onclick="logout()">Log Out</button></div>
         </div>
         <div class="main-content">
-            <div class="content-header"><h1 id="page-title">Scan / Attendance</h1></div>
+            <div class="content-header">
+                <button class="hamburger" onclick="toggleSidebar()">☰ Menu</button>
+                <h1 id="page-title">Scan / Attendance</h1>
+            </div>
             <div class="content-card">
                 <!-- 01 SCAN / ATTENDANCE (smart: book QR + user ID) -->
                 <div id="scan" class="tab-content active">
@@ -2196,7 +2202,7 @@ ADMIN_FRONTEND = """
                         <select id="delete-history-date"><option value="">Select day to delete</option></select>
                         <button class="btn-delete-daily" onclick="deleteDailyHistory()">Delete Daily History</button>
                     </div>
-                    <p style="font-size:13px;color:#64748b;margin:8px 0 18px;">Choose a month to view monthly records, or choose a specific date.</p>
+                    <p style="font-size:13px;color:#64748b;margin:8px 0 18px;word-break:break-word;">Choose a month to view monthly records, or choose a specific date.</p>
                     <button onclick="loadMonthlyHistory()">Load Records</button>
                     <div id="history-table"></div>
                 </div>
@@ -2220,7 +2226,7 @@ ADMIN_FRONTEND = """
                     </form>
                     <div id="book-qr-result" class="qr-result">
                         <h3>Book Registered — QR Code Generated</h3>
-                        <p id="book-qr-title" style="font-weight:600;color:#1b2a41;margin-top:8px;"></p>
+                        <p id="book-qr-title" style="font-weight:600;color:#1b2a41;margin-top:8px;word-break:break-word;"></p>
                         <p id="book-qr-code" style="font-size:13px;color:#64748b;"></p>
                         <img id="book-qr-img" class="book-qr-img">
                         <div class="action-row" style="justify-content:center;">
@@ -2274,7 +2280,7 @@ ADMIN_FRONTEND = """
                 <!-- 08 EXPORT -->
                 <div id="export" class="tab-content">
                     <h2>Export &amp; Print Reports</h2>
-                    <p style="font-size:15px;color:#64748b;margin-bottom:22px;">Download today's complete attendance as a Microsoft Word document or print directly.</p>
+                    <p style="font-size:15px;color:#64748b;margin-bottom:22px;word-break:break-word;">Download today's complete attendance as a Microsoft Word document or print directly.</p>
                     <button class="btn-download" onclick="window.location.href='/download-word'">Download Today's Attendance Report</button><br><br>
                     <button class="btn-print" onclick="window.print()">Print Page</button>
                 </div>
@@ -2293,8 +2299,27 @@ let editingStudentId=null, currentDept="ALL", allStudents=[], barcodeSelectionMo
 let scannerBuffer="", scannerLastKeyAt=0, scannerResetTimer=null, recordsRefreshInProgress=false;
 let scanState="idle", pendingBook=null;
 let allBooks=[], bookQRSelectionMode=false, lastBookQRCode=null;
-
-function toggleSidebar(){const s=document.getElementById("sidebar");s.classList.toggle("collapsed");s.querySelector(".toggle-btn").textContent=s.classList.contains("collapsed")?"▶":"◀";}
+function toggleSidebar(){
+    const s=document.getElementById("sidebar");
+    const ov=document.getElementById("sidebar-overlay");
+    if(window.innerWidth<=900){
+        // mobile: slide-over drawer
+        s.classList.toggle("open");
+        if(ov) ov.classList.toggle("open");
+    } else {
+        // desktop: collapse to icons
+        s.classList.toggle("collapsed");
+        const tb=s.querySelector(".toggle-btn");
+        if(tb) tb.textContent=s.classList.contains("collapsed")?"▶":"◀";
+    }
+}
+function closeMobileSidebar(){
+    if(window.innerWidth<=900){
+        document.getElementById("sidebar").classList.remove("open");
+        const ov=document.getElementById("sidebar-overlay");
+        if(ov) ov.classList.remove("open");
+    }
+}
 function logout(){document.cookie="logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";document.cookie="role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";window.location.href="/login";}
 function showContent(pageId){
     document.querySelectorAll(".menu-item").forEach(i=>i.classList.remove("active"));
@@ -2303,6 +2328,7 @@ function showContent(pageId){
     if(idx!==-1) document.querySelectorAll(".menu-item")[idx].classList.add("active");
     const t=document.getElementById(pageId); if(t) t.classList.add("active");
     document.getElementById("page-title").textContent=PAGE_TITLES[pageId]||"Library System";
+    closeMobileSidebar();
     if(pageId==="scan") setTimeout(()=>document.getElementById("scan-input")?.focus(),100);
     if(pageId==="students") loadStudents();
     if(pageId==="records") loadRecords();
@@ -2522,8 +2548,5 @@ document.addEventListener("DOMContentLoaded",function(){
 </html>
 """
 
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=False)
-
-
