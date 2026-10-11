@@ -77,6 +77,26 @@ def get_student_code(id_type, department, year_level):
     department_code = DEPARTMENT_CODES.get(department, department.upper())
     return f"{department_code}{year_match.group(1)}" if year_match else "-"
 
+def _generate_next_id(prefix):
+    """Auto-generate a unique ID number for Employee/Visitor (e.g. EMP-0001, VIS-0001)."""
+    conn = get_db()
+    if not conn:
+        return f"{prefix}-{secrets.token_hex(2).upper()}"
+    c = conn.cursor()
+    try:
+        c.execute("SELECT id_number FROM users WHERE id_number LIKE %s", (f"{prefix}-%",))
+        max_n = 0
+        for (val,) in c.fetchall():
+            m = re.search(r"-(\d+)$", val or "")
+            if m:
+                try:
+                    max_n = max(max_n, int(m.group(1)))
+                except Exception:
+                    pass
+    finally:
+        conn.close()
+    return f"{prefix}-{str(max_n + 1).zfill(4)}"
+
 
 def init_db():
     conn = get_db()
@@ -1154,8 +1174,11 @@ def register():
 
         if id_type not in {"Student", "Employee", "Visitor"}:
             return jsonify({"success": False, "error": "Please select a valid ID type."}), 400
+        # Auto-generate ID number for Employee/Visitor (they only provide Full Name, Type, Address, Contact)
+        if id_type in {"Employee", "Visitor"} and not id_number:
+            id_number = _generate_next_id("EMP" if id_type == "Employee" else "VIS")
         if not full_name or not id_number or not contact_number or not address:
-            return jsonify({"success": False, "error": "Full name, ID number, contact number, and address are required."}), 400
+            return jsonify({"success": False, "error": "Full name, contact number, and address are required."}), 400
         if email and not EMAIL_RE.match(email):
             return jsonify({"success": False, "error": "Invalid email address format."}), 400
 
@@ -1187,7 +1210,7 @@ def register():
         conn.close()
         barcode_b64 = generate_barcode_b64(id_number)
         info = f"{full_name}  |  ID: {id_number}  |  {id_type}"
-        return jsonify({"success": True, "info": info, "barcode": barcode_b64})
+        return jsonify({"success": True, "info": info, "barcode": barcode_b64, "id_number": id_number})
     except Exception as e:
         print(f"REGISTER ERROR: {e}")
         return jsonify({"success": False, "error": f"An error occurred: {str(e)}"}), 500
@@ -1551,10 +1574,6 @@ STUDENT_FRONTEND = """
                         <label>Full Name *</label>
                         <input type="text" name="full_name" required placeholder="Last, First Middle">
                     </div>
-                    <div class="form-group">
-                        <label>Email Address <span style="text-transform:none;font-weight:400;color:#64748b;">(required for Outside book borrow)</span></label>
-                        <input type="email" name="email" id="email-input" placeholder="you@example.com">
-                    </div>
                     <div id="student-fields">
                         <div class="form-row">
                             <div class="form-group" id="student-department-group">
@@ -1644,6 +1663,13 @@ document.addEventListener("DOMContentLoaded", function(){
         const isStudent = idTypeSelect.value === "Student";
         studentFields.style.display = isStudent ? "" : "none";
         studentFields.querySelectorAll("input, select").forEach(field=>{field.disabled = !isStudent;});
+        // Employee/Visitor: ID Number is auto-generated, hide the field
+        const idInput = document.querySelector('#register-form input[name="id_number"]');
+        if(idInput){
+            const grp = idInput.closest('.form-group');
+            if(grp){ grp.style.display = isStudent ? "" : "none"; }
+            idInput.disabled = !isStudent;
+        }
     }
     departmentSelect.addEventListener("change", function(){
         const department = departmentSelect.value;
@@ -1665,7 +1691,7 @@ document.addEventListener("DOMContentLoaded", function(){
         .then(res=>res.json()).then(data=>{
             if(data.success){
                 document.getElementById("barcode-result").style.display="block";
-                document.getElementById("barcode-id").textContent="ID Number: " + formData.get("id_number");
+                document.getElementById("barcode-id").textContent="ID Number: " + (data.id_number || formData.get("id_number"));
                 document.getElementById("barcode-img").src="data:image/png;base64,"+data.barcode;
                 form.reset();
                 document.getElementById("dept-select").value="";
@@ -1868,10 +1894,6 @@ USER_FRONTEND = """
                             <div class="form-group">
                                 <label>Full Name *</label>
                                 <input type="text" name="full_name" required placeholder="Last, First Middle">
-                            </div>
-                            <div class="form-group">
-                                <label>Email Address <span style="text-transform:none;font-weight:400;color:#64748b;">(for Outside borrow notification)</span></label>
-                                <input type="email" name="email" placeholder="you@example.com">
                             </div>
                             <div id="student-fields">
                                 <div class="form-row">
@@ -2233,6 +2255,13 @@ document.addEventListener("DOMContentLoaded", function(){
         const isStudent = idTypeSelect.value === "Student";
         studentFields.style.display = isStudent ? "" : "none";
         studentFields.querySelectorAll("input, select").forEach(field=>{field.disabled = !isStudent;});
+        // Employee/Visitor: ID Number is auto-generated, hide the field
+        const idInput = document.querySelector('#register-form input[name="id_number"]');
+        if(idInput){
+            const grp = idInput.closest('.form-group');
+            if(grp){ grp.style.display = isStudent ? "" : "none"; }
+            idInput.disabled = !isStudent;
+        }
     }
     departmentSelect.addEventListener("change", function(){
         const department = departmentSelect.value;
@@ -2254,7 +2283,7 @@ document.addEventListener("DOMContentLoaded", function(){
         .then(res=>res.json()).then(data=>{
             if(data.success){
                 document.getElementById("barcode-result").style.display="block";
-                document.getElementById("barcode-id").textContent="ID Number: " + formData.get("id_number");
+                document.getElementById("barcode-id").textContent="ID Number: " + (data.id_number || formData.get("id_number"));
                 document.getElementById("barcode-img").src="data:image/png;base64,"+data.barcode;
                 form.reset();
                 document.getElementById("dept-select").value="";
@@ -2543,10 +2572,7 @@ ADMIN_FRONTEND = """
                                 </select></div>
                             <div class="form-group"><label>ID Number *</label><input type="text" name="id_number" required placeholder="e.g. 2024-0001"></div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group"><label>Full Name *</label><input type="text" name="full_name" required placeholder="Last, First Middle"></div>
-                            <div class="form-group"><label>Email <span style="text-transform:none;font-weight:400;color:#64748b;">(for Outside borrow)</span></label><input type="email" name="email" placeholder="you@example.com"></div>
-                        </div>
+                        <div class="form-group"><label>Full Name *</label><input type="text" name="full_name" required placeholder="Last, First Middle"></div>
                         <div class="form-row" id="student-extra-row">
                             <div class="form-group" id="student-department-group"><label>Department</label>
                                 <select name="department" id="dept-select">
@@ -2575,7 +2601,7 @@ ADMIN_FRONTEND = """
                 <!-- 03 STUDENTS LIST (FIXED filter) -->
                 <div id="students" class="tab-content">
                     <h2>Registered Users — By Department</h2>
-                    <div class="search-box"><input type="text" id="search-input" placeholder="Search by Name, ID Number, or Email..." oninput="filterStudents()"></div>
+                    <div class="search-box"><input type="text" id="search-input" placeholder="Search by Name or ID Number..." oninput="filterStudents()"></div>
                     <div class="dept-tabs">
                         <button class="dept-tab active" id="dept-ALL" onclick="switchDept('ALL')">ALL</button>
                         <button class="dept-tab" id="dept-CT" onclick="switchDept('CT')">CT</button>
@@ -2604,19 +2630,16 @@ ADMIN_FRONTEND = """
                             <form id="edit-form">
                                 <input type="hidden" id="edit-id" name="id">
                                 <div class="form-row">
-                                    <div class="form-group"><label>ID Type</label><select id="edit-id-type" name="id_type"><option value="Student">Student</option><option value="Employee">Employee</option><option value="Visitor">Visitor</option></select></div>
+                                    <div class="form-group"><label>ID Type</label><select id="edit-id-type" name="id_type" onchange="updateEditFieldsByIdType()"><option value="Student">Student</option><option value="Employee">Employee</option><option value="Visitor">Visitor</option></select></div>
                                     <div class="form-group"><label>ID Number</label><input type="text" id="edit-idnum" name="id_number" required></div>
                                 </div>
-                                <div class="form-row">
-                                    <div class="form-group"><label>Full Name</label><input type="text" id="edit-fullname" name="full_name" required></div>
-                                    <div class="form-group"><label>Email</label><input type="email" id="edit-email" name="email" placeholder="you@example.com"></div>
-                                </div>
-                                <div class="form-row">
+                                <div class="form-group"><label>Full Name</label><input type="text" id="edit-fullname" name="full_name" required></div>
+                                <div class="form-row" id="edit-student-extra">
                                     <div class="form-group"><label>Department</label><select id="edit-dept" name="department"><option value="">-- Select --</option><option value="CT">BSIT / Computer Technology</option><option value="BSED">BSED</option><option value="BEED">BEED</option><option value="BSFAS">BSFAS</option><option value="BSBA">BSBA</option><option value="BPA">BPA</option></select></div>
                                     <div class="form-group"><label>Major / Specialization</label><select id="edit-major" name="major"></select></div>
                                 </div>
                                 <div class="form-row">
-                                    <div class="form-group"><label>Year Level</label><select id="edit-year" name="year_level"><option value="1st Year">1st Year</option><option value="2nd Year">2nd Year</option><option value="3rd Year">3rd Year</option><option value="4th Year">4th Year</option><option value="N/A">N/A</option></select></div>
+                                    <div class="form-group" id="edit-year-group"><label>Year Level</label><select id="edit-year" name="year_level"><option value="1st Year">1st Year</option><option value="2nd Year">2nd Year</option><option value="3rd Year">3rd Year</option><option value="4th Year">4th Year</option><option value="N/A">N/A</option></select></div>
                                     <div class="form-group"><label>Contact Number</label><input type="text" id="edit-contact" name="contact_number"></div>
                                 </div>
                                 <div class="form-group"><label>Complete Address</label><input type="text" id="edit-address" name="address"></div>
@@ -2911,21 +2934,41 @@ function confirmReturn(borrowId){
 // ===== FIXED: Student list filter (Employee/Visitor now show) =====
 function switchDept(d){document.querySelectorAll(".dept-tab").forEach(t=>t.classList.remove("active"));document.getElementById("dept-"+d).classList.add("active");currentDept=d;filterStudents();}
 function updateMajorOptions(ds,ms){const dept=document.getElementById(ds).value;const m=document.getElementById(ms);m.innerHTML='<option value="">-- Select Major --</option>';if(dept==="BPA"||!dept){m.disabled=true;return;}m.disabled=false;(MAJORS[dept]||[]).forEach(x=>{const o=document.createElement("option");o.value=x;o.textContent=x;m.appendChild(o);});}
-function updateAdminFieldsByIdType(){const is=document.getElementById("id-type-select").value==="Student";["student-extra-row","year-row"].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=is?"":"none";});["dept-select","major-select","year-select"].forEach(id=>{const f=document.getElementById(id);if(f)f.disabled=!is;});}
+function updateAdminFieldsByIdType(){const is=document.getElementById("id-type-select").value==="Student";["student-extra-row","year-row"].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=is?"":"none";});["dept-select","major-select","year-select"].forEach(id=>{const f=document.getElementById(id);if(f)f.disabled=!is;});const idi=document.querySelector('#register-form input[name="id_number"]');if(idi){const g=idi.closest('.form-group');if(g)g.style.display=is?"":"none";idi.disabled=!is;}}
 function loadStudents(){fetch("/get-students").then(r=>r.json()).then(d=>{allStudents=d.students||[];filterStudents();}).catch(e=>alert("Load Error: "+e));}
 function filterStudents(){
     const s=(document.getElementById("search-input")?.value||"").toLowerCase();
     let f=allStudents;
-    if(currentDept!=="ALL"){
-        if(currentDept==="Visitor") f=f.filter(x=>x.id_type==="Visitor");
-        else if(currentDept==="EMPLOYEE") f=f.filter(x=>x.id_type==="Employee"||x.department==="EMPLOYEE");
-        else f=f.filter(x=>x.department===currentDept);
-    }
-    if(s) f=f.filter(x=>x.full_name.toLowerCase().includes(s)||x.id_number.toLowerCase().includes(s)||(x.email||"").toLowerCase().includes(s));
+    if(s) f=f.filter(x=>x.full_name.toLowerCase().includes(s)||x.id_number.toLowerCase().includes(s));
     const t=document.getElementById("students-table");
-    if(f.length){t.innerHTML='<table><tr>'+(barcodeSelectionMode?'<th>Select</th>':'')+'<th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Major</th><th>Email</th><th>Action</th></tr>'+
-        f.map(x=>'<tr>'+(barcodeSelectionMode?'<td><input class="student-check student-row-check" type="checkbox" value="'+x.id_number+'"></td>':'')+'<td><strong>'+x.id_number+'</strong></td><td>'+x.full_name+'</td><td>'+x.id_type+'</td><td>'+x.department_display+'</td><td>'+(x.major||"-")+'</td><td>'+(x.email||"-")+'</td><td><button class="btn-edit" onclick="editStudent('+x.id+')">Edit</button></td></tr>').join("")+'</table>';}
-    else t.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
+    const selCol = barcodeSelectionMode ? '<th>Select</th>' : '';
+    const selCell = (x) => barcodeSelectionMode ? '<td><input class="student-check student-row-check" type="checkbox" value="'+x.id_number+'"></td>' : '';
+    const actionCell = (x) => '<td><button class="btn-edit" onclick="editStudent('+x.id+')">Edit</button></td>';
+    // Non-student (Employee/Visitor): only Full Name, Type, Address, Contact Number
+    const nonStudentHead = '<tr>'+selCol+'<th>Full Name</th><th>Type</th><th>Address</th><th>Contact Number</th><th>Action</th></tr>';
+    const nonStudentRow = (x) => '<tr>'+selCell(x)+'<td>'+x.full_name+'</td><td>'+x.id_type+'</td><td>'+(x.address||"-")+'</td><td>'+(x.contact_number||"-")+'</td>'+actionCell(x)+'</tr>';
+    // Student: full columns
+    const studentHead = '<tr>'+selCol+'<th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Major</th><th>Action</th></tr>';
+    const studentRow = (x) => '<tr>'+selCell(x)+'<td><strong>'+x.id_number+'</strong></td><td>'+x.full_name+'</td><td>'+x.id_type+'</td><td>'+x.department_display+'</td><td>'+(x.major||"-")+'</td>'+actionCell(x)+'</tr>';
+    let html='';
+    if(currentDept==="ALL"){
+        const students = f.filter(x=>x.id_type==="Student");
+        const employees = f.filter(x=>x.id_type==="Employee"||x.department==="EMPLOYEE");
+        const visitors = f.filter(x=>x.id_type==="Visitor");
+        if(students.length) html += '<h3 style="margin-top:8px;color:#1b2a41;font-size:16px;">Students ('+students.length+')</h3><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="min-width:620px;">'+studentHead+students.map(studentRow).join("")+'</table></div>';
+        if(employees.length) html += '<h3 style="margin-top:28px;color:#1b2a41;font-size:16px;">Employees ('+employees.length+')</h3><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="min-width:560px;">'+nonStudentHead+employees.map(nonStudentRow).join("")+'</table></div>';
+        if(visitors.length) html += '<h3 style="margin-top:28px;color:#1b2a41;font-size:16px;">Visitors ('+visitors.length+')</h3><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="min-width:560px;">'+nonStudentHead+visitors.map(nonStudentRow).join("")+'</table></div>';
+        if(!html) html='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
+    } else if(currentDept==="EMPLOYEE"||currentDept==="Visitor"){
+        const list = (currentDept==="EMPLOYEE") ? f.filter(x=>x.id_type==="Employee"||x.department==="EMPLOYEE") : f.filter(x=>x.id_type==="Visitor");
+        if(list.length) html='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="min-width:560px;">'+nonStudentHead+list.map(nonStudentRow).join("")+'</table></div>';
+        else html='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
+    } else {
+        const students = f.filter(x=>x.department===currentDept);
+        if(students.length) html='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="min-width:620px;">'+studentHead+students.map(studentRow).join("")+'</table></div>';
+        else html='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
+    }
+    t.innerHTML=html;
 }
 function enableBarcodeSelection(){barcodeSelectionMode=true;document.getElementById("choose-barcode-btn").classList.add("hidden");document.getElementById("barcode-selection-actions").classList.remove("hidden");document.getElementById("select-all-students").checked=false;filterStudents();}
 function disableBarcodeSelection(){barcodeSelectionMode=false;document.getElementById("choose-barcode-btn").classList.remove("hidden");document.getElementById("barcode-selection-actions").classList.add("hidden");filterStudents();}
@@ -2951,7 +2994,8 @@ function deleteSelectedStudents(){
     fetch("/delete-students",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id_numbers:sel})})
     .then(r=>r.json().then(d=>({ok:r.ok,d}))).then(res=>{if(!res.ok)throw new Error(res.d.error||"Delete failed.");alert(res.d.deleted_count+" user(s) deleted.");disableBarcodeSelection();loadStudents();}).catch(e=>alert(e.message));
 }
-function editStudent(id){const s=allStudents.find(x=>x.id===id);if(!s)return;editingStudentId=id;document.getElementById("edit-id").value=s.id;document.getElementById("edit-id-type").value=s.id_type;document.getElementById("edit-idnum").value=s.id_number;document.getElementById("edit-fullname").value=s.full_name;document.getElementById("edit-email").value=s.email||"";document.getElementById("edit-dept").value=s.department||"";document.getElementById("edit-major").value=s.major||"";document.getElementById("edit-year").value=s.year_level||"";document.getElementById("edit-contact").value=s.contact_number||"";document.getElementById("edit-address").value=s.address||"";document.getElementById("edit-form-container").classList.remove("hidden");}
+function editStudent(id){const s=allStudents.find(x=>x.id===id);if(!s)return;editingStudentId=id;document.getElementById("edit-id").value=s.id;document.getElementById("edit-id-type").value=s.id_type;document.getElementById("edit-idnum").value=s.id_number;document.getElementById("edit-fullname").value=s.full_name;document.getElementById("edit-dept").value=s.department||"";document.getElementById("edit-major").value=s.major||"";document.getElementById("edit-year").value=s.year_level||"";document.getElementById("edit-contact").value=s.contact_number||"";document.getElementById("edit-address").value=s.address||"";document.getElementById("edit-form-container").classList.remove("hidden");updateEditFieldsByIdType();}
+function updateEditFieldsByIdType(){const is=document.getElementById("edit-id-type").value==="Student";const ex=document.getElementById("edit-student-extra");if(ex)ex.style.display=is?"":"none";const yg=document.getElementById("edit-year-group");if(yg)yg.style.display=is?"":"none";const idi=document.getElementById("edit-idnum");if(idi)idi.disabled=!is;["edit-dept","edit-major","edit-year"].forEach(id=>{const f=document.getElementById(id);if(f)f.disabled=!is;});}
 function hideEditForm(){document.getElementById("edit-form-container").classList.add("hidden");editingStudentId=null;document.getElementById("edit-form").reset();}
 function loadRecords(){if(recordsRefreshInProgress)return;recordsRefreshInProgress=true;fetch("/get-records").then(r=>r.json()).then(d=>{const recs=d.records||[];const t=document.getElementById("records-table");if(recs.length){t.innerHTML='<table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>'+recs.map(r=>'<tr><td><strong>'+r.scan_date+'</strong></td><td>'+r.full_name+'</td><td>'+(r.department||"-")+'</td><td style="color:#1e6b34;font-weight:600;">'+(r.time_in||"-")+'</td><td style="color:#8a1f1f;font-weight:600;">'+(r.time_out||"-")+'</td></tr>').join("")+'</table>';}else t.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No attendance records yet.</p>';}).catch(e=>console.error(e)).finally(()=>recordsRefreshInProgress=false);}
 function loadMonthlyHistory(){
