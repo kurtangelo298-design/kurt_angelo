@@ -1309,7 +1309,7 @@ def login():
         input:focus{outline:none;border-color:#1b2a41;background:#fff;box-shadow:0 0 0 3px rgba(27,42,65,0.1);}
         button{width:100%;padding:14px;background:#1b2a41;color:white;border:none;border-radius:4px;font-size:15px;font-weight:600;cursor:pointer;transition:background 0.2s;letter-spacing:.3px;margin-top:6px;}
         button:hover{background:#10192b;}
-        .hint{margin-top:22px;text-align:center;font-size:12px;color:#94a3b8;line-height:1.7;border-top:1px solid #eef0f3;padding-top:16px;word-break:break-word;}
+
         @media(max-width:600px){.card-body{padding:32px 22px;}input{font-size:16px;}h1{font-size:21px;}}
     </style>
 </head>
@@ -1331,11 +1331,7 @@ def login():
                 </div>
                 <button type="submit">Sign In</button>
             </form>
-            <div class="hint">
-                <strong>Admin:</strong> library / slsu &nbsp;•&nbsp;
-                <strong>Staff:</strong> slsu / library &nbsp;•&nbsp;
-                <strong>Student:</strong> student / student
-            </div>
+
         </div>
     </div>
 </body>
@@ -1775,17 +1771,17 @@ def print_borrow_records():
 # ============================================================
 LEGAL_TERMS_HTML = """
 <div style="text-align:left;font-size:13px;line-height:1.7;color:#374151;">
-<p style="margin-bottom:10px;"><strong style="color:#8a1f1f;">OUTSIDE BORROW — TERMS AND CONDITIONS (Mga Tuntunin at Kundisyon)</strong></p>
-<p style="margin-bottom:8px;">Sa pamamagitan ng pagpili sa <strong>OUTSIDE</strong> (pag-uwi ng aklat), kinikilala at sinasang-ayunan ng nanghihiram (borrower) ang mga sumusunod:</p>
+<p style="margin-bottom:10px;"><strong style="color:#8a1f1f;">OUTSIDE BORROW — TERMS AND CONDITIONS</strong></p>
+<p style="margin-bottom:8px;">By choosing <strong>OUTSIDE</strong> (taking the book home), the borrower acknowledges and agrees to the following:</p>
 <ol style="padding-left:20px;margin-bottom:10px;">
-<li style="margin-bottom:6px;"><strong>PANANAGUTAN SA PINSALA (Liability for Damage):</strong> Ang nanghihiram ang buong mananagot sa anumang pinsala, pagkasira, pagkulang ng pahina, o pagbabago sa aklat habang ito ay nasa kanyang pangangalaga sa labas ng silid-aklatan. Dapat niyang bayaran ang gastos sa pagkukumpuni o pagpapalit.</li>
-<li style="margin-bottom:6px;"><strong>PAGBABAYARAN KUNG MAWALA (Payment if Lost):</strong> Kung ang aklat ay mawala, ang nanghihiram ay <strong>magbabayad ng buong katumbas na halaga</strong> (current replacement cost) ng aklat, o papalitan ito ng eksaktong kaparehong aklat sa loob ng tatlumpung (30) araw.</li>
-<li style="margin-bottom:6px;"><strong>PAGBALIK SA TAKDANG PANAHON (Timely Return):</strong> Dapat ibalik ang aklat sa loob ng tatlong (3) araw ng trabaho mula sa araw ng paghiram, o alinsunod sa itinakdang petsa ng librarian. May multang <strong>₱5.00 bawat araw</strong> kapag lumampas sa takdang petsa.</li>
-<li style="margin-bottom:6px;"><strong>ABISO SA EMAIL (Email Notification):</strong> Isang kumpirmasyon ang awtomatikong ipapadala sa email address na ibibigay ng nanghihiram, kasama ang takdang petsa ng pagbabalik. Kung lumampas sa takdang petsa, awtomatikong ipapadala ang paalala at halaga ng multa sa email.</li>
-<li style="margin-bottom:6px;"><strong>PAGKAWALA NG PRIBILEHIYO (Loss of Privilege):</strong> Ang paulit-ulit na paglabag sa mga tuntuning ito ay maaaring magresulta sa pansamantala o permanenteng pagkawala ng pribilehiyo sa pag-utang ng aklat.</li>
+<li style="margin-bottom:6px;"><strong>LIABILITY FOR DAMAGE:</strong> The borrower is fully responsible for any damage, destruction, missing pages, or alteration to the book while it is in their care outside the library. They must pay the cost of repair or replacement.</li>
+<li style="margin-bottom:6px;"><strong>PAYMENT IF LOST:</strong> If the book is lost, the borrower must <strong>pay the full current replacement cost</strong> of the book, or replace it with an identical copy within thirty (30) days.</li>
+<li style="margin-bottom:6px;"><strong>TIMELY RETURN:</strong> The book must be returned within three (3) working days from the date of borrowing, or by the due date set by the librarian. A late fine of <strong>₱5.00 per day</strong> applies after the due date.</li>
+<li style="margin-bottom:6px;"><strong>EMAIL NOTIFICATION:</strong> A confirmation will be automatically sent to the email address provided by the borrower, including the due date. If the due date passes, a reminder and the fine amount will be automatically sent by email.</li>
+<li style="margin-bottom:6px;"><strong>LOSS OF PRIVILEGE:</strong> Repeated violations of these terms may result in temporary or permanent loss of borrowing privileges.</li>
 </ol>
 <p style="background:#fdf6e3;border-left:4px solid #c9a227;padding:10px 14px;font-size:12px;color:#8a6d1f;margin-bottom:8px;">
-<strong>Paalala:</strong> Sa pamamagitan ng pag-click sa "I Agree &amp; Continue", ikaw ay pumipirma at sumasang-ayon sa mga tuntunin sa itaas nang buong kusa at pag-unawa.</p>
+<strong>Reminder:</strong> By clicking "I Agree &amp; Continue", you signify your full and voluntary agreement to the terms above.</p>
 </div>
 """
 
@@ -2144,17 +2140,17 @@ USER_FRONTEND = """
     <!-- ===== OUTSIDE BORROW LEGAL TERMS MODAL ===== -->
     <div id="terms-modal" class="terms-modal hidden">
         <div class="terms-dialog">
-            <h3>OUTSIDE BORROW — Terms &amp; Conditions (Mga Tuntunin)</h3>
+            <h3>OUTSIDE BORROW — Terms &amp; Conditions</h3>
             <div style="text-align:left;font-size:13px;line-height:1.7;color:#374151;">
-                <p style="margin-bottom:8px;">Sa pamamagitan ng pagpili sa <strong>OUTSIDE</strong> (pag-uwi ng aklat), kinikilala at sinasang-ayunan ng nanghihiram ang mga sumusunod:</p>
+                <p style="margin-bottom:8px;">By choosing <strong>OUTSIDE</strong> (taking the book home), the borrower acknowledges and agrees to the following:</p>
                 <ol style="padding-left:20px;margin-bottom:10px;">
-                    <li style="margin-bottom:6px;"><strong>PANANAGUTAN SA PINSALA:</strong> Ang nanghihiram ang buong mananagot sa anumang pinsala, pagkasira, o pagbabago sa aklat habang nasa kanyang pangangalaga. Dapat niyang bayaran ang gastos sa pagkukumpuni o pagpapalit.</li>
-                    <li style="margin-bottom:6px;"><strong>PAGBABAYARAN KUNG MAWALA:</strong> Kung ang aklat ay mawala, ang nanghihiram ay <strong>magbabayad ng buong katumbas na halaga</strong> (replacement cost) o papalitan ng kaparehong aklat.</li>
-                    <li style="margin-bottom:6px;"><strong>PAGBALIK SA TAKDANG PANAHON:</strong> Dapat ibalik ang aklat sa loob ng tatlong (3) araw ng trabaho o alinsunod sa itinakda ng librarian. May multang <strong>₱5.00 bawat araw</strong> kapag lumampas sa takdang petsa.</li>
-                    <li style="margin-bottom:6px;"><strong>ABISO SA EMAIL:</strong> Isang kumpirmasyon at paalala ng multa ang awtomatikong ipapadala sa email na ibibigay ng nanghihiram.</li>
-                    <li style="margin-bottom:6px;"><strong>PAGKAWALA NG PRIBILEHIYO:</strong> Ang paulit-ulit na paglabag ay maaaring magresulta sa pagkawala ng pribilehiyo sa pag-utang ng aklat.</li>
+                    <li style="margin-bottom:6px;"><strong>LIABILITY FOR DAMAGE:</strong> The borrower is fully responsible for any damage, destruction, or alteration to the book while it is in their care. They must pay the cost of repair or replacement.</li>
+                    <li style="margin-bottom:6px;"><strong>PAYMENT IF LOST:</strong> If the book is lost, the borrower must <strong>pay the full replacement cost</strong> or replace it with an identical copy.</li>
+                    <li style="margin-bottom:6px;"><strong>TIMELY RETURN:</strong> The book must be returned within three (3) working days or as set by the librarian. A late fine of <strong>₱5.00 per day</strong> applies after the due date.</li>
+                    <li style="margin-bottom:6px;"><strong>EMAIL NOTIFICATION:</strong> A confirmation and fine reminder will be automatically sent to the email address provided by the borrower.</li>
+                    <li style="margin-bottom:6px;"><strong>LOSS OF PRIVILEGE:</strong> Repeated violations may result in suspension or permanent loss of borrowing privileges.</li>
                 </ol>
-                <p style="background:#fdf6e3;border-left:4px solid #c9a227;padding:10px 14px;font-size:12px;color:#8a6d1f;">Sa pag-click sa <strong>"I Agree &amp; Continue"</strong>, ikaw ay sumasang-ayon sa mga tuntunin sa itaas nang buong kusa at pag-unawa.</p>
+                <p style="background:#fdf6e3;border-left:4px solid #c9a227;padding:10px 14px;font-size:12px;color:#8a6d1f;">By clicking <strong>"I Agree &amp; Continue"</strong>, you agree to the terms above freely and with full understanding.</p>
             </div>
             <div class="terms-actions">
                 <button class="btn-cancel" onclick="closeTermsModal()">Cancel</button>
@@ -2215,7 +2211,7 @@ USER_FRONTEND = """
                     <button class="btn-primary" style="width:auto;margin:0;" onclick="doBookSearch()">Search</button>
                     <button class="btn-cancel" style="margin:0;" onclick="listAvailableBooks()">List All Available</button>
                 </div>
-                <p style="font-size:13px;color:#64748b;margin-bottom:14px;word-break:break-word;">Kapag may naghiram ng libro, makikita dito kung sino ang nanghiram at anong oras. Available copies ang ipapakita.</p>
+                <p style="font-size:13px;color:#64748b;margin-bottom:14px;word-break:break-word;">When a book is borrowed, you can see here who borrowed it and when. Available copies are shown.</p>
                 <div class="table-wrap" id="search-results-table"></div>
             </div>
         </div>
@@ -2898,17 +2894,17 @@ ADMIN_FRONTEND = """
                 <!-- ===== OUTSIDE BORROW LEGAL TERMS MODAL ===== -->
                 <div id="terms-modal" class="terms-modal hidden">
                     <div class="terms-dialog">
-                        <h3>OUTSIDE BORROW — Terms &amp; Conditions (Mga Tuntunin)</h3>
+                        <h3>OUTSIDE BORROW — Terms &amp; Conditions</h3>
                         <div style="text-align:left;font-size:13px;line-height:1.7;color:#374151;">
-                            <p style="margin-bottom:8px;">Sa pamamagitan ng pagpili sa <strong>OUTSIDE</strong> (pag-uwi ng aklat), kinikilala at sinasang-ayunan ng nanghihiram ang mga sumusunod:</p>
+                            <p style="margin-bottom:8px;">By choosing <strong>OUTSIDE</strong> (taking the book home), the borrower acknowledges and agrees to the following:</p>
                             <ol style="padding-left:20px;margin-bottom:10px;">
-                                <li style="margin-bottom:6px;"><strong>PANANAGUTAN SA PINSALA:</strong> Ang nanghihiram ang buong mananagot sa anumang pinsala, pagkasira, o pagbabago sa aklat habang nasa kanyang pangangalaga. Dapat niyang bayaran ang gastos sa pagkukumpuni.</li>
-                                <li style="margin-bottom:6px;"><strong>PAGBABAYARAN KUNG MAWALA:</strong> Kung ang aklat ay mawala, ang nanghihiram ay <strong>magbabayad ng buong katumbas na halaga</strong> (replacement cost) o papalitan ng kaparehong aklat.</li>
-                                <li style="margin-bottom:6px;"><strong>PAGBALIK SA TAKDANG PANAHON:</strong> Dapat ibalik ang aklat sa loob ng tatlong (3) araw ng trabaho o alinsunod sa itinakda ng librarian. May multang ₱5.00 bawat araw kapag lumampas.</li>
-                                <li style="margin-bottom:6px;"><strong>PAGKAWALA NG PRIBILEHIYO:</strong> Ang paulit-ulit na paglabag ay maaaring magresulta sa pagkawala ng pribilehiyo sa pag-utang ng aklat.</li>
-                                <li style="margin-bottom:6px;"><strong>ABISO SA EMAIL:</strong> Isang kumpirmasyon at paalala ng multa ang awtomatikong ipapadala sa email na ibibigay ng nanghihiram.</li>
+                                <li style="margin-bottom:6px;"><strong>LIABILITY FOR DAMAGE:</strong> The borrower is fully responsible for any damage, destruction, or alteration to the book while it is in their care. They must pay the cost of repair or replacement.</li>
+                                <li style="margin-bottom:6px;"><strong>PAYMENT IF LOST:</strong> If the book is lost, the borrower must <strong>pay the full replacement cost</strong> or replace it with an identical copy.</li>
+                                <li style="margin-bottom:6px;"><strong>TIMELY RETURN:</strong> The book must be returned within three (3) working days or as set by the librarian. A late fine of ₱5.00 per day applies after the due date.</li>
+                                <li style="margin-bottom:6px;"><strong>LOSS OF PRIVILEGE:</strong> Repeated violations may result in suspension or permanent loss of borrowing privileges.</li>
+                                <li style="margin-bottom:6px;"><strong>EMAIL NOTIFICATION:</strong> A confirmation and fine reminder will be automatically sent to the email address provided by the borrower.</li>
                             </ol>
-                            <p style="background:#fdf6e3;border-left:4px solid #c9a227;padding:10px 14px;font-size:12px;color:#8a6d1f;">Sa pag-click sa <strong>"I Agree &amp; Continue"</strong>, ikaw ay sumasang-ayon sa mga tuntunin sa itaas nang buong kusa at pag-unawa.</p>
+                            <p style="background:#fdf6e3;border-left:4px solid #c9a227;padding:10px 14px;font-size:12px;color:#8a6d1f;">By clicking <strong>"I Agree &amp; Continue"</strong>, you agree to the terms above freely and with full understanding.</p>
                         </div>
                         <div class="terms-actions">
                             <button class="btn-cancel" onclick="closeTermsModal()">Cancel</button>
@@ -3467,9 +3463,9 @@ function loadOverdue(){
     fetch("/api/overdue-list").then(r=>r.json()).then(d=>{
         const recs=d.records||[];
         const sum=document.getElementById("overdue-summary");
-        if(!recs.length){sum.innerHTML='<strong style="color:#1e6b34;">Walang overdue na libro.</strong> Lahat ng nanghiram ay nakabalik na o hindi pa lumalampas sa due date.';document.getElementById("overdue-table").innerHTML="";return;}
+        if(!recs.length){sum.innerHTML='<strong style="color:#1e6b34;">No overdue books.</strong> All borrowers have returned their books or are still within the due date.';document.getElementById("overdue-table").innerHTML="";return;}
         const totalFine=recs.reduce((a,r)=>a+Number(r.fine_amount||0),0);
-        sum.innerHTML='<strong>'+recs.length+' overdue book(s)</strong> — kabuuang multa: <strong>₱'+totalFine.toFixed(2)+'</strong>. I-click ang "Send Reminder" para mag-email sa nanghiram na ibalik na ang libro.';
+        sum.innerHTML='<strong>'+recs.length+' overdue book(s)</strong> — total fines: <strong>₱'+totalFine.toFixed(2)+'</strong>. Click "Send Reminder" to email the borrower to return the book.';
         const t=document.getElementById("overdue-table");
         t.innerHTML='<table><tr><th>Book</th><th>Borrower</th><th>Email</th><th>Borrowed</th><th>Due Date</th><th>Days Late</th><th>Fine</th><th>Reminder</th><th>Action</th></tr>'+
             recs.map(r=>'<tr><td><strong>'+r.title+'</strong><br><span style="color:#64748b;font-size:11px;">'+r.access_code+'</span></td><td>'+r.borrower+'<br><span style="color:#64748b;font-size:11px;">'+r.borrower_id+'</span></td><td>'+r.email+'</td><td>'+r.borrow_date+' '+r.borrow_time+'</td><td><strong style="color:#8a1f1f;">'+r.due_date+'</strong></td><td><span class="badge badge-overdue">'+r.days_late+' day(s)</span></td><td><strong style="color:#8a1f1f;">₱'+Number(r.fine_amount).toFixed(2)+'</strong></td><td>'+(r.reminder_sent?'<span style="color:#1e6b34;font-size:12px;">Sent ✓</span>':'<span style="color:#8a6d1f;font-size:12px;">Not sent</span>')+'</td><td><button class="btn-remind" onclick="sendOneOverdueReminder('+r.id+')">Send Reminder Email</button></td></tr>').join("")+'</table>';
