@@ -1837,7 +1837,7 @@ button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color
 <h1>Monthly Attendance Report — {month}</h1>
 <p class="meta">SLSU–JGE Library Management System &nbsp;•&nbsp; Generated: {get_ph_date()} {get_ph_time()}</p>
 </div>
-<button onclick="window.print()">Print Report</button>
+<button type="button" onclick="window.print()">Print Report</button>
 <div id="report-area"></div>
 <script>fetch('/get-monthly-history?month={month}').then(r=>r.json()).then(d=>{{
  const grouped = d.records.reduce((days, record) => {{
@@ -1867,7 +1867,7 @@ def print_daily():
 <meta name="theme-color" content="#006633">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>*{{box-sizing:border-box;}}body{{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1100px;margin:0 auto;color:#1f2937;overflow-x:hidden;}}h1{{color:#1b2a41;font-family:Georgia,'Times New Roman',serif;word-break:break-word;}}.meta{{color:#64748b;font-size:13px;}}.table-wrap{{overflow-x:auto;-webkit-overflow-scrolling:touch;}}table{{width:100%;border-collapse:collapse;margin-top:24px;min-width:560px;}}th,td{{border:1px solid #d8dbe0;padding:10px 12px;text-align:left;font-size:13px;word-break:break-word;}}th{{background:#1b2a41;color:#fff;}}tr:nth-child(even){{background:#f7f8fa;}}button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color:white;border:0;border-radius:4px;font-weight:600;margin-bottom:20px;}}@media(max-width:600px){{body{{padding:14px;}}table{{font-size:12px;}}}}@media print{{button{{display:none;}}body{{padding:0;}}}}</style>
-</head><body><button onclick="window.print()">Print Daily Report</button><h1>Daily Attendance Report - {selected_date}</h1><p class="meta">SLSU-JGE Library Management System</p>
+</head><body><button type="button" onclick="window.print()">Print Daily Report</button><h1>Daily Attendance Report - {selected_date}</h1><p class="meta">SLSU-JGE Library Management System</p>
 <div class="table-wrap" id="daily-table-wrap"></div>
 <script>fetch('/get-monthly-history?month={selected_date[:7]}&date={selected_date}').then(r=>r.json()).then(d=>{{let html='<table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');html+='</table>';document.getElementById('daily-table-wrap').innerHTML=html;}})</script></body></html>"""
 
@@ -1880,7 +1880,7 @@ def print_borrow_records():
 <!DOCTYPE html><html><head><title>Book Borrow & Return Records</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>*{box-sizing:border-box;}body{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1200px;margin:0 auto;color:#1f2937;overflow-x:hidden;}h1{color:#1b2a41;font-family:Georgia,serif;}.meta{color:#64748b;font-size:13px;}.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}table{width:100%;border-collapse:collapse;margin-top:20px;min-width:860px;}th,td{border:1px solid #d8dbe0;padding:10px 12px;text-align:left;font-size:13px;word-break:break-word;vertical-align:top;}th{background:#1b2a41;color:#fff;}tr:nth-child(even){background:#f7f8fa;}button{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color:white;border:0;border-radius:4px;font-weight:600;margin-bottom:20px;}@media print{button{display:none;}body{padding:0;}}</style>
-</head><body><button onclick="window.print()">Print Borrow Records</button>
+</head><body><button type="button" onclick="window.print()">Print Borrow Records</button>
 <h1>Book Borrow & Return Records</h1><p class="meta">SLSU-JGE Library Management System</p>
 <div class="table-wrap" id="area"></div>
 <script>fetch('/get-borrow-records').then(r=>r.json()).then(d=>{
@@ -2049,8 +2049,8 @@ STUDENT_FRONTEND = """
                     <h3>Registration Successful</h3>
                     <p id="barcode-id" class="barcode-id"></p>
                     <img id="barcode-img" class="barcode-img"><br>
-                    <button class="btn-print" onclick="window.print()">Print Barcode</button>
-                    <button class="btn-download-barcode" onclick="downloadUserBarcode()">Download Barcode</button>
+                    <button type="button" class="btn-print" onclick="window.print()">Print Barcode</button>
+                    <button type="button" class="btn-download-barcode" onclick="downloadUserBarcode()">Download Barcode</button>
                 </div>
                 <a href="/privacy" class="privacy-link" target="_blank">Privacy Policy</a>
                 <a href="/login" class="logout-link" onclick="logout(event)">← Back to Sign In</a>
@@ -2271,7 +2271,7 @@ USER_FRONTEND = """
             <div class="nav-tab" onclick="showStaffTab('search')">Search Books</div>
             <div class="nav-tab" onclick="showStaffTab('register')">Register User</div>
         </div>
-        <button class="logout-btn" onclick="logout()">Log Out</button>
+        <button type="button" class="logout-btn" onclick="logout()">Log Out</button>
     </div>
     <div id="toast"></div>
     <!-- ===== OUTSIDE BORROW PRIVACY & TERMS AGREEMENT MODAL (with I Agree checkbox) ===== -->
@@ -2293,8 +2293,8 @@ USER_FRONTEND = """
                 <label><input type="checkbox" id="i-agree-check"> I Agree to the Privacy &amp; Terms above</label>
             </div>
             <div class="terms-actions">
-                <button class="btn-cancel" onclick="closeTermsModal()">Cancel</button>
-                <button class="btn-agree" onclick="agreeOutsideTerms()">I Agree &amp; Continue → Scan ID</button>
+                <button type="button" class="btn-cancel" onclick="closeTermsModal()">Cancel</button>
+                <button type="button" class="btn-agree" onclick="agreeOutsideTerms()">I Agree &amp; Continue → Scan ID</button>
             </div>
         </div>
     </div>
@@ -2309,7 +2309,7 @@ USER_FRONTEND = """
                 </div>
                 <div id="book-detail-panel" style="display:none;"></div>
                 <h2 class="panel-title" style="margin-top:26px;">Recent Borrow Transactions</h2>
-                <button class="btn-cancel" style="background:#1b2a41;" onclick="loadBorrowHistory()">Refresh</button>
+                <button type="button" class="btn-cancel" style="background:#1b2a41;" onclick="loadBorrowHistory()">Refresh</button>
                 <div class="table-wrap" id="borrow-history-table"></div>
             </div>
         </div>
@@ -2319,9 +2319,9 @@ USER_FRONTEND = """
                 <h2 class="panel-title">Daily Attendance Records</h2>
                 <div class="filter-row">
                     <input type="date" id="daily-date" onchange="loadTodayRecords()">
-                    <button class="btn-cancel" style="background:#1b2a41;margin:0;" onclick="loadTodayRecords()">Refresh</button>
-                    <button class="btn-print" style="margin:0;" onclick="printDaily()">Print</button>
-                    <button class="btn-download-barcode" style="margin:0;" onclick="downloadDaily()">Download Word</button>
+                    <button type="button" class="btn-cancel" style="background:#1b2a41;margin:0;" onclick="loadTodayRecords()">Refresh</button>
+                    <button type="button" class="btn-print" style="margin:0;" onclick="printDaily()">Print</button>
+                    <button type="button" class="btn-download-barcode" style="margin:0;" onclick="downloadDaily()">Download Word</button>
                 </div>
                 <div class="table-wrap" id="today-records-table"></div>
             </div>
@@ -2335,9 +2335,9 @@ USER_FRONTEND = """
                     <label style="margin-bottom:0;font-size:13px;">Borrower:</label><input type="text" id="br-borrower" placeholder="Name or ID" style="max-width:160px;" oninput="loadBorrowHistoryFull()">
                     <label style="margin-bottom:0;font-size:13px;">Status:</label>
                     <select id="br-status" onchange="loadBorrowHistoryFull()"><option value="">All</option><option value="Borrowed">Currently Borrowed</option><option value="Returned">Returned</option></select>
-                    <button class="btn-cancel" style="background:#1b2a41;margin:0;" onclick="loadBorrowHistoryFull()">Refresh</button>
-                    <button class="btn-print" style="margin:0;" onclick="window.open('/print-borrow-records','_blank')">Print</button>
-                    <button class="btn-download-barcode" style="margin:0;" onclick="window.location.href='/download-borrow-word'">Download Word</button>
+                    <button type="button" class="btn-cancel" style="background:#1b2a41;margin:0;" onclick="loadBorrowHistoryFull()">Refresh</button>
+                    <button type="button" class="btn-print" style="margin:0;" onclick="window.open('/print-borrow-records','_blank')">Print</button>
+                    <button type="button" class="btn-download-barcode" style="margin:0;" onclick="window.location.href='/download-borrow-word'">Download Word</button>
                 </div>
                 <div class="table-wrap" id="borrow-full-table"></div>
             </div>
@@ -2348,8 +2348,8 @@ USER_FRONTEND = """
                 <h2 class="panel-title">Search Books — Availability &amp; Current Borrowers</h2>
                 <div class="search-row">
                     <input type="text" id="book-search-input" placeholder="Type book title, author, category, or code... e.g. Python" onkeypress="if(event.key==='Enter')doBookSearch()">
-                    <button class="btn-primary" style="width:auto;margin:0;" onclick="doBookSearch()">Search</button>
-                    <button class="btn-cancel" style="margin:0;" onclick="listAvailableBooks()">List All Available</button>
+                    <button type="button" class="btn-primary" style="width:auto;margin:0;" onclick="doBookSearch()">Search</button>
+                    <button type="button" class="btn-cancel" style="margin:0;" onclick="listAvailableBooks()">List All Available</button>
                 </div>
                 <p style="font-size:13px;color:#64748b;margin-bottom:14px;word-break:break-word;">When a book is borrowed, you can see here who borrowed it and when. Available copies are shown.</p>
                 <div class="table-wrap" id="search-results-table"></div>
@@ -2437,8 +2437,8 @@ USER_FRONTEND = """
                             <h3>Registration Successful</h3>
                             <p id="barcode-id" class="barcode-id"></p>
                             <img id="barcode-img" class="barcode-img"><br>
-                            <button class="btn-print" onclick="window.print()">Print Barcode</button>
-                            <button class="btn-download-barcode" onclick="downloadUserBarcode()">Download Barcode</button>
+                            <button type="button" class="btn-print" onclick="window.print()">Print Barcode</button>
+                            <button type="button" class="btn-download-barcode" onclick="downloadUserBarcode()">Download Barcode</button>
                         </div>
                         <a href="/privacy" class="privacy-link" target="_blank">Privacy Policy</a>
                     </div>
@@ -2577,7 +2577,7 @@ function renderBookDetail(data){
     let borrowersHtml = "";
     if(data.active_borrows && data.active_borrows.length){
         borrowersHtml = '<h3 style="color:#1b2a41;font-size:15px;margin:16px 0 6px;">Currently borrowed by (as of now):</h3>' +
-            data.active_borrows.map(br=>'<div class="borrower-row"><span><strong>'+br.borrower_name+'</strong> ('+br.borrower_id+') — '+br.borrow_type+' — borrowed '+br.borrow_date+' '+br.borrow_time+'</span><button class="btn-return" onclick="confirmReturn('+br.borrow_id+')">Confirm Return</button></div>').join("");
+            data.active_borrows.map(br=>'<div class="borrower-row"><span><strong>'+br.borrower_name+'</strong> ('+br.borrower_id+') — '+br.borrow_type+' — borrowed '+br.borrow_date+' '+br.borrow_time+'</span><button type="button" class="btn-return" onclick="confirmReturn('+br.borrow_id+')">Confirm Return</button></div>').join("");
     }
     const borrowTypeRow = data.available_qty > 0
         ? '<div class="borrow-type-row">' +
@@ -2597,7 +2597,7 @@ function renderBookDetail(data){
         '<div><strong>Times Borrowed</strong>'+(b.times_borrowed||0)+'</div>' +
         '</div>' +
         borrowTypeRow +
-        '<div class="action-row" style="margin-top:10px;"><button class="btn-cancel" onclick="cancelBookFlow()">Clear</button></div>' +
+        '<div class="action-row" style="margin-top:10px;"><button type="button" class="btn-cancel" onclick="cancelBookFlow()">Clear</button></div>' +
         borrowersHtml + '</div>';
     panel.style.display = "block";
 }
@@ -2967,7 +2967,7 @@ ADMIN_FRONTEND = """
     <div class="app-container">
         <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
         <div class="sidebar" id="sidebar">
-            <button class="toggle-btn" onclick="toggleSidebar()">◀</button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()">◀</button>
             <div class="sidebar-header">
                 <div class="brand-mark">SLSU<br>JGE</div>
                 <h2 class="full-title">Library System</h2>
@@ -2984,11 +2984,11 @@ ADMIN_FRONTEND = """
                 <div class="menu-item" onclick="showContent('export')"><span class="badge">08</span> <span class="label">Export Reports</span></div>
                 <div class="menu-item" onclick="showContent('privacy')"><span class="badge">09</span> <span class="label">Privacy Policy</span></div>
             </div>
-            <div class="sidebar-footer"><button class="logout-btn" onclick="logout()">Log Out</button></div>
+            <div class="sidebar-footer"><button type="button" class="logout-btn" onclick="logout()">Log Out</button></div>
         </div>
         <div class="main-content">
             <div class="content-header">
-                <button class="hamburger" onclick="toggleSidebar()">☰ Menu</button>
+                <button type="button" class="hamburger" onclick="toggleSidebar()">☰ Menu</button>
                 <h1 id="page-title">Scan / Attendance</h1>
             </div>
             <div class="content-card">
@@ -3011,8 +3011,8 @@ ADMIN_FRONTEND = """
                             <label><input type="checkbox" id="i-agree-check"> I Agree to the Privacy &amp; Terms above</label>
                         </div>
                         <div class="terms-actions">
-                            <button class="btn-cancel" onclick="closeTermsModal()">Cancel</button>
-                            <button class="btn-agree" onclick="agreeOutsideTerms()">I Agree &amp; Continue → Record Borrow</button>
+                            <button type="button" class="btn-cancel" onclick="closeTermsModal()">Cancel</button>
+                            <button type="button" class="btn-agree" onclick="agreeOutsideTerms()">I Agree &amp; Continue → Record Borrow</button>
                         </div>
                     </div>
                 </div>
@@ -3030,25 +3030,25 @@ ADMIN_FRONTEND = """
                     <h2>Registered Users — Edit / Print / Delete / Download</h2>
                     <div class="search-box"><input type="text" id="search-input" placeholder="Search by Name or ID Number..." oninput="filterStudents()"></div>
                     <div class="dept-tabs">
-                        <button class="dept-tab active" id="dept-ALL" onclick="switchDept('ALL')">ALL</button>
-                        <button class="dept-tab" id="dept-CT" onclick="switchDept('CT')">CT</button>
-                        <button class="dept-tab" id="dept-BSED" onclick="switchDept('BSED')">BSED</button>
-                        <button class="dept-tab" id="dept-BEED" onclick="switchDept('BEED')">BEED</button>
-                        <button class="dept-tab" id="dept-BSFAS" onclick="switchDept('BSFAS')">BSFAS</button>
-                        <button class="dept-tab" id="dept-BSBA" onclick="switchDept('BSBA')">BSBA</button>
-                        <button class="dept-tab" id="dept-BPA" onclick="switchDept('BPA')">BPA</button>
-                        <button class="dept-tab" id="dept-EMPLOYEE" onclick="switchDept('EMPLOYEE')">EMPLOYEE</button>
-                        <button class="dept-tab" id="dept-Visitor" onclick="switchDept('Visitor')">VISITOR</button>
+                        <button type="button" class="dept-tab active" id="dept-ALL" onclick="switchDept('ALL')">ALL</button>
+                        <button type="button" class="dept-tab" id="dept-CT" onclick="switchDept('CT')">CT</button>
+                        <button type="button" class="dept-tab" id="dept-BSED" onclick="switchDept('BSED')">BSED</button>
+                        <button type="button" class="dept-tab" id="dept-BEED" onclick="switchDept('BEED')">BEED</button>
+                        <button type="button" class="dept-tab" id="dept-BSFAS" onclick="switchDept('BSFAS')">BSFAS</button>
+                        <button type="button" class="dept-tab" id="dept-BSBA" onclick="switchDept('BSBA')">BSBA</button>
+                        <button type="button" class="dept-tab" id="dept-BPA" onclick="switchDept('BPA')">BPA</button>
+                        <button type="button" class="dept-tab" id="dept-EMPLOYEE" onclick="switchDept('EMPLOYEE')">EMPLOYEE</button>
+                        <button type="button" class="dept-tab" id="dept-Visitor" onclick="switchDept('Visitor')">VISITOR</button>
                     </div>
-                    <button onclick="loadStudents()">Refresh List</button>
+                    <button type="button" onclick="loadStudents()">Refresh List</button>
                     <div class="student-actions">
-                        <button class="btn-barcode" id="choose-barcode-btn" onclick="enableBarcodeSelection()">Select Users</button>
+                        <button type="button" class="btn-barcode" id="choose-barcode-btn" onclick="enableBarcodeSelection()">Select Users</button>
                         <div id="barcode-selection-actions" class="hidden">
                             <label style="text-transform:none;font-size:13px;margin:0;font-weight:600;"><input class="student-check" type="checkbox" id="select-all-students" onchange="toggleAllStudents(this.checked)"> Select All</label>
-                            <button class="btn-barcode" onclick="printSelectedBarcodes()">Print Selected</button>
-                            <button class="btn-download" onclick="downloadSelectedBarcodes()">Download Selected</button>
-                            <button class="btn-delete" onclick="deleteSelectedStudents()">Delete Selected</button>
-                            <button class="btn-cancel" onclick="disableBarcodeSelection()">Cancel</button>
+                            <button type="button" class="btn-barcode" onclick="printSelectedBarcodes()">Print Selected</button>
+                            <button type="button" class="btn-download" onclick="downloadSelectedBarcodes()">Download Selected</button>
+                            <button type="button" class="btn-delete" onclick="deleteSelectedStudents()">Delete Selected</button>
+                            <button type="button" class="btn-cancel" onclick="disableBarcodeSelection()">Cancel</button>
                         </div>
                     </div>
                     <div class="table-wrap" id="students-table"></div>
@@ -3081,9 +3081,9 @@ ADMIN_FRONTEND = """
                 <!-- 03 DAILY RECORDS -->
                 <div id="records" class="tab-content">
                     <h2>Today's Attendance Records</h2>
-                    <button onclick="loadRecords()">Refresh Records</button>
-                    <button class="btn-print" onclick="window.open('/print-daily','_blank')">Print</button>
-                    <button class="btn-download" onclick="window.location.href='/download-word'">Download Word</button>
+                    <button type="button" onclick="loadRecords()">Refresh Records</button>
+                    <button type="button" class="btn-print" onclick="window.open('/print-daily','_blank')">Print</button>
+                    <button type="button" class="btn-download" onclick="window.location.href='/download-word'">Download Word</button>
                     <div class="table-wrap" id="records-table"></div>
                 </div>
                 <!-- 04 MONTHLY HISTORY -->
@@ -3095,14 +3095,14 @@ ADMIN_FRONTEND = """
                             <option value="2026-01">January 2026</option><option value="2026-02">February 2026</option><option value="2026-03">March 2026</option><option value="2026-04">April 2026</option><option value="2026-05">May 2026</option><option value="2026-06">June 2026</option><option value="2026-07">July 2026</option><option value="2026-08">August 2026</option><option value="2026-09">September 2026</option><option value="2026-10" selected>October 2026</option><option value="2026-11">November 2026</option><option value="2026-12">December 2026</option><option value="2027-01">January 2027</option>
                         </select>
                         <label style="margin-bottom:0;">Specific day:</label><input type="date" id="history-date" onchange="loadMonthlyHistory()">
-                        <button class="btn-month-print" onclick="printDailyReport()">Print Daily</button>
-                        <button class="btn-month-print" onclick="printMonthlyReport()">Print Monthly</button>
-                        <button class="btn-download" onclick="downloadMonthlyReport()">Download Word</button>
+                        <button type="button" class="btn-month-print" onclick="printDailyReport()">Print Daily</button>
+                        <button type="button" class="btn-month-print" onclick="printMonthlyReport()">Print Monthly</button>
+                        <button type="button" class="btn-download" onclick="downloadMonthlyReport()">Download Word</button>
                         <select id="delete-history-date"><option value="">Select day to delete</option></select>
-                        <button class="btn-delete-daily" onclick="deleteDailyHistory()">Delete Daily History</button>
+                        <button type="button" class="btn-delete-daily" onclick="deleteDailyHistory()">Delete Daily History</button>
                     </div>
                     <p style="font-size:13px;color:#64748b;margin:8px 0 18px;word-break:break-word;">Choose a month to view monthly records, or choose a specific date.</p>
-                    <button onclick="loadMonthlyHistory()">Load Records</button>
+                    <button type="button" onclick="loadMonthlyHistory()">Load Records</button>
                     <div class="table-wrap" id="history-table"></div>
                 </div>
                 <!-- 05 MANAGE BOOKS — with barcode scanner + generate new barcode -->
@@ -3112,13 +3112,13 @@ ADMIN_FRONTEND = """
                         <label style="font-size:13px;">Option A — Scan existing book barcode (books that already have barcode):</label>
                         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
                             <input type="text" id="book-barcode-scan" placeholder="Scan or type the printed barcode number here..." style="flex:1 1 260px;max-width:none;" onkeypress="if(event.key==='Enter')scanBookBarcode()">
-                            <button class="btn-barcode" style="margin:0;" onclick="scanBookBarcode()">Scan / Lookup</button>
+                            <button type="button" class="btn-barcode" style="margin:0;" onclick="scanBookBarcode()">Scan / Lookup</button>
                         </div>
                         <div id="barcode-scan-status" style="font-size:13px;margin-top:10px;word-break:break-word;"></div>
                     </div>
                     <div class="new-barcode-box">
                         <label style="font-size:13px;text-transform:none;letter-spacing:0;">Option B — Books with NO barcode yet: generate a new one automatically.</label><br>
-                        <button class="btn-barcode" style="margin-top:10px;" onclick="generateNewBookBarcode()">Generate New Barcode</button>
+                        <button type="button" class="btn-barcode" style="margin-top:10px;" onclick="generateNewBookBarcode()">Generate New Barcode</button>
                         <div id="new-barcode-status" style="font-size:13px;margin-top:10px;word-break:break-word;"></div>
                     </div>
                     <form id="book-form">
@@ -3146,9 +3146,9 @@ ADMIN_FRONTEND = """
                         <img id="book-qr-img" class="book-qr-img">
                         <img id="book-barcode-img" class="barcode-img" style="height:20mm;width:60mm;">
                         <div class="action-row" style="justify-content:center;">
-                            <button class="btn-print" onclick="printBookQR()">Print QR</button>
-                            <button class="btn-download" onclick="downloadBookQR()">Download QR</button>
-                            <button class="btn-barcode" onclick="downloadBookBarcode()">Download Barcode</button>
+                            <button type="button" class="btn-print" onclick="printBookQR()">Print QR</button>
+                            <button type="button" class="btn-download" onclick="downloadBookQR()">Download QR</button>
+                            <button type="button" class="btn-barcode" onclick="downloadBookBarcode()">Download Barcode</button>
                         </div>
                     </div>
                     <h2 style="margin-top:32px;">All Books</h2>
@@ -3158,13 +3158,13 @@ ADMIN_FRONTEND = """
                         <select id="book-status-filter" onchange="filterBooks()"><option value="">All</option><option value="Available">Available</option><option value="Borrowed">Fully Borrowed</option></select>
                         <label style="margin-bottom:0;font-size:13px;">Sort:</label>
                         <select id="book-sort" onchange="filterBooks()"><option value="title">Title A-Z</option><option value="most_borrowed">Most Borrowed</option><option value="recent">Recently Added</option></select>
-                        <button onclick="loadBooks()">Refresh</button>
-                        <button class="btn-barcode" id="choose-book-qr-btn" onclick="enableBookQRSelection()">Select Books for QR</button>
+                        <button type="button" onclick="loadBooks()">Refresh</button>
+                        <button type="button" class="btn-barcode" id="choose-book-qr-btn" onclick="enableBookQRSelection()">Select Books for QR</button>
                         <div id="book-qr-actions" class="hidden">
                             <label style="text-transform:none;font-size:13px;margin:0;font-weight:600;"><input class="student-check" type="checkbox" id="select-all-books" onchange="toggleAllBooks(this.checked)"> Select All</label>
-                            <button class="btn-download" onclick="downloadSelectedBookQRs()">Download QR PDF</button>
-                            <button class="btn-delete" onclick="deleteSelectedBooks()">Delete Selected</button>
-                            <button class="btn-cancel" onclick="disableBookQRSelection()">Cancel</button>
+                            <button type="button" class="btn-download" onclick="downloadSelectedBookQRs()">Download QR PDF</button>
+                            <button type="button" class="btn-delete" onclick="deleteSelectedBooks()">Delete Selected</button>
+                            <button type="button" class="btn-cancel" onclick="disableBookQRSelection()">Cancel</button>
                         </div>
                     </div>
                     <div class="table-wrap" id="books-table"></div>
@@ -3191,9 +3191,9 @@ ADMIN_FRONTEND = """
                         <label style="margin-bottom:0;font-size:13px;">Borrower:</label><input type="text" id="br-borrower" placeholder="Name or ID" style="max-width:180px;" oninput="loadBorrowRecords()">
                         <label style="margin-bottom:0;font-size:13px;">Status:</label>
                         <select id="br-status" onchange="loadBorrowRecords()"><option value="">All</option><option value="Borrowed">Currently Borrowed</option><option value="Returned">Returned</option></select>
-                        <button onclick="loadBorrowRecords()">Refresh</button>
-                        <button class="btn-print" onclick="window.open('/print-borrow-records','_blank')">Print</button>
-                        <button class="btn-download" onclick="window.location.href='/download-borrow-word'">Download Word</button>
+                        <button type="button" onclick="loadBorrowRecords()">Refresh</button>
+                        <button type="button" class="btn-print" onclick="window.open('/print-borrow-records','_blank')">Print</button>
+                        <button type="button" class="btn-download" onclick="window.location.href='/download-borrow-word'">Download Word</button>
                     </div>
                     <div class="table-wrap" id="borrow-records-table"></div>
                 </div>
@@ -3201,18 +3201,18 @@ ADMIN_FRONTEND = """
                 <div id="overdue" class="tab-content">
                     <h2>Overdue Books — Send Return Reminders via Gmail</h2>
                     <div class="overdue-summary" id="overdue-summary">Loading overdue list...</div>
-                    <button class="btn-remind" style="padding:12px 22px;font-size:14px;" onclick="sendAllOverdueReminders()">Send Reminder Email to ALL Overdue Borrowers</button>
-                    <button class="btn-cancel" onclick="loadOverdue()">Refresh</button>
+                    <button type="button" class="btn-remind" style="padding:12px 22px;font-size:14px;" onclick="sendAllOverdueReminders()">Send Reminder Email to ALL Overdue Borrowers</button>
+                    <button type="button" class="btn-cancel" onclick="loadOverdue()">Refresh</button>
                     <div class="table-wrap" id="overdue-table"></div>
                 </div>
                 <!-- 08 EXPORT -->
                 <div id="export" class="tab-content">
                     <h2>Export &amp; Print Reports</h2>
                     <p style="font-size:15px;color:#64748b;margin-bottom:22px;word-break:break-word;">Download reports as Microsoft Word documents or print directly.</p>
-                    <button class="btn-download" onclick="window.location.href='/download-word'">Download Today's Attendance (Word)</button><br><br>
-                    <button class="btn-download" onclick="window.location.href='/download-borrow-word'">Download Book Borrow Records (Word)</button><br><br>
-                    <button class="btn-print" onclick="window.open('/print-borrow-records','_blank')">Print Borrow Records</button>
-                    <button class="btn-print" onclick="window.print()">Print Page</button>
+                    <button type="button" class="btn-download" onclick="window.location.href='/download-word'">Download Today's Attendance (Word)</button><br><br>
+                    <button type="button" class="btn-download" onclick="window.location.href='/download-borrow-word'">Download Book Borrow Records (Word)</button><br><br>
+                    <button type="button" class="btn-print" onclick="window.open('/print-borrow-records','_blank')">Print Borrow Records</button>
+                    <button type="button" class="btn-print" onclick="window.print()">Print Page</button>
                 </div>
                 <!-- 09 PRIVACY -->
                 <div id="privacy" class="tab-content">
@@ -3334,7 +3334,7 @@ function renderAdminBookDetail(data){
     let borrowers="";
     if(data.active_borrows&&data.active_borrows.length){
         borrowers='<h3 style="font-size:15px;margin:16px 0 6px;color:#1b2a41;">Currently borrowed by:</h3>'+
-            data.active_borrows.map(br=>'<div class="borrower-row"><span><strong>'+br.borrower_name+'</strong> ('+br.borrower_id+') — '+br.borrow_type+' — '+br.borrow_date+' '+br.borrow_time+'</span><button class="btn-return" onclick="confirmReturn('+br.borrow_id+')">Confirm Return</button></div>').join("");
+            data.active_borrows.map(br=>'<div class="borrower-row"><span><strong>'+br.borrower_name+'</strong> ('+br.borrower_id+') — '+br.borrow_type+' — '+br.borrow_date+' '+br.borrow_time+'</span><button type="button" class="btn-return" onclick="confirmReturn('+br.borrow_id+')">Confirm Return</button></div>').join("");
     }
     const borrowTypeRow = data.available_qty>0
         ? '<div class="borrow-type-row">'+
@@ -3347,7 +3347,7 @@ function renderAdminBookDetail(data){
         '<div class="book-meta">'+
         '<div><strong>Author</strong>'+(b.author||'-')+'</div><div><strong>ISBN</strong>'+(b.isbn||'-')+'</div><div><strong>Category</strong>'+(b.category||'-')+'</div><div><strong>Shelf</strong>'+(b.shelf_location||'-')+'</div><div><strong>Code</strong>'+b.access_code+'</div><div><strong>Times Borrowed</strong>'+(b.times_borrowed||0)+'</div></div>'+
         borrowTypeRow +
-        '<div class="action-row" style="margin-top:10px;"><button class="btn-cancel" onclick="cancelAdminBookFlow()">Clear</button></div>'+borrowers+'</div>';
+        '<div class="action-row" style="margin-top:10px;"><button type="button" class="btn-cancel" onclick="cancelAdminBookFlow()">Clear</button></div>'+borrowers+'</div>';
     panel.style.display="block";
 }
 function cancelAdminBookFlow(){resetBorrowFlow();renderAdminBookDetail(null);setStatus("Cancelled. Scan a Book QR/barcode or User ID.","info");}
@@ -3413,7 +3413,7 @@ function filterStudents(){
         '<td>'+x.id_type+'</td>'+
         '<td>'+userDepartment(x)+'</td>'+
         '<td>'+userMajor(x)+'</td>'+
-        '<td><button class="btn-edit" onclick="editStudent('+x.id+')">Edit</button></td></tr>';
+        '<td><button type="button" class="btn-edit" onclick="editStudent('+x.id+')">Edit</button></td></tr>';
     let html='';
     if(currentDept==="ALL"){
         const students = f.filter(x=>x.id_type==="Student");
@@ -3504,7 +3504,7 @@ function filterBooks(){
         '<td><strong>'+b.access_code+'</strong>'+(b.barcode_number?'<br><span style="color:#64748b;font-size:10px;">bc:'+b.barcode_number+'</span>':'')+'</td><td>'+b.title+'</td><td>'+(b.author||"-")+'</td><td>'+(b.category||"-")+'</td><td>'+(b.shelf_location||"-")+'</td><td>'+b.available_qty+'/'+b.quantity+'</td>'+
         '<td>'+(b.available_qty>0?'<span class="badge badge-avail">Available</span>':'<span class="badge badge-borrowed">Borrowed</span>')+'</td>'+
         '<td>'+b.times_borrowed+'</td>'+
-        '<td><button class="btn-barcode" data-code="'+b.access_code+'" onclick="viewBookQR(this.dataset.code)">QR</button> <button class="btn-edit" onclick="editBook('+b.id+')">Edit</button></td></tr>').join("")+'</table>';}
+        '<td><button type="button" class="btn-barcode" data-code="'+b.access_code+'" onclick="viewBookQR(this.dataset.code)">QR</button> <button type="button" class="btn-edit" onclick="editBook('+b.id+')">Edit</button></td></tr>').join("")+'</table>';}
     else t.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No books found.</p>';
 }
 function viewBookQR(code){lastBookQRCode=code;const w=window.open("","_blank","width=400,height=500");if(!w){alert("Allow pop-ups.");return;}w.document.write('<!DOCTYPE html><html><head><title>Book QR '+code+'</title><style>body{font-family:Arial;text-align:center;padding:20px}img{width:200px;height:200px}h2{font-size:14px}</style></head><body><h2>'+code+'</h2><img src="/book-qr/'+encodeURIComponent(code)+'" onload="window.print()"></body></html>');w.document.close();}
@@ -3558,7 +3558,7 @@ function loadOverdue(){
         sum.innerHTML='<strong>'+recs.length+' overdue book(s)</strong> — total fines: <strong>₱'+totalFine.toFixed(2)+'</strong>. Click "Send Reminder" to email the borrower to return the book.';
         const t=document.getElementById("overdue-table");
         t.innerHTML='<table><tr><th>Book</th><th>Borrower</th><th>Email</th><th>Borrowed</th><th>Due Date</th><th>Days Late</th><th>Fine</th><th>Reminder</th><th>Action</th></tr>'+
-            recs.map(r=>'<tr><td><strong>'+r.title+'</strong><br><span style="color:#64748b;font-size:11px;">'+r.access_code+'</span></td><td>'+r.borrower+'<br><span style="color:#64748b;font-size:11px;">'+r.borrower_id+'</span></td><td>'+r.email+'</td><td>'+r.borrow_date+' '+r.borrow_time+'</td><td><strong style="color:#8a1f1f;">'+r.due_date+'</strong></td><td><span class="badge badge-overdue">'+r.days_late+' day(s)</span></td><td><strong style="color:#8a1f1f;">₱'+Number(r.fine_amount).toFixed(2)+'</strong></td><td>'+(r.reminder_sent?'<span style="color:#1e6b34;font-size:12px;">Sent ✓</span>':'<span style="color:#8a6d1f;font-size:12px;">Not sent</span>')+'</td><td><button class="btn-remind" onclick="sendOneOverdueReminder('+r.id+')">Send Reminder Email</button></td></tr>').join("")+'</table>';
+            recs.map(r=>'<tr><td><strong>'+r.title+'</strong><br><span style="color:#64748b;font-size:11px;">'+r.access_code+'</span></td><td>'+r.borrower+'<br><span style="color:#64748b;font-size:11px;">'+r.borrower_id+'</span></td><td>'+r.email+'</td><td>'+r.borrow_date+' '+r.borrow_time+'</td><td><strong style="color:#8a1f1f;">'+r.due_date+'</strong></td><td><span class="badge badge-overdue">'+r.days_late+' day(s)</span></td><td><strong style="color:#8a1f1f;">₱'+Number(r.fine_amount).toFixed(2)+'</strong></td><td>'+(r.reminder_sent?'<span style="color:#1e6b34;font-size:12px;">Sent ✓</span>':'<span style="color:#8a6d1f;font-size:12px;">Not sent</span>')+'</td><td><button type="button" class="btn-remind" onclick="sendOneOverdueReminder('+r.id+')">Send Reminder Email</button></td></tr>').join("")+'</table>';
     }).catch(e=>alert("Load Error: "+e));
 }
 function sendOneOverdueReminder(borrowId){
