@@ -43,6 +43,7 @@ EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
 OUTSIDE_BORROW_DAYS = int(os.environ.get("OUTSIDE_BORROW_DAYS", "3"))
 LATE_FINE_PER_DAY = float(os.environ.get("LATE_FINE_PER_DAY", "5.0"))  # pesos per day late
 
+
 def get_db():
     try:
         conn = psycopg2.connect(DATABASE_URL)
@@ -51,14 +52,18 @@ def get_db():
         print(f"DB Connect Error: {e}")
         return None
 
+
 def get_ph_now():
     return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+
 
 def get_ph_time():
     return get_ph_now().strftime("%I:%M %p")
 
+
 def get_ph_date():
     return get_ph_now().strftime("%Y-%m-%d")
+
 
 def add_days(date_str, days):
     try:
@@ -67,6 +72,7 @@ def add_days(date_str, days):
     except Exception:
         return date_str
 
+
 def days_between(d1, d2):
     try:
         a = datetime.datetime.strptime(d1, "%Y-%m-%d")
@@ -74,6 +80,7 @@ def days_between(d1, d2):
         return (b - a).days
     except Exception:
         return 0
+
 
 def compute_fine(due_date, return_date=None):
     """Return (days_late, fine_amount). If not returned, compare to today."""
@@ -85,6 +92,7 @@ def compute_fine(due_date, return_date=None):
         return 0, 0.0
     return late, round(late * LATE_FINE_PER_DAY, 2)
 
+
 DEPARTMENT_CODES = {
     "CT": "CPT",
     "BSED": "BSED",
@@ -94,12 +102,14 @@ DEPARTMENT_CODES = {
     "BPA": "BPA",
 }
 
+
 def get_student_code(id_type, department, year_level):
     if id_type != "Student" or not department or not year_level:
         return "-"
     year_match = re.search(r"([1-4])", year_level)
     department_code = DEPARTMENT_CODES.get(department, department.upper())
     return f"{department_code}{year_match.group(1)}" if year_match else "-"
+
 
 def _generate_next_id(prefix):
     conn = get_db()
@@ -119,6 +129,7 @@ def _generate_next_id(prefix):
     finally:
         conn.close()
     return f"{prefix}-{str(max_n + 1).zfill(4)}"
+
 
 def init_db():
     conn = get_db()
@@ -187,6 +198,7 @@ def init_db():
     conn.close()
     print("DATABASE READY")
 
+
 init_db()
 
 # ============================================================
@@ -211,6 +223,7 @@ def _send_email(to_email, subject, html_body):
     except Exception as e:
         print(f"SEND EMAIL ERROR: {e}")
         return False, f"Email not sent: {str(e)}"
+
 
 def send_borrow_notification(to_email, borrower_name, book_title, access_code, borrow_date, borrow_time, borrow_type, due_date=None):
     due_line = ""
@@ -246,13 +259,14 @@ def send_borrow_notification(to_email, borrower_name, book_title, access_code, b
           responsible for any damage and must pay the replacement cost if the book is lost.
           A late fine of <strong>₱{LATE_FINE_PER_DAY:.2f} per day</strong> will be charged if returned after the due date.
         </p>
-        <p style="font-size:12px;color:#64748b;margin-top:20px;">SLSU-JGE Library Attendance &amp; Borrowing System<br>
+        <p style="font-size:12px;color:#64748b;margin-top:20px;">SLSU-JGE Library Management System<br>
         Southern Luzon State University — Judge Guillermo Eleazar</p>
       </div>
     </div>
     </body></html>
     """
     return _send_email(to_email, f"Book Borrow Confirmation — {book_title} — SLSU-JGE Library", html)
+
 
 def send_overdue_reminder(to_email, borrower_name, book_title, access_code, borrow_date, due_date, days_late, fine_amount):
     html = f"""
@@ -283,7 +297,7 @@ def send_overdue_reminder(to_email, borrower_name, book_title, access_code, borr
           <strong>Please return the book immediately.</strong> The fine continues to increase by ₱{LATE_FINE_PER_DAY:.2f} each day
           until the book is returned. Damage or loss must also be paid in full.
         </p>
-        <p style="font-size:12px;color:#64748b;margin-top:20px;">SLSU-JGE Library Attendance &amp; Borrowing System<br>
+        <p style="font-size:12px;color:#64748b;margin-top:20px;">SLSU-JGE Library Management System<br>
         Southern Luzon State University — Judge Guillermo Eleazar</p>
       </div>
     </div>
@@ -291,36 +305,39 @@ def send_overdue_reminder(to_email, borrower_name, book_title, access_code, borr
     """
     return _send_email(to_email, f"OVERDUE — Return '{book_title}' — SLSU-JGE Library", html)
 
+
 # ============================================================
-#  BARCODE / QR GENERATORS  (larger, high-contrast, scanner-friendly)
+#  BARCODE / QR GENERATORS  (high-contrast, scanner-friendly, 300 DPI)
 # ============================================================
 def generate_barcode_b64(id_number):
-    """Code128 barcode — larger module width + quiet zone for fast, reliable scanning."""
+    """Code128 barcode — standard module width, tall bars, generous quiet zone, 300 DPI.
+    Sized so any handheld/USB barcode scanner reads it reliably on screen and in print."""
     code128 = barcode.get_barcode_class("code128")
     writer = ImageWriter()
     writer.set_options({
-        "module_width": 0.5,        # wider bars = easier to read
-        "module_height": 15.0,      # taller bars
-        "font_size": 10,
-        "text_distance": 3,
-        "quiet_zone": 3.0,          # bigger white margin on both sides
+        "module_width": 0.6,        # standard bar thickness (not too thin)
+        "module_height": 18.0,      # tall bars for reliable scan
+        "font_size": 12,            # readable human-readable digits below
+        "text_distance": 4,         # space between bars and digits
+        "quiet_zone": 4.0,          # generous white margin on both sides (quiet zone)
         "center_text": True,
         "dpi": 300,
     })
     img = code128(str(id_number), writer=writer).render().convert("RGB")
-    pad = round(6 / 25.4 * 300)  # extra white padding around
+    pad = round(8 / 25.4 * 300)  # extra white padding around (>=5mm safe margin)
     canvas = Image.new("RGB", (img.width + 2 * pad, img.height + 2 * pad), "white")
     canvas.paste(img, (pad, pad))
     buffered = BytesIO()
     canvas.save(buffered, format="PNG", dpi=(300, 300), optimize=True)
     return base64.b64encode(buffered.getvalue()).decode()
 
+
 def generate_qr_b64(data):
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
         box_size=10,
-        border=2,
+        border=4,
     )
     qr.add_data(str(data))
     qr.make(fit=True)
@@ -328,6 +345,7 @@ def generate_qr_b64(data):
     buffered = BytesIO()
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
+
 
 def book_status_info(book_id, quantity):
     conn = get_db()
@@ -340,6 +358,7 @@ def book_status_info(book_id, quantity):
     available = max(0, int(quantity) - active)
     status = "Available" if available > 0 else "Borrowed"
     return active, available, status
+
 
 def active_borrowers_of(book_id):
     conn = get_db()
@@ -373,6 +392,7 @@ def barcode_image(id_number):
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+
 @app.route('/book-qr/<path:access_code>')
 def book_qr_image(access_code):
     if not is_logged_in():
@@ -386,6 +406,7 @@ def book_qr_image(access_code):
         return response
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
 
 @app.route('/book-barcode/<path:barcode_number>')
 def book_barcode_image(barcode_number):
@@ -401,6 +422,7 @@ def book_barcode_image(barcode_number):
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+
 @app.route('/download-barcodes', methods=['POST'])
 def download_barcodes():
     if not is_logged_in():
@@ -415,13 +437,13 @@ def download_barcodes():
         columns = 4
         rows = 11
         box_width = round(60 / 25.4 * 300)
-        box_height = round(28 / 25.4 * 300)
+        box_height = round(30 / 25.4 * 300)
         gap = round(2 / 25.4 * 300)
         grid_width = columns * box_width + (columns - 1) * gap
         grid_height = rows * box_height + (rows - 1) * gap
         grid_left = (page_size[0] - grid_width) // 2
         grid_top = (page_size[1] - grid_height) // 2
-        barcode_size = (round(56 / 25.4 * 300), round(16 / 25.4 * 300))
+        barcode_size = (round(56 / 25.4 * 300), round(18 / 25.4 * 300))
         pages = []
         for page_start in range(0, len(id_numbers), columns * rows):
             page = Image.new('RGB', page_size, 'white')
@@ -435,7 +457,7 @@ def download_barcodes():
                 barcode_image = Image.open(BytesIO(base64.b64decode(generate_barcode_b64(id_number))))
                 barcode_image.thumbnail(barcode_size, Image.Resampling.LANCZOS)
                 barcode_left = cell_left + (box_width - barcode_image.width) // 2
-                barcode_top = cell_top + round(9 / 25.4 * 300)
+                barcode_top = cell_top + round(10 / 25.4 * 300)
                 page.paste(barcode_image, (barcode_left, barcode_top))
                 label = f"ID Number: {id_number}"
                 label_box = draw.textbbox((0, 0), label)
@@ -460,10 +482,11 @@ def download_barcodes():
         output.seek(0)
         response = make_response(output.getvalue())
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = 'attachment; filename="student_barcodes.pdf"'
+        response.headers['Content-Disposition'] = 'attachment; filename="user_barcodes.pdf"'
         return response
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
 
 @app.route('/download-book-qrcodes', methods=['POST'])
 def download_book_qrcodes():
@@ -540,6 +563,7 @@ def download_book_qrcodes():
         print(f"DOWNLOAD BOOK QR ERROR: {e}")
         return jsonify({"error": str(e)}), 400
 
+
 @app.route('/delete-students', methods=['POST'])
 def delete_students():
     if not is_logged_in() or get_role() != 'admin':
@@ -571,6 +595,7 @@ def delete_students():
         print(f"DELETE STUDENTS ERROR: {e}")
         return jsonify({"error": "Unable to delete selected students."}), 500
 
+
 @app.route('/delete-daily-history', methods=['POST'])
 def delete_daily_history():
     if not is_logged_in() or get_role() != 'admin':
@@ -598,11 +623,14 @@ def delete_daily_history():
         print(f"DELETE DAILY HISTORY ERROR: {e}")
         return jsonify({"error": "Unable to delete daily history."}), 500
 
+
 def is_logged_in():
     return request.cookies.get('logged_in') == 'true'
 
+
 def get_role():
     return request.cookies.get('role', 'user')
+
 
 def is_scan_authorized():
     if is_logged_in():
@@ -611,6 +639,7 @@ def is_scan_authorized():
         return False
     provided_key = request.headers.get('X-Scanner-Key', '').strip()
     return bool(provided_key) and secrets.compare_digest(provided_key, SCANNER_API_KEY)
+
 
 # ============================================================
 #  BOOK MANAGEMENT ROUTES (Admin) — with barcode scan + generate
@@ -643,6 +672,7 @@ def scan_book_barcode():
     return jsonify({"success": True, "exists": False, "barcode_number": code, "barcode_img": barcode_b64,
                     "message": f"Barcode '{code}' not yet registered. Fill in the book details below."})
 
+
 @app.route('/api/generate-new-book-barcode')
 def generate_new_book_barcode():
     """Generate a brand-new unique barcode number for books that have no printed barcode."""
@@ -656,11 +686,11 @@ def generate_new_book_barcode():
     count = c.fetchone()[0]
     conn.close()
     new_num = f"BK{str(count + 1).zfill(6)}"
-    # ensure uniqueness
     barcode_number = f"LIB-{new_num}"
     return jsonify({"success": True, "barcode_number": barcode_number,
                     "barcode_img": generate_barcode_b64(barcode_number),
                     "message": f"New barcode generated: {barcode_number}. Print and stick it on the book."})
+
 
 @app.route('/register-book', methods=['POST'])
 def register_book():
@@ -710,6 +740,7 @@ def register_book():
         print(f"REGISTER BOOK ERROR: {e}")
         return jsonify({"success": False, "error": f"An error occurred: {str(e)}"}), 500
 
+
 @app.route('/get-books')
 def get_books():
     if not is_logged_in():
@@ -733,6 +764,7 @@ def get_books():
         })
     conn.close()
     return jsonify({"books": books})
+
 
 @app.route('/api/search-books')
 def search_books():
@@ -771,6 +803,7 @@ def search_books():
     conn.close()
     return jsonify({"books": results, "query": q})
 
+
 @app.route('/update-book', methods=['POST'])
 def update_book():
     if not is_logged_in() or get_role() != 'admin':
@@ -806,6 +839,7 @@ def update_book():
         print(f"UPDATE BOOK ERROR: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
+
 @app.route('/delete-book', methods=['POST'])
 def delete_book():
     if not is_logged_in() or get_role() != 'admin':
@@ -838,6 +872,7 @@ def delete_book():
         print(f"DELETE BOOK ERROR: {e}")
         return jsonify({"success": False, "error": "Unable to delete selected books."}), 500
 
+
 # ============================================================
 #  OVERDUE / FINE / REMINDER ROUTES
 # ============================================================
@@ -867,6 +902,7 @@ def overdue_list():
     conn.close()
     return jsonify({"records": records})
 
+
 @app.route('/api/send-overdue-reminder', methods=['POST'])
 def send_overdue_reminder_route():
     if not is_logged_in() or get_role() != 'admin':
@@ -894,6 +930,7 @@ def send_overdue_reminder_route():
         conn.commit()
     conn.close()
     return jsonify({"success": ok, "message": msg, "fine_amount": fine, "days_late": days_late})
+
 
 @app.route('/api/send-all-overdue-reminders', methods=['POST'])
 def send_all_overdue_reminders():
@@ -925,11 +962,13 @@ def send_all_overdue_reminders():
     conn.commit()
     conn.close()
     return jsonify({"success": True, "sent": sent, "failed": failed,
-                    "message": f"Sent {sent} overdue reminder(s). {failed} failed (no valid email)."})
+                    "message": f"Sent {sent} overdue reminder(s). {failed} failed (no valid email on profile)."})
 
 
 # ============================================================
 #  BORROW / RETURN / SMART SCAN — with INSIDE / OUTSIDE flow
+#  Email is NO LONGER asked at borrow time — it is auto-fetched
+#  from the borrower's registered profile.
 # ============================================================
 @app.route('/api/smart-scan', methods=['POST'])
 def smart_scan():
@@ -990,6 +1029,7 @@ def smart_scan():
                         "message": f"TIME OUT recorded — {full_name} — {now}",
                         "user": {"full_name": full_name, "id_number": code, "date": today, "time_in": last_attendance[1], "time_out": now}})
 
+
 @app.route('/api/lookup-user', methods=['POST'])
 def lookup_user():
     if not is_scan_authorized():
@@ -1013,15 +1053,17 @@ def lookup_user():
                  "id_type": user[3], "email": user[4] or ""}
     })
 
+
 @app.route('/api/borrow-book', methods=['POST'])
 def borrow_book():
+    """Record a borrow. Email is NOT required — it is auto-fetched from the
+    borrower's registered user profile (used only for OUTSIDE borrow notifications)."""
     if not is_scan_authorized():
         return jsonify({"success": False, "message": "Unauthorized."}), 401
     data = request.get_json(silent=True) or request.form
     book_id = str(data.get('book_id', '')).strip()
     id_number = str(data.get('id_number', '')).strip()
     borrow_type = str(data.get('borrow_type', 'Inside')).strip()
-    email = str(data.get('email', '')).strip() or None
     due_date = str(data.get('due_date', '')).strip() or None
     if borrow_type.lower() not in ("inside", "outside"):
         borrow_type = "Inside"
@@ -1029,10 +1071,6 @@ def borrow_book():
         borrow_type = borrow_type.capitalize()
     if not book_id or not id_number:
         return jsonify({"success": False, "message": "book_id and id_number are required."}), 400
-    if borrow_type == "Outside" and not email:
-        return jsonify({"success": False, "message": "Email address is required for OUTSIDE borrow (for notification)."}), 400
-    if email and not EMAIL_RE.match(email):
-        return jsonify({"success": False, "message": "Invalid email address format."}), 400
     conn = get_db()
     if not conn:
         return jsonify({"success": False, "message": "Database connection error"}), 500
@@ -1047,12 +1085,14 @@ def borrow_book():
         if available <= 0:
             conn.close()
             return jsonify({"success": False, "message": f"'{book[1]}' is fully borrowed. No copies available."})
-        c.execute("SELECT id, full_name FROM users WHERE UPPER(id_number) = UPPER(%s)", (id_number,))
+        # Auto-fetch borrower + email from profile (email no longer asked at scan time)
+        c.execute("SELECT id, full_name, email FROM users WHERE UPPER(id_number) = UPPER(%s)", (id_number,))
         user = c.fetchone()
         if not user:
             conn.close()
             return jsonify({"success": False, "message": f"User ID '{id_number}' not found. Scan a registered Student/Employee/Visitor ID."})
-        user_id, full_name = user
+        user_id, full_name, user_email = user
+        email = (user_email or "").strip() or None
         today = get_ph_date()
         now = get_ph_time()
         if borrow_type == "Outside":
@@ -1075,7 +1115,7 @@ def borrow_book():
     conn.close()
     email_msg = ""
     email_ok = False
-    if borrow_type == "Outside" and email:
+    if borrow_type == "Outside" and email and EMAIL_RE.match(email):
         email_ok, email_msg = send_borrow_notification(
             email, full_name, book[1], book[2], today, now, borrow_type, due_date
         )
@@ -1094,9 +1134,10 @@ def borrow_book():
     if borrow_type == "Outside":
         due_txt = f". Due date: {due_date}. Late fine ₱{LATE_FINE_PER_DAY:.2f}/day."
         if email_ok:
-            full_msg = base_msg + due_txt + f" Email notification sent to {email}."
+            full_msg = base_msg + due_txt + f" Email notification sent to {email} (from profile)."
         else:
-            full_msg = base_msg + due_txt + f" NOTE: {email_msg}"
+            note = email_msg if email_msg else "No email on profile — notification skipped."
+            full_msg = base_msg + due_txt + f" NOTE: {note}"
     else:
         full_msg = base_msg + " (in-library use)."
     return jsonify({"success": True,
@@ -1107,6 +1148,7 @@ def borrow_book():
                     "due_date": due_date,
                     "email_sent": email_ok,
                     "email_note": email_msg})
+
 
 @app.route('/api/return-book', methods=['POST'])
 def return_book():
@@ -1139,6 +1181,7 @@ def return_book():
                     "message": f"RETURNED: '{rec[1]}' (borrowed by {rec[2]}) at {now}{fine_txt}",
                     "book_title": rec[1], "borrower": rec[2], "date": today, "time": now,
                     "days_late": days_late, "fine_amount": fine})
+
 
 @app.route('/get-borrow-records')
 def get_borrow_records():
@@ -1192,12 +1235,13 @@ def get_borrow_records():
     conn.close()
     return jsonify({"records": records})
 
+
 # ============================================================
-#  PRIVACY PAGE & LOGIN
+#  PRIVACY PAGE & LOGIN (redesigned — SLSU-JGE header + dark card)
 # ============================================================
 PRIVACY_PAGE = """
 <!DOCTYPE html><html><head>
-<title>Privacy Policy - SLSU Library Attendance System</title>
+<title>Privacy Policy - SLSU Library Management System</title>
 <link rel="icon" type="image/png" href="/static/app-icon.png">
 <link rel="apple-touch-icon" href="/static/app-icon.png">
 <meta name="theme-color" content="#006633">
@@ -1205,28 +1249,166 @@ PRIVACY_PAGE = """
 <style>
 *{box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;background:#eef0f3;color:#374151;margin:0;padding:24px;line-height:1.65;overflow-x:hidden}.policy{max-width:980px;margin:0 auto;background:#fff;border:1px solid #d8dbe0;padding:34px 42px;box-shadow:0 2px 12px rgba(15,25,43,.08)}h1,h2{font-family:Georgia,'Times New Roman',serif;color:#1b2a41}h1{font-size:26px;margin:0 0 6px}h2{font-size:18px;margin:28px 0 8px;border-bottom:1px solid #eef0f3;padding-bottom:8px}p{margin:8px 0 14px}li{margin:5px 0}.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}table{width:100%;border-collapse:collapse;margin:12px 0 20px;min-width:520px}th,td{border:1px solid #d8dbe0;padding:10px;text-align:left;vertical-align:top;word-break:break-word}th{background:#1b2a41;color:#fff}@media(max-width:600px){body{padding:10px}.policy{padding:22px 18px}table{font-size:12px}}
 </style></head><body><main class="policy">
-<h1>Privacy Policy - SLSU Library Attendance System</h1>
+<h1>Privacy Policy - SLSU Library Management System</h1>
 <p><strong>Last Updated:</strong> October 2026</p>
-<h2>1. Who We Are</h2><p>This system - SLSU Library Attendance System - is designed exclusively for Southern Luzon State University (SLSU). It is created to simplify and manage library entry and exit records for students, employees, and authorized visitors, as well as book borrowing (inside and outside).</p>
+<h2>1. Who We Are</h2><p>This system - SLSU Library Management System - is designed exclusively for Southern Luzon State University (SLSU). It is created to simplify and manage library entry and exit records for students, employees, and authorized visitors, as well as book borrowing (inside and outside).</p>
 <h2>2. Exactly What Information We Collect</h2><p>We collect only the specific fields you enter during registration:</p>
-<div class="table-wrap"><table><tr><th>Field</th><th>Purpose</th></tr><tr><td>Full Name</td><td>Identification and record-keeping</td></tr><tr><td>ID Type</td><td>Student / Employee / Visitor categorization</td></tr><tr><td>ID Number</td><td>Unique identifier - this becomes your barcode</td></tr><tr><td>Email Address</td><td>For OUTSIDE book-borrow notifications only</td></tr><tr><td>Department</td><td>CT, FBT, BSED, BEED, BSFAS, BSBA, EMPLOYEE - for reporting</td></tr><tr><td>Year Level</td><td>Students only - classification and demographic reporting</td></tr><tr><td>Major / Specialization</td><td>Program-specific reporting</td></tr><tr><td>Contact Number</td><td>Library-related announcements only</td></tr><tr><td>Complete Address</td><td>Required per university guidelines</td></tr></table></div>
+<div class="table-wrap"><table><tr><th>Field</th><th>Purpose</th></tr><tr><td>Full Name</td><td>Identification and record-keeping</td></tr><tr><td>ID Type</td><td>Student / Employee / Visitor categorization</td></tr><tr><td>ID Number</td><td>Unique identifier - this becomes your barcode</td></tr><tr><td>Email Address</td><td>Collected once at registration; auto-used for OUTSIDE book-borrow notifications (never asked again at scan time)</td></tr><tr><td>Department</td><td>CT, BSED, BEED, BSFAS, BSBA, BPA, EMPLOYEE - for reporting</td></tr><tr><td>Year Level</td><td>Students only - classification and demographic reporting</td></tr><tr><td>Major / Specialization</td><td>Program-specific reporting</td></tr><tr><td>Contact Number</td><td>Library-related announcements only</td></tr><tr><td>Complete Address</td><td>Required per university guidelines</td></tr></table></div>
 <p><strong>Attendance Data (Automatically Recorded Upon Scan)</strong></p><ul><li>Time In - exact date and time you scan your ID upon entry</li><li>Time Out - exact date and time you scan your ID upon exit</li><li>Date of Visit - automatically recorded for daily and monthly reports</li></ul>
-<p><strong>Book Borrow Data</strong></p><ul><li>Book title, access code, borrow date/time, borrow type (Inside/Outside)</li><li>For Outside borrows: your email (for notification), due date, and agreement to liability terms; late fines are computed and emailed</li></ul>
+<p><strong>Book Borrow Data</strong></p><ul><li>Book title, access code, borrow date/time, borrow type (Inside/Outside)</li><li>For Outside borrows: your email on file is used automatically for confirmation and overdue reminders; due date and late fines are computed and emailed. A Privacy & Terms Agreement with an "I Agree" checkbox is presented before an Outside borrow is recorded.</li></ul>
 <p><strong>We do not collect passwords, photos, biometrics, location data, browsing history, or financial information.</strong></p>
-<h2>3. How We Use Your Information</h2><p>Your data is used only to verify identity, record attendance, manage book borrows, generate reports for library staff, and send borrow/overdue notifications to your email. We will never sell, rent, or share your data with any third party, nor send commercial advertisements.</p>
+<h2>3. How We Use Your Information</h2><p>Your data is used only to verify identity, record attendance, manage book borrows, generate reports for library staff, and send borrow/overdue notifications to your email on file. We will never sell, rent, or share your data with any third party, nor send commercial advertisements.</p>
 <h2>4. Data Storage and Security</h2><ul><li><strong>Database:</strong> PostgreSQL hosted on Render / Supabase Cloud - encrypted and password-protected</li><li><strong>Security:</strong> All data is transmitted over HTTPS. Only the System Administrator has full database access.</li></ul>
 <h2>5. Who Can See Your Data</h2><div class="table-wrap"><table><tr><th>User Role</th><th>What They Can See and Do</th></tr><tr><td>System Administrator (library/slsu)</td><td>Full access to all records - manage books, attendance, borrows, reports; edit, print, delete, download; send overdue reminders</td></tr><tr><td>Library Staff (slsu/library)</td><td>Can register users, scan attendance, process book borrows/returns, view daily records, borrow records, and search books</td></tr><tr><td>Individual User (student/student)</td><td>Can access only the Registration Form and Barcode Generation</td></tr><tr><td>Public / Visitors</td><td>No access - login is required.</td></tr></table></div>
 <h2>6. Your Rights</h2><ul><li>Register and create your own barcode</li><li>Request correction of incorrect information</li><li>Request data deletion upon graduation, resignation, or separation from SLSU</li><li>Scan your printed barcode for entry/exit and book borrows</li><li>Know that your information is protected and never shared or sold</li></ul>
-<h2>7. Outside Borrow Liability</h2><p>When you borrow a book for OUTSIDE use (take home), you agree that you are fully responsible for any damage to the book and must pay the full replacement cost if the book is lost. A late fine applies per day after the due date. A confirmation email and overdue reminders are sent to the address you provide.</p>
+<h2>7. Outside Borrow Liability</h2><p>When you borrow a book for OUTSIDE use (take home), you must check the "I Agree" box confirming that you are fully responsible for any damage to the book and must pay the full replacement cost if the book is lost. A late fine applies per day after the due date. A confirmation email and overdue reminders are sent automatically to the address on your profile.</p>
 <h2>8. About the System</h2><p>This system was created for Southern Luzon State University (SLSU) - Judge Guillermo Eleazar campus to streamline library attendance and book borrowing while prioritizing user privacy and data security.</p>
 <h2>9. Changes to This Policy</h2><p>We may update this Privacy Policy as needed. Changes will be posted here with an updated date.</p>
-<h2>10. Contact Information</h2><p><strong>System:</strong> SLSU Library Attendance &amp; Book Borrowing System<br><strong>Institution:</strong> Southern Luzon State University - Judge Guillermo Eleazar<br><strong>Office:</strong> SLSU Library - SLSU-JGE</p>
+<h2>10. Contact Information</h2><p><strong>System:</strong> SLSU Library Management System<br><strong>Institution:</strong> Southern Luzon State University - Judge Guillermo Eleazar<br><strong>Office:</strong> SLSU Library - SLSU-JGE</p>
 <p><strong>By registering, generating your barcode, scanning your ID, and borrowing books, you confirm that you have read, understood, and agree to this Privacy Policy.</strong></p>
 </main></body></html>"""
+
 
 @app.route('/privacy')
 def privacy_policy():
     return render_template_string(PRIVACY_PAGE)
+
+
+# ---- Shared login page markup (redesigned to match SLSU-JGE header + dark translucent card) ----
+LOGIN_PAGE = """<!DOCTYPE html>
+<html>
+<head>
+    <title>Sign In — Library Management System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="/static/app-icon.png">
+    <link rel="apple-touch-icon" href="/static/app-icon.png">
+    <meta name="theme-color" content="#0b5d2b">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
+        body{
+            background:#0f1c30 url('/static/jge.jpg') center/cover no-repeat fixed;
+            min-height:100vh;display:flex;flex-direction:column;position:relative;overflow-x:hidden;
+        }
+        /* Dark overlay over background image so text stays readable */
+        body:before{content:"";position:fixed;inset:0;background:rgba(8,16,28,.55);z-index:0;}
+        /* ===== Top green institutional header (SLSU-JGE) ===== */
+        .site-header{
+            position:relative;z-index:2;background:linear-gradient(180deg,#0e6b34,#0a5227);
+            color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:center;gap:16px;
+            box-shadow:0 2px 10px rgba(0,0,0,.35);border-bottom:2px solid #e8c766;
+        }
+        .seal{
+            width:52px;height:52px;border-radius:50%;flex:0 0 52px;background:#fff;
+            display:flex;align-items:center;justify-content:center;font-weight:800;color:#0a5227;
+            font-size:10px;text-align:center;line-height:1.1;border:2px solid #e8c766;
+            font-family:Georgia,serif;letter-spacing:.3px;
+        }
+        .header-text{text-align:center;max-width:720px;}
+        .header-text h1{font-family:Georgia,'Times New Roman',serif;font-size:17px;font-weight:700;line-height:1.25;word-break:break-word;}
+        .header-text p{font-size:12px;margin-top:3px;color:#d9e8dd;letter-spacing:.4px;}
+        .login-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:34px 16px;position:relative;z-index:1;}
+        /* ===== Dark translucent rounded card ===== */
+        .login-card{
+            width:100%;max-width:420px;background:rgba(15,23,42,.72);
+            border:1px solid rgba(255,255,255,.18);border-radius:18px;
+            backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+            padding:38px 32px 30px;box-shadow:0 14px 40px rgba(0,0,0,.45);
+        }
+        .login-card h2{
+            color:#fff;font-family:Georgia,'Times New Roman',serif;font-size:34px;font-weight:700;
+            margin-bottom:26px;letter-spacing:.5px;
+        }
+        .field{margin-bottom:18px;position:relative;}
+        .field input{
+            width:100%;padding:15px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.28);
+            background:rgba(255,255,255,.10);color:#fff;font-size:15px;transition:border-color .2s,background .2s;
+        }
+        .field input::placeholder{color:rgba(255,255,255,.65);}
+        .field input:focus{outline:none;border-color:#e8c766;background:rgba(255,255,255,.16);}
+        .field input[type="password"]{padding-right:48px;}
+        .eye-btn{
+            position:absolute;right:10px;top:50%;transform:translateY(-50%);
+            background:transparent;border:none;cursor:pointer;padding:6px;color:rgba(255,255,255,.75);
+            display:flex;align-items:center;justify-content:center;
+        }
+        .eye-btn:hover{color:#fff;}
+        .forgot-row{text-align:right;margin:-6px 0 20px;}
+        .forgot-row a{color:#e8c766;font-size:13px;text-decoration:underline;cursor:pointer;}
+        .forgot-row a:hover{color:#fff;}
+        .signin-btn{
+            width:100%;padding:14px;background:#3b82f6;border:none;border-radius:10px;color:#fff;
+            font-size:16px;font-weight:700;cursor:pointer;letter-spacing:.4px;transition:background .2s,transform .1s;
+        }
+        .signin-btn:hover{background:#2563eb;}
+        .signin-btn:active{transform:scale(.99);}
+        .create-row{text-align:center;margin-top:18px;}
+        .create-row a{color:#fff;font-size:14px;text-decoration:underline;cursor:pointer;}
+        .create-row a:hover{color:#e8c766;}
+        .error-box{
+            background:rgba(192,57,43,.18);border:1px solid rgba(231,76,60,.5);color:#ffd7d0;
+            padding:12px 14px;border-radius:8px;margin-bottom:18px;font-size:13px;word-break:break-word;
+        }
+        .footer-note{
+            position:relative;z-index:2;text-align:center;color:rgba(255,255,255,.75);
+            font-size:12px;padding:14px 16px 22px;
+        }
+        .footer-note a{color:#e8c766;text-decoration:none;margin:0 6px;}
+        .footer-note a:hover{text-decoration:underline;}
+        @media(max-width:520px){
+            .seal{width:42px;height:42px;flex:0 0 42px;font-size:8px;}
+            .header-text h1{font-size:14px;}
+            .header-text p{font-size:11px;}
+            .login-card{padding:30px 22px 24px;}
+            .login-card h2{font-size:28px;}
+            .field input{font-size:16px;}
+        }
+    </style>
+</head>
+<body>
+    <div class="site-header">
+        <div class="seal">SLSU<br>SEAL</div>
+        <div class="header-text">
+            <h1>Southern Luzon State University – Judge Guillermo Eleazar</h1>
+            <p>Library Management System</p>
+        </div>
+        <div class="seal">JGE<br>CAMPUS</div>
+    </div>
+    <div class="login-wrap">
+        <form class="login-card" method="POST" action="/login">
+            <h2>Sign In</h2>
+            __ERROR__
+            <div class="field">
+                <input type="text" name="username" required placeholder="Username" autocomplete="username">
+            </div>
+            <div class="field">
+                <input type="password" name="password" id="login-password" required placeholder="Password" autocomplete="current-password">
+                <button type="button" class="eye-btn" onclick="togglePassword()" aria-label="Show password">
+                    <svg id="eye-open" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    <svg id="eye-closed" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                </button>
+            </div>
+            <div class="forgot-row"><a onclick="alert('Please approach the SLSU-JGE Librarian to reset your account.')">Forgot password?</a></div>
+            <button type="submit" class="signin-btn">Sign In</button>
+            <div class="create-row"><a onclick="alert('Account creation is done at the library. Please approach the SLSU-JGE Librarian to register.')">Create an account</a></div>
+        </form>
+    </div>
+    <div class="footer-note">
+        <a href="/privacy" target="_blank">Privacy Policy</a> ·
+        <a onclick="alert('Please approach the SLSU-JGE Librarian.')">Terms and Conditions</a>
+        <br>SLSU-JGE Library Management System © 2026
+    </div>
+    <script>
+        function togglePassword(){
+            const p = document.getElementById('login-password');
+            const open = document.getElementById('eye-open');
+            const closed = document.getElementById('eye-closed');
+            if(p.type === 'password'){ p.type = 'text'; open.style.display='none'; closed.style.display='block'; }
+            else { p.type = 'password'; open.style.display='block'; closed.style.display='none'; }
+        }
+    </script>
+</body>
+</html>"""
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1248,94 +1430,10 @@ def login():
             resp.set_cookie('logged_in', 'true', max_age=31536000)
             resp.set_cookie('role', 'student', max_age=31536000)
             return resp
-        return """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Sign In — Library Attendance System</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" type="image/png" href="/static/app-icon.png">
-    <link rel="apple-touch-icon" href="/static/app-icon.png">
-    <meta name="theme-color" content="#006633">
-    <style>
-        *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
-        body{background:#172236 url('/static/jge.jpg') center/cover no-repeat fixed;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;position:relative;overflow-x:hidden;}
-        body:before{content:"";position:fixed;inset:0;background:rgba(10,20,35,.58);z-index:0;}
-        .card{position:relative;z-index:1;background:rgba(255,255,255,.97);padding:0;border-radius:6px;border:1px solid #d8dbe0;box-shadow:0 8px 30px rgba(0,0,0,0.25);width:100%;max-width:440px;overflow:hidden;}
-        .card-top{height:5px;background:#1b2a41;}
-        .card-body{padding:44px 40px;}
-        h1{text-align:center;color:#1b2a41;margin-bottom:10px;font-size:22px;font-weight:700;font-family:Georgia,'Times New Roman',serif;}
-        .subtitle{text-align:center;color:#64748b;margin-bottom:30px;font-size:14px;}
-        .error-box{background:#fbeaea;color:#8a1f1f;padding:14px 16px;border-left:3px solid #c0392b;border-radius:4px;margin-bottom:26px;text-align:left;font-size:14px;word-break:break-word;}
-        a.back-link{display:block;text-align:center;padding:13px;background:#1b2a41;color:#fff;border-radius:4px;text-decoration:none;font-weight:600;font-size:14px;letter-spacing:.3px;transition:background 0.2s;}
-        a.back-link:hover{background:#10192b;}
-        @media(max-width:600px){.card-body{padding:32px 22px;}input{font-size:16px;}}
-    </style>
-</head>
-<body>
-    <div class="card">
-        <div class="card-top"></div>
-        <div class="card-body">
-            <h1>Invalid Credentials</h1>
-            <p class="subtitle">SLSU–JGE Library Attendance System</p>
-            <div class="error-box">The username or password you entered is incorrect. Please try again.</div>
-            <a href="/login" class="back-link">Return to Sign In</a>
-        </div>
-    </div>
-</body>
-</html>"""
-    return """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Sign In — Library Attendance System</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" type="image/png" href="/static/app-icon.png">
-    <link rel="apple-touch-icon" href="/static/app-icon.png">
-    <meta name="theme-color" content="#006633">
-    <style>
-        *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
-        body{background:#172236 url('/static/jge.jpg') center/cover no-repeat fixed;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;position:relative;overflow-x:hidden;}
-        body:before{content:"";position:fixed;inset:0;background:rgba(10,20,35,.58);z-index:0;}
-        .card{position:relative;z-index:1;background:rgba(255,255,255,.97);padding:0;border-radius:6px;border:1px solid #d8dbe0;box-shadow:0 8px 30px rgba(0,0,0,0.25);width:100%;max-width:440px;overflow:hidden;}
-        .card-top{height:5px;background:#1b2a41;}
-        .card-body{padding:44px 40px;}
-        .brand-mark{width:56px;height:56px;margin:0 auto 18px auto;background:#1b2a41;color:#e8c766;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:13px;letter-spacing:.5px;}
-        h1{text-align:center;color:#1b2a41;margin-bottom:6px;font-size:24px;font-weight:700;font-family:Georgia,'Times New Roman',serif;}
-        .subtitle{text-align:center;color:#64748b;margin-bottom:34px;font-size:14px;}
-        .form-group{margin-bottom:20px;}
-        label{display:block;margin-bottom:8px;color:#374151;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.4px;}
-        input{width:100%;padding:13px 15px;border:1px solid #d1d5db;border-radius:4px;font-size:15px;transition:border-color 0.2s,box-shadow 0.2s;background:#fafbfc;}
-        input:focus{outline:none;border-color:#1b2a41;background:#fff;box-shadow:0 0 0 3px rgba(27,42,65,0.1);}
-        button{width:100%;padding:14px;background:#1b2a41;color:white;border:none;border-radius:4px;font-size:15px;font-weight:600;cursor:pointer;transition:background 0.2s;letter-spacing:.3px;margin-top:6px;}
-        button:hover{background:#10192b;}
+        error_html = '<div class="error-box">The username or password you entered is incorrect. Please try again.</div>'
+        return LOGIN_PAGE.replace("__ERROR__", error_html)
+    return LOGIN_PAGE.replace("__ERROR__", "")
 
-        @media(max-width:600px){.card-body{padding:32px 22px;}input{font-size:16px;}h1{font-size:21px;}}
-    </style>
-</head>
-<body>
-    <div class="card">
-        <div class="card-top"></div>
-        <div class="card-body">
-            <div class="brand-mark">SLSU<br>JGE</div>
-            <h1>Sign In</h1>
-            <p class="subtitle">Library Attendance &amp; Book Borrowing System</p>
-            <form method="POST">
-                <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" name="username" required placeholder="Enter your username">
-                </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" name="password" required placeholder="Enter your password">
-                </div>
-                <button type="submit">Sign In</button>
-            </form>
-
-        </div>
-    </div>
-</body>
-</html>"""
 
 @app.route('/user')
 def user_panel():
@@ -1343,11 +1441,13 @@ def user_panel():
         return "<script>window.location='/login';</script>"
     return render_template_string(USER_FRONTEND)
 
+
 @app.route('/student')
 def student_panel():
     if not is_logged_in() or get_role() != 'student':
         return "<script>window.location='/login';</script>"
     return render_template_string(STUDENT_FRONTEND)
+
 
 @app.route('/')
 def home():
@@ -1356,6 +1456,7 @@ def home():
     if get_role() != 'admin':
         return "<script>window.location='/user';</script>"
     return render_template_string(ADMIN_FRONTEND)
+
 
 @app.route('/scan', methods=['POST'])
 @app.route('/api/scan', methods=['POST'])
@@ -1394,9 +1495,11 @@ def scan():
         conn.close()
         return jsonify({"success": True, "message": f"TIME OUT recorded — {full_name} — {now}"})
 
+
 @app.route('/health')
 def health():
     return jsonify({"status": "ok", "email_configured": bool(SMTP_USER and SMTP_PASS)})
+
 
 # ============================================================
 #  REGISTER / UPDATE / GET USERS
@@ -1453,6 +1556,7 @@ def register():
         print(f"REGISTER ERROR: {e}")
         return jsonify({"success": False, "error": f"An error occurred: {str(e)}"}), 500
 
+
 @app.route('/get-students')
 def get_students():
     if not is_logged_in():
@@ -1469,6 +1573,7 @@ def get_students():
                  "department_display": get_student_code(r[1], r[3], r[7])} for r in c.fetchall()]
     conn.close()
     return jsonify({"students": students})
+
 
 @app.route('/update-student', methods=['POST'])
 def update_student():
@@ -1515,6 +1620,7 @@ def update_student():
         print(f"UPDATE ERROR: {e}")
         return jsonify({"success": False, "error": f"An error occurred: {str(e)}"}), 500
 
+
 @app.route('/get-records')
 def get_records():
     if not is_logged_in():
@@ -1532,6 +1638,7 @@ def get_records():
                 "time_in": r[5], "time_out": r[6]} for r in c.fetchall()]
     conn.close()
     return jsonify({"records": records})
+
 
 @app.route('/get-monthly-history')
 def get_monthly_history():
@@ -1559,6 +1666,7 @@ def get_monthly_history():
     conn.close()
     return jsonify({"records": records})
 
+
 @app.route('/download-word')
 def download_word():
     if not is_logged_in():
@@ -1576,7 +1684,7 @@ def download_word():
     doc = Document()
     doc.add_heading(f'Library Attendance Report — {today}', 0)
     doc.add_paragraph(f'Generated on: {get_ph_date()} {get_ph_time()}')
-    doc.add_paragraph('SLSU–JGE Library Attendance System')
+    doc.add_paragraph('SLSU–JGE Library Management System')
     table = doc.add_table(rows=1, cols=5)
     table.style = 'Table Grid'
     hdr = table.rows[0].cells
@@ -1600,6 +1708,7 @@ def download_word():
     resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     return resp
 
+
 @app.route('/download-monthly-word')
 def download_monthly_word():
     if not is_logged_in():
@@ -1618,7 +1727,7 @@ def download_monthly_word():
     doc = Document()
     doc.add_heading(f'Monthly Attendance Report — {month}', 0)
     doc.add_paragraph(f'Generated on: {get_ph_date()} {get_ph_time()}')
-    doc.add_paragraph('SLSU–JGE Library Attendance System')
+    doc.add_paragraph('SLSU–JGE Library Management System')
     current_date = None
     table = None
     for rec in records:
@@ -1647,6 +1756,7 @@ def download_monthly_word():
     resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     return resp
 
+
 @app.route('/download-borrow-word')
 def download_borrow_word():
     if not is_logged_in():
@@ -1656,30 +1766,34 @@ def download_borrow_word():
         return "Database error"
     c = conn.cursor()
     c.execute("""SELECT b.title, b.access_code, u.full_name, u.id_number,
-        br.borrow_date, br.borrow_time, br.return_date, br.return_time, br.borrow_type, br.due_date
+        br.borrow_date, br.borrow_time, br.return_date, br.return_time, br.borrow_type, br.due_date, br.fine_amount, br.status
         FROM borrow_records br JOIN books b ON br.book_id = b.id JOIN users u ON br.user_id = u.id
         ORDER BY br.id DESC""")
     records = c.fetchall()
     conn.close()
     doc = Document()
-    doc.add_heading('Library Book Borrow Records', 0)
+    doc.add_heading('Library Book Borrow & Return Records', 0)
     doc.add_paragraph(f'Generated on: {get_ph_date()} {get_ph_time()}')
-    doc.add_paragraph('SLSU–JGE Library Attendance & Book Borrowing System')
+    doc.add_paragraph('SLSU–JGE Library Management System')
     table = doc.add_table(rows=1, cols=8)
     table.style = 'Table Grid'
     hdr = table.rows[0].cells
-    for i, h in enumerate(['Book', 'Access Code', 'Borrower', 'ID Number', 'Type', 'Borrowed', 'Due', 'Returned']):
+    headers = ['Book Title / Book ID', 'Borrower Name & ID', 'Borrow Type',
+               'Date & Time Borrowed', 'Due Date', 'Date & Time Returned',
+               'Overdue Fine (₱)', 'Current Status']
+    for i, h in enumerate(headers):
         hdr[i].text = h
     for rec in records:
         row = table.add_row().cells
-        row[0].text = rec[0]
-        row[1].text = rec[1]
-        row[2].text = rec[2]
-        row[3].text = rec[3]
-        row[4].text = rec[8] or 'Inside'
-        row[5].text = f"{rec[4]} {rec[5]}"
-        row[6].text = rec[9] or '-'
-        row[7].text = f"{rec[6]} {rec[7]}" if rec[6] else '-'
+        row[0].text = f"{rec[0]} ({rec[1]})"
+        row[1].text = f"{rec[2]} ({rec[3]})"
+        row[2].text = rec[8] or 'Inside'
+        row[3].text = f"{rec[4]} {rec[5]}"
+        row[4].text = rec[9] or '-'
+        row[5].text = f"{rec[6]} {rec[7]}" if rec[6] else '-'
+        fine = rec[10] or 0
+        row[6].text = f"₱{float(fine):.2f}" if float(fine) > 0 else '-'
+        row[7].text = 'Returned' if rec[7] else 'Borrowed'
     buffer = BytesIO()
     doc.save(buffer)
     buffer.seek(0)
@@ -1687,6 +1801,7 @@ def download_borrow_word():
     resp.headers['Content-Disposition'] = 'attachment; filename=book_borrow_records.docx'
     resp.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     return resp
+
 
 @app.route('/print-monthly')
 def print_monthly():
@@ -1717,24 +1832,25 @@ button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color
 </head><body>
 <div class="report-header">
 <h1>Monthly Attendance Report — {month}</h1>
-<p class="meta">SLSU–JGE Library Attendance System &nbsp;•&nbsp; Generated: {get_ph_date()} {get_ph_time()}</p>
+<p class="meta">SLSU–JGE Library Management System &nbsp;•&nbsp; Generated: {get_ph_date()} {get_ph_time()}</p>
 </div>
 <button onclick="window.print()">Print Report</button>
 <div id="report-area"></div>
 <script>fetch('/get-monthly-history?month={month}').then(r=>r.json()).then(d=>{{
-const grouped = d.records.reduce((days, record) => {{
-    (days[record.scan_date] ||= []).push(record);
-    return days;
-}}, {{}});
-let html='';
-Object.entries(grouped).forEach(([date, records]) => {{
-    html+='<h2 style="margin-top:28px;word-break:break-word;">'+date+'</h2><div class="table-wrap"><table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';
-    records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');
-    html+='</table></div>';
-}});
-document.getElementById('report-area').innerHTML=html || '<p style="color:#64748b;padding:20px;">No records.</p>';
+ const grouped = d.records.reduce((days, record) => {{
+     (days[record.scan_date] ||= []).push(record);
+     return days;
+ }}, {{}});
+ let html='';
+ Object.entries(grouped).forEach(([date, records]) => {{
+     html+='<h2 style="margin-top:28px;word-break:break-word;">'+date+'</h2><div class="table-wrap"><table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';
+     records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');
+     html+='</table></div>';
+ }});
+ document.getElementById('report-area').innerHTML=html || '<p style="color:#64748b;padding:20px;">No records.</p>';
 }})</script>
 </body></html>"""
+
 
 @app.route('/print-daily')
 def print_daily():
@@ -1748,40 +1864,58 @@ def print_daily():
 <meta name="theme-color" content="#006633">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>*{{box-sizing:border-box;}}body{{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1100px;margin:0 auto;color:#1f2937;overflow-x:hidden;}}h1{{color:#1b2a41;font-family:Georgia,'Times New Roman',serif;word-break:break-word;}}.meta{{color:#64748b;font-size:13px;}}.table-wrap{{overflow-x:auto;-webkit-overflow-scrolling:touch;}}table{{width:100%;border-collapse:collapse;margin-top:24px;min-width:560px;}}th,td{{border:1px solid #d8dbe0;padding:10px 12px;text-align:left;font-size:13px;word-break:break-word;}}th{{background:#1b2a41;color:#fff;}}tr:nth-child(even){{background:#f7f8fa;}}button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color:white;border:0;border-radius:4px;font-weight:600;margin-bottom:20px;}}@media(max-width:600px){{body{{padding:14px;}}table{{font-size:12px;}}}}@media print{{button{{display:none;}}body{{padding:0;}}}}</style>
-</head><body><button onclick="window.print()">Print Daily Report</button><h1>Daily Attendance Report - {selected_date}</h1><p class="meta">SLSU-JGE Library Attendance System</p>
+</head><body><button onclick="window.print()">Print Daily Report</button><h1>Daily Attendance Report - {selected_date}</h1><p class="meta">SLSU-JGE Library Management System</p>
 <div class="table-wrap" id="daily-table-wrap"></div>
 <script>fetch('/get-monthly-history?month={selected_date[:7]}&date={selected_date}').then(r=>r.json()).then(d=>{{let html='<table><tr><th>Date</th><th>Full Name</th><th>Department</th><th>Time In</th><th>Time Out</th></tr>';d.records.forEach(r=>html+='<tr><td>'+r.scan_date+'</td><td>'+r.full_name+'</td><td>'+r.department+'</td><td>'+(r.time_in||'-')+'</td><td>'+(r.time_out||'-')+'</td></tr>');html+='</table>';document.getElementById('daily-table-wrap').innerHTML=html;}})</script></body></html>"""
+
 
 @app.route('/print-borrow-records')
 def print_borrow_records():
     if not is_logged_in():
         return "<script>window.location='/login';</script>"
     return """
-<!DOCTYPE html><html><head><title>Book Borrow Records</title>
+<!DOCTYPE html><html><head><title>Book Borrow & Return Records</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<style>*{box-sizing:border-box;}body{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1200px;margin:0 auto;color:#1f2937;overflow-x:hidden;}h1{color:#1b2a41;font-family:Georgia,serif;}.meta{color:#64748b;font-size:13px;}table{width:100%;border-collapse:collapse;margin-top:20px;min-width:700px;}th,td{border:1px solid #d8dbe0;padding:10px 12px;text-align:left;font-size:13px;word-break:break-word;}th{background:#1b2a41;color:#fff;}tr:nth-child(even){background:#f7f8fa;}button{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color:white;border:0;border-radius:4px;font-weight:600;margin-bottom:20px;}@media print{button{display:none;}body{padding:0;}}</style>
+<style>*{box-sizing:border-box;}body{font-family:'Segoe UI',Arial,sans-serif;padding:40px;max-width:1200px;margin:0 auto;color:#1f2937;overflow-x:hidden;}h1{color:#1b2a41;font-family:Georgia,serif;}.meta{color:#64748b;font-size:13px;}.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}table{width:100%;border-collapse:collapse;margin-top:20px;min-width:860px;}th,td{border:1px solid #d8dbe0;padding:10px 12px;text-align:left;font-size:13px;word-break:break-word;vertical-align:top;}th{background:#1b2a41;color:#fff;}tr:nth-child(even){background:#f7f8fa;}button{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color:white;border:0;border-radius:4px;font-weight:600;margin-bottom:20px;}@media print{button{display:none;}body{padding:0;}}</style>
 </head><body><button onclick="window.print()">Print Borrow Records</button>
-<h1>Book Borrow & Return Records</h1><p class="meta">SLSU-JGE Library System</p>
-<div id="area"></div>
-<script>fetch('/get-borrow-records').then(r=>r.json()).then(d=>{let html='<table><tr><th>Book</th><th>Borrower</th><th>Type</th><th>Borrowed</th><th>Due</th><th>Returned</th><th>Status</th><th>Fine</th></tr>';d.records.forEach(r=>{html+='<tr><td><strong>'+r.title+'</strong><br><span style="color:#64748b;font-size:11px;">'+r.access_code+'</span></td><td>'+r.borrower+'<br><span style="color:#64748b;font-size:11px;">'+r.borrower_id+'</span></td><td>'+r.borrow_type+'</td><td>'+r.borrow_date+' '+r.borrow_time+'</td><td>'+r.due_date+'</td><td>'+(r.return_date!=='-'?r.return_date+' '+r.return_time:'-')+'</td><td>'+r.status+'</td><td>'+(r.fine_amount>0?'₱'+r.fine_amount.toFixed(2):'-')+'</td></tr>';});html+='</table>';document.getElementById('area').innerHTML=html;})</script>
+<h1>Book Borrow & Return Records</h1><p class="meta">SLSU-JGE Library Management System</p>
+<div class="table-wrap" id="area"></div>
+<script>fetch('/get-borrow-records').then(r=>r.json()).then(d=>{
+let html='<table><tr><th>Book Title / Book ID</th><th>Borrower Name &amp; ID</th><th>Borrow Type</th><th>Date &amp; Time Borrowed</th><th>Due Date</th><th>Date &amp; Time Returned</th><th>Overdue Fine (₱)</th><th>Current Status</th></tr>';
+d.records.forEach(r=>{
+  const fine = (r.fine_amount>0)?('₱'+Number(r.fine_amount).toFixed(2)):'-';
+  const status = (r.status==="Returned")?'Returned':'Borrowed';
+  html+='<tr><td><strong>'+r.title+'</strong><br><span style="color:#64748b;font-size:11px;">'+r.access_code+'</span></td>'+
+        '<td>'+r.borrower+'<br><span style="color:#64748b;font-size:11px;">'+r.borrower_id+'</span></td>'+
+        '<td>'+r.borrow_type+'</td>'+
+        '<td>'+r.borrow_date+' '+r.borrow_time+'</td>'+
+        '<td>'+r.due_date+'</td>'+
+        '<td>'+(r.return_date!=="-"?r.return_date+' '+r.return_time:'-')+'</td>'+
+        '<td>'+fine+'</td>'+
+        '<td>'+status+'</td></tr>';
+});
+html+='</table>';
+document.getElementById('area').innerHTML=html;
+})</script>
 </body></html>"""
 
+
 # ============================================================
-#  LEGAL TERMS (shared string for OUTSIDE borrow)
+#  LEGAL TERMS (shared string for OUTSIDE borrow — with "I Agree" checkbox)
 # ============================================================
 LEGAL_TERMS_HTML = """
 <div style="text-align:left;font-size:13px;line-height:1.7;color:#374151;">
-<p style="margin-bottom:10px;"><strong style="color:#8a1f1f;">OUTSIDE BORROW — TERMS AND CONDITIONS</strong></p>
+<p style="margin-bottom:10px;"><strong style="color:#8a1f1f;">OUTSIDE BORROW — PRIVACY &amp; TERMS AGREEMENT</strong></p>
 <p style="margin-bottom:8px;">By choosing <strong>OUTSIDE</strong> (taking the book home), the borrower acknowledges and agrees to the following:</p>
 <ol style="padding-left:20px;margin-bottom:10px;">
 <li style="margin-bottom:6px;"><strong>LIABILITY FOR DAMAGE:</strong> The borrower is fully responsible for any damage, destruction, missing pages, or alteration to the book while it is in their care outside the library. They must pay the cost of repair or replacement.</li>
 <li style="margin-bottom:6px;"><strong>PAYMENT IF LOST:</strong> If the book is lost, the borrower must <strong>pay the full current replacement cost</strong> of the book, or replace it with an identical copy within thirty (30) days.</li>
 <li style="margin-bottom:6px;"><strong>TIMELY RETURN:</strong> The book must be returned within three (3) working days from the date of borrowing, or by the due date set by the librarian. A late fine of <strong>₱5.00 per day</strong> applies after the due date.</li>
-<li style="margin-bottom:6px;"><strong>EMAIL NOTIFICATION:</strong> A confirmation will be automatically sent to the email address provided by the borrower, including the due date. If the due date passes, a reminder and the fine amount will be automatically sent by email.</li>
+<li style="margin-bottom:6px;"><strong>EMAIL NOTIFICATION (auto from profile):</strong> A confirmation will be automatically sent to the email address registered on the borrower's profile — no need to type it again. If the due date passes, a reminder and the fine amount will be sent automatically.</li>
 <li style="margin-bottom:6px;"><strong>LOSS OF PRIVILEGE:</strong> Repeated violations of these terms may result in temporary or permanent loss of borrowing privileges.</li>
 </ol>
 <p style="background:#fdf6e3;border-left:4px solid #c9a227;padding:10px 14px;font-size:12px;color:#8a6d1f;margin-bottom:8px;">
-<strong>Reminder:</strong> By clicking "I Agree &amp; Continue", you signify your full and voluntary agreement to the terms above.</p>
+<strong>Reminder:</strong> You must tick the <strong>"I Agree"</strong> checkbox below before you can continue. The email address will be taken automatically from your registered profile.</p>
 </div>
 """
 
@@ -1817,7 +1951,7 @@ STUDENT_FRONTEND = """
         button.btn-primary:hover{background:#10192b;}
         #barcode-result{display:none;margin-top:28px;text-align:center;padding:26px;background:#f7f8fa;border-radius:6px;border:1px solid #d8dbe0;}
         #barcode-result h3{color:#1b2a41;margin-bottom:12px;font-size:16px;font-family:Georgia,'Times New Roman',serif;}
-        .barcode-img{width:60mm;height:18mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
+        .barcode-img{width:60mm;height:20mm;max-width:100%;margin:18px auto;display:block;padding:6px;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;word-break:break-word;}
         .btn-print{background:#1e6b34;color:#fff;border:none;padding:12px 22px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;margin:4px;}
         .btn-print:hover{background:#175628;}
@@ -1903,7 +2037,7 @@ STUDENT_FRONTEND = """
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Email (for outside-borrow notifications)</label>
+                        <label>Email (saved once — auto-used for outside-borrow notifications)</label>
                         <input type="email" name="email" placeholder="you@example.com">
                     </div>
                     <button type="submit" class="btn-primary">Register &amp; Generate Barcode</button>
@@ -1994,9 +2128,10 @@ document.addEventListener("DOMContentLoaded", function(){
 </html>
 """
 
-
 # ============================================================
 #  STAFF (USER) FRONTEND — menu bar: Scanner | Daily Records | Borrowed Books | Book Search | Registration
+#  Borrow flow: small checkbox (unchecked=Inside, checked=Outside). Outside shows Privacy & Terms
+#  Agreement with an "I Agree" checkbox before ID scan. Email auto-fetched from profile — never asked.
 # ============================================================
 USER_FRONTEND = """
 <!DOCTYPE html>
@@ -2040,7 +2175,7 @@ USER_FRONTEND = """
         button.btn-primary:hover{background:#10192b;}
         #barcode-result{display:none;margin-top:28px;text-align:center;padding:26px;background:#f7f8fa;border-radius:6px;border:1px solid #d8dbe0;}
         #barcode-result h3{color:#1b2a41;margin-bottom:12px;font-size:16px;font-family:Georgia,'Times New Roman',serif;}
-        .barcode-img{width:60mm;height:18mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
+        .barcode-img{width:60mm;height:20mm;max-width:100%;margin:18px auto;display:block;padding:6px;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;word-break:break-word;}
         .btn-print{background:#1e6b34;color:#fff;border:none;padding:12px 22px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;margin:4px;}
         .btn-print:hover{background:#175628;}
@@ -2075,25 +2210,24 @@ USER_FRONTEND = """
         .badge-inside{background:#eaf1f8;color:#1b4f72;}
         .badge-outside{background:#fdf6e3;color:#8a6d1f;}
         .action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
-        .btn-inside{background:#1e6b34;color:#fff;border:none;padding:13px 22px;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;flex:1 1 200px;}
-        .btn-inside:hover{background:#175628;}
-        .btn-outside{background:#8a6d1f;color:#fff;border:none;padding:13px 22px;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;flex:1 1 200px;}
-        .btn-outside:hover{background:#6e5718;}
         .btn-return{background:#1e6b34;color:#fff;border:none;padding:8px 16px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;}
         .btn-return:hover{background:#175628;}
         .btn-cancel{background:#5b6472;color:#fff;border:none;padding:11px 22px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;}
         .btn-cancel:hover{background:#464d59;}
-        .btn-confirm-email{background:#1b4f72;color:#fff;border:none;padding:11px 22px;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;}
-        .btn-confirm-email:hover{background:#143a55;}
-        .awaiting-box{background:#fdf6e3;border:2px dashed #c9a227;border-radius:6px;padding:18px;text-align:center;margin-top:14px;font-weight:600;color:#8a6d1f;word-break:break-word;}
+        /* small borrow-type checkbox (unchecked=Inside, checked=Outside) */
+        .borrow-type-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:12px 14px;background:#fff;border:1px solid #d8dbe0;border-radius:6px;}
+        .borrow-type-row label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151;cursor:pointer;text-transform:none;letter-spacing:0;margin:0;}
+        .borrow-type-row input[type=checkbox]{width:18px;height:18px;cursor:pointer;flex:0 0 auto;}
+        .borrow-type-hint{font-size:12px;color:#64748b;}
+        .awaiting-box{background:#fdf6e3;border:2px dashed #c9a227;border-radius:6px;padding:16px;text-align:center;margin-top:14px;font-weight:600;color:#8a6d1f;word-break:break-word;}
         .borrower-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;margin-top:8px;font-size:13px;flex-wrap:wrap;gap:8px;word-break:break-word;}
-        .email-panel{background:#eaf1f8;border:2px solid #3a75a3;border-radius:6px;padding:18px;margin-top:14px;}
-        .email-panel label{font-size:13px;}
-        .email-panel input{margin-top:6px;}
         .terms-modal{position:fixed;inset:0;background:rgba(15,25,43,.62);display:flex;align-items:center;justify-content:center;padding:16px;z-index:300;}
         .terms-modal.hidden{display:none;}
         .terms-dialog{background:#fff;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;border-radius:6px;box-shadow:0 12px 40px rgba(15,25,43,.35);padding:26px;}
         .terms-dialog h3{color:#8a1f1f;font-family:Georgia,'Times New Roman',serif;margin-bottom:14px;font-size:18px;word-break:break-word;}
+        .i-agree-row{display:flex;align-items:center;gap:10px;margin-top:16px;padding:12px 14px;background:#f7f8fa;border:1px solid #d8dbe0;border-radius:6px;}
+        .i-agree-row label{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;cursor:pointer;color:#1b2a41;text-transform:none;letter-spacing:0;margin:0;}
+        .i-agree-row input[type=checkbox]{width:18px;height:18px;cursor:pointer;flex:0 0 auto;}
         .terms-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-content:flex-end;}
         .btn-agree{background:#1e6b34;color:#fff;border:none;padding:12px 24px;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;}
         .btn-agree:hover{background:#175628;}
@@ -2125,7 +2259,7 @@ USER_FRONTEND = """
     <div class="topnav">
         <div class="brand">
             <div class="brand-mark">SLSU<br>JGE</div>
-            <div class="brand-text"><h1>Library System — Staff</h1><p>Attendance &amp; Book Borrowing</p></div>
+            <div class="brand-text"><h1>Library System — Staff</h1><p>Library Management System</p></div>
         </div>
         <div class="nav-tabs">
             <div class="nav-tab active" onclick="showStaffTab('scan')">Scanner</div>
@@ -2137,20 +2271,23 @@ USER_FRONTEND = """
         <button class="logout-btn" onclick="logout()">Log Out</button>
     </div>
     <div id="toast"></div>
-    <!-- ===== OUTSIDE BORROW LEGAL TERMS MODAL ===== -->
+    <!-- ===== OUTSIDE BORROW PRIVACY & TERMS AGREEMENT MODAL (with I Agree checkbox) ===== -->
     <div id="terms-modal" class="terms-modal hidden">
         <div class="terms-dialog">
-            <h3>OUTSIDE BORROW — Terms &amp; Conditions</h3>
+            <h3>OUTSIDE BORROW — Privacy &amp; Terms Agreement</h3>
             <div style="text-align:left;font-size:13px;line-height:1.7;color:#374151;">
                 <p style="margin-bottom:8px;">By choosing <strong>OUTSIDE</strong> (taking the book home), the borrower acknowledges and agrees to the following:</p>
                 <ol style="padding-left:20px;margin-bottom:10px;">
                     <li style="margin-bottom:6px;"><strong>LIABILITY FOR DAMAGE:</strong> The borrower is fully responsible for any damage, destruction, or alteration to the book while it is in their care. They must pay the cost of repair or replacement.</li>
                     <li style="margin-bottom:6px;"><strong>PAYMENT IF LOST:</strong> If the book is lost, the borrower must <strong>pay the full replacement cost</strong> or replace it with an identical copy.</li>
                     <li style="margin-bottom:6px;"><strong>TIMELY RETURN:</strong> The book must be returned within three (3) working days or as set by the librarian. A late fine of <strong>₱5.00 per day</strong> applies after the due date.</li>
-                    <li style="margin-bottom:6px;"><strong>EMAIL NOTIFICATION:</strong> A confirmation and fine reminder will be automatically sent to the email address provided by the borrower.</li>
+                    <li style="margin-bottom:6px;"><strong>EMAIL NOTIFICATION (auto from profile):</strong> The confirmation and overdue reminders will be sent automatically to the email address on the borrower's registered profile — no need to type it again.</li>
                     <li style="margin-bottom:6px;"><strong>LOSS OF PRIVILEGE:</strong> Repeated violations may result in suspension or permanent loss of borrowing privileges.</li>
                 </ol>
-                <p style="background:#fdf6e3;border-left:4px solid #c9a227;padding:10px 14px;font-size:12px;color:#8a6d1f;">By clicking <strong>"I Agree &amp; Continue"</strong>, you agree to the terms above freely and with full understanding.</p>
+                <p style="background:#fdf6e3;border-left:4px solid #c9a227;padding:10px 14px;font-size:12px;color:#8a6d1f;">You must tick the <strong>"I Agree"</strong> checkbox below before continuing.</p>
+            </div>
+            <div class="i-agree-row">
+                <label><input type="checkbox" id="i-agree-check"> I Agree to the Privacy &amp; Terms above</label>
             </div>
             <div class="terms-actions">
                 <button class="btn-cancel" onclick="closeTermsModal()">Cancel</button>
@@ -2186,10 +2323,10 @@ USER_FRONTEND = """
                 <div class="table-wrap" id="today-records-table"></div>
             </div>
         </div>
-        <!-- ============ BORROWED BOOKS RECORD ============ -->
+        <!-- ============ BORROWED BOOKS RECORD (new headers, no Email column) ============ -->
         <div id="tab-borrowed" class="staff-tab">
             <div class="panel-card">
-                <h2 class="panel-title">Borrowed Books — Records</h2>
+                <h2 class="panel-title">Borrow &amp; Return Records</h2>
                 <div class="filter-row">
                     <label style="margin-bottom:0;font-size:13px;">Date:</label><input type="date" id="br-date" onchange="loadBorrowHistoryFull()">
                     <label style="margin-bottom:0;font-size:13px;">Borrower:</label><input type="text" id="br-borrower" placeholder="Name or ID" style="max-width:160px;" oninput="loadBorrowHistoryFull()">
@@ -2202,7 +2339,7 @@ USER_FRONTEND = """
                 <div class="table-wrap" id="borrow-full-table"></div>
             </div>
         </div>
-        <!-- ============ SEARCH BOOKS (available + who borrowed at this time) ============ -->
+        <!-- ============ SEARCH BOOKS ============ -->
         <div id="tab-search" class="staff-tab">
             <div class="panel-card">
                 <h2 class="panel-title">Search Books — Availability &amp; Current Borrowers</h2>
@@ -2288,7 +2425,7 @@ USER_FRONTEND = """
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>Email (for outside-borrow notifications)</label>
+                                <label>Email (saved once — auto-used for outside-borrow notifications)</label>
                                 <input type="email" name="email" placeholder="you@example.com">
                             </div>
                             <button type="submit" class="btn-primary">Register &amp; Generate Barcode</button>
@@ -2309,13 +2446,13 @@ USER_FRONTEND = """
 <script>
 const MAJORS = {"BSBA":["Marketing Management","Financial Management"],"BSED":["English","Mathematics","Science"],"CT":["Computer Technology","Food Technology","BINDTECH","CULINARY"]};
 const STAFF_TABS = ["scan","daily","borrowed","search","register"];
-let scanState = "idle";       // idle | awaiting_borrower | awaiting_email
-let borrowType = null;        // "Inside" | "Outside"
+let scanState = "idle";          // idle | awaiting_borrower
 let pendingBook = null;
-let pendingBorrower = null;
+let pendingBorrowerCode = null;  // scanned ID held while Outside terms are agreed
 let scannerBuffer = "";
 let scannerLastKeyAt = 0;
 let scannerResetTimer = null;
+
 function logout(){
     document.cookie = "logged_in=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     document.cookie = "role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
@@ -2330,7 +2467,6 @@ function showStaffTab(tab){
     if(tab==="scan"){setTimeout(()=>document.getElementById("att-scan-input")?.focus(),80);loadBorrowHistory();}
     if(tab==="daily"){loadTodayRecords();}
     if(tab==="borrowed"){loadBorrowHistoryFull();}
-    if(tab==="register"){/* nothing */}
 }
 function showToast(msg, type){
     const toast = document.getElementById("toast");
@@ -2350,49 +2486,51 @@ function setStatus(id, msg, type){
     box.className = "status " + type;
     box.textContent = msg;
 }
-function resetBorrowFlow(){
-    scanState = "idle"; borrowType = null; pendingBook = null; pendingBorrower = null;
-}
+function resetBorrowFlow(){ scanState = "idle"; pendingBook = null; pendingBorrowerCode = null; }
+function isOutsideChecked(){ return !!(document.getElementById("outside-borrow-check") && document.getElementById("outside-borrow-check").checked); }
 function openTermsModal(){ document.getElementById("terms-modal").classList.remove("hidden"); }
-function closeTermsModal(){ document.getElementById("terms-modal").classList.add("hidden"); }
+function closeTermsModal(){
+    document.getElementById("terms-modal").classList.add("hidden");
+    const chk = document.getElementById("i-agree-check"); if(chk) chk.checked = false;
+}
 function agreeOutsideTerms(){
+    const chk = document.getElementById("i-agree-check");
+    if(!chk || !chk.checked){
+        alert("Please tick the 'I Agree' checkbox first to accept the Privacy & Terms Agreement.");
+        return;
+    }
     closeTermsModal();
-    borrowType = "Outside";
-    scanState = "awaiting_borrower";
-    const ab = document.getElementById("awaiting-box");
-    if(ab) ab.style.display = "block";
-    setStatus("att-status", "OUTSIDE borrow agreed. Now scan the borrower's User ID barcode.", "warning");
-    showToast("Now scan the borrower's User ID barcode.", "warning");
-    setTimeout(()=>document.getElementById("att-scan-input")?.focus(),100);
-}
-function chooseInside(){
-    borrowType = "Inside";
-    scanState = "awaiting_borrower";
-    const ab = document.getElementById("awaiting-box");
-    if(ab) ab.style.display = "block";
-    setStatus("att-status", "INSIDE borrow. Now scan the borrower's User ID barcode to record.", "warning");
-    showToast("Now scan the borrower's User ID barcode.", "warning");
-    setTimeout(()=>document.getElementById("att-scan-input")?.focus(),100);
-}
-function chooseOutside(){ openTermsModal(); }
-function defaultDueDate(){
-    const d = new Date(); d.setDate(d.getDate()+3);
-    return d.toISOString().slice(0,10);
+    // Outside agreed — record the borrow now (email auto-fetched from profile on the server)
+    const code = pendingBorrowerCode;
+    pendingBorrowerCode = null;
+    if(!code){ setStatus("att-status","No borrower ID scanned.","error"); return; }
+    fetch("/api/borrow-book",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({book_id: pendingBook.id, id_number: code, borrow_type: "Outside"})})
+    .then(r=>r.json()).then(data=>{
+        if(data.success){
+            showToast(data.message, data.email_sent ? "success" : "warning");
+            setStatus("att-status", data.message, data.email_sent ? "success" : "warning");
+            resetBorrowFlow(); renderBookDetail(null); loadBorrowHistory();
+        }else{
+            showToast(data.message || "Borrow failed.", "error");
+            setStatus("att-status", data.message || "Borrow failed.", "error");
+        }
+    }).catch(err=>{showToast("Error: "+err, "error");});
 }
 function handleScannedCode(code){
     code = (code||"").trim();
     if(!code) return;
+    // ---- Borrow flow: a book is pending and this scan is the borrower ID ----
     if(scanState === "awaiting_borrower" && pendingBook){
-        if(borrowType === "Inside"){
+        if(!isOutsideChecked()){
+            // INSIDE READING — simple: record immediately
             fetch("/api/borrow-book",{method:"POST",headers:{"Content-Type":"application/json"},
                 body:JSON.stringify({book_id: pendingBook.id, id_number: code, borrow_type: "Inside"})})
             .then(r=>r.json()).then(data=>{
                 if(data.success){
                     showToast(data.message, "success");
                     setStatus("att-status", data.message, "success");
-                    resetBorrowFlow();
-                    renderBookDetail(null);
-                    loadBorrowHistory();
+                    resetBorrowFlow(); renderBookDetail(null); loadBorrowHistory();
                 }else{
                     showToast(data.message || "Borrow failed.", "error");
                     setStatus("att-status", data.message || "Borrow failed. Scan a valid User ID.", "error");
@@ -2400,23 +2538,13 @@ function handleScannedCode(code){
             }).catch(err=>{showToast("Error: "+err, "error");});
             return;
         }
-        if(borrowType === "Outside"){
-            fetch("/api/lookup-user",{method:"POST",headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({id_number: code})})
-            .then(r=>r.json()).then(data=>{
-                if(!data.success){
-                    showToast(data.message || "User not found.", "error");
-                    setStatus("att-status", data.message || "User not found. Scan a registered ID.", "error");
-                    return;
-                }
-                pendingBorrower = data.user;
-                scanState = "awaiting_email";
-                showEmailPanel(data.user);
-                setStatus("att-status", "Borrower: " + data.user.full_name + ". Now enter/confirm email & due date.", "info");
-            }).catch(err=>{showToast("Error: "+err, "error");});
-            return;
-        }
+        // OUTSIDE — hold the ID, show Privacy & Terms Agreement with "I Agree" checkbox first
+        pendingBorrowerCode = code;
+        setStatus("att-status", "OUTSIDE borrow selected. Please read the Privacy & Terms Agreement and tick 'I Agree'.", "warning");
+        openTermsModal();
+        return;
     }
+    // ---- Normal scan: detect book vs user attendance ----
     fetch("/api/smart-scan",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({code: code})})
     .then(r=>r.json()).then(data=>{
@@ -2430,52 +2558,9 @@ function handleScannedCode(code){
             setStatus("att-status", data.message, "success");
         }else if(data.type === "book"){
             pendingBook = data.book;
+            scanState = "awaiting_borrower";
             renderBookDetail(data);
-            setStatus("att-status", "Book found: " + data.book.title + " by " + (data.book.author||"Unknown") + ". Choose INSIDE or OUTSIDE.", "info");
-        }
-    }).catch(err=>{showToast("Error: "+err, "error");});
-}
-function showEmailPanel(user){
-    const panel = document.getElementById("book-detail-panel");
-    if(!panel) return;
-    const b = pendingBook;
-    panel.innerHTML = '<div class="book-detail">' +
-        '<h3>'+b.title+' <span class="badge badge-outside">OUTSIDE Borrow</span></h3>' +
-        '<div class="book-meta">'+
-        '<div><strong>Author</strong>'+(b.author||'-')+'</div>'+
-        '<div><strong>Access Code</strong>'+b.access_code+'</div>'+
-        '<div><strong>Borrower</strong>'+user.full_name+' ('+user.id_number+')</div>'+
-        '</div>'+
-        '<div class="email-panel">'+
-        '<label>Email Address — where borrow notification &amp; overdue reminders will be sent *</label>'+
-        '<input type="email" id="outside-email-input" placeholder="you@example.com" value="'+(user.email||"")+'">'+
-        '<label style="margin-top:12px;display:block;">Due Date (return on or before) * — late fine ₱5.00/day</label>'+
-        '<input type="date" id="outside-due-input" value="'+defaultDueDate()+'">'+
-        '<div class="action-row">'+
-        '<button class="btn-confirm-email" onclick="confirmOutsideBorrow()">Confirm Borrow &amp; Send Email Notification</button>'+
-        '<button class="btn-cancel" onclick="cancelBookFlow()">Cancel</button>'+
-        '</div></div></div>';
-    panel.style.display = "block";
-    setTimeout(()=>document.getElementById("outside-email-input")?.focus(),100);
-}
-function confirmOutsideBorrow(){
-    const email = (document.getElementById("outside-email-input")?.value||"").trim();
-    const due = (document.getElementById("outside-due-input")?.value||"").trim();
-    if(!email){ showToast("Email address is required for OUTSIDE borrow.", "error"); return; }
-    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){ showToast("Invalid email format.", "error"); return; }
-    if(!due){ showToast("Due date is required.", "error"); return; }
-    fetch("/api/borrow-book",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({book_id: pendingBook.id, id_number: pendingBorrower.id_number, borrow_type: "Outside", email: email, due_date: due})})
-    .then(r=>r.json()).then(data=>{
-        if(data.success){
-            showToast(data.message, data.email_sent ? "success" : "warning");
-            setStatus("att-status", data.message, data.email_sent ? "success" : "warning");
-            resetBorrowFlow();
-            renderBookDetail(null);
-            loadBorrowHistory();
-        }else{
-            showToast(data.message || "Borrow failed.", "error");
-            setStatus("att-status", data.message || "Borrow failed.", "error");
+            setStatus("att-status", "Book found: " + data.book.title + ". Tick 'Outside Borrow' only if taking home, then scan the borrower's ID.", "info");
         }
     }).catch(err=>{showToast("Error: "+err, "error");});
 }
@@ -2491,10 +2576,13 @@ function renderBookDetail(data){
         borrowersHtml = '<h3 style="color:#1b2a41;font-size:15px;margin:16px 0 6px;">Currently borrowed by (as of now):</h3>' +
             data.active_borrows.map(br=>'<div class="borrower-row"><span><strong>'+br.borrower_name+'</strong> ('+br.borrower_id+') — '+br.borrow_type+' — borrowed '+br.borrow_date+' '+br.borrow_time+'</span><button class="btn-return" onclick="confirmReturn('+br.borrow_id+')">Confirm Return</button></div>').join("");
     }
-    const borrowButtons = data.available_qty > 0
-        ? '<button class="btn-inside" onclick="chooseInside()">INSIDE — Read in Library (scan ID only)</button>' +
-          '<button class="btn-outside" onclick="chooseOutside()">OUTSIDE — Take Home (terms + email + due date)</button>'
-        : '';
+    const borrowTypeRow = data.available_qty > 0
+        ? '<div class="borrow-type-row">' +
+          '<label><input type="checkbox" id="outside-borrow-check"> Outside Borrow (take home)</label>' +
+          '<span class="borrow-type-hint">Unchecked = Inside Reading (in-library only). If checked, the Privacy &amp; Terms Agreement will appear before recording.</span>' +
+          '</div>' +
+          '<div id="awaiting-box" style="display:block;" class="awaiting-box">Now scan the borrower\'s Student/Employee/Visitor ID barcode...</div>'
+        : '<p style="color:#8a1f1f;font-weight:600;margin-top:10px;">No copies available — cannot borrow.</p>';
     panel.innerHTML = '<div class="book-detail">' +
         '<h3>'+b.title+' '+statusBadge+'</h3>' +
         '<div class="book-meta">' +
@@ -2505,9 +2593,7 @@ function renderBookDetail(data){
         '<div><strong>Access Code</strong>'+b.access_code+'</div>' +
         '<div><strong>Times Borrowed</strong>'+(b.times_borrowed||0)+'</div>' +
         '</div>' +
-        '<p style="font-size:13px;color:#64748b;margin-bottom:6px;">Choose borrow type:</p>' +
-        '<div class="action-row">'+borrowButtons+'</div>' +
-        '<div id="awaiting-box" style="display:none;" class="awaiting-box">AWAITING BORROWER SCAN — Scan the Student/Employee/Visitor ID barcode now...</div>' +
+        borrowTypeRow +
         '<div class="action-row" style="margin-top:10px;"><button class="btn-cancel" onclick="cancelBookFlow()">Clear</button></div>' +
         borrowersHtml + '</div>';
     panel.style.display = "block";
@@ -2547,16 +2633,20 @@ function printDaily(){
     const d = document.getElementById("daily-date")?.value || "";
     window.open("/print-daily"+(d?"?date="+encodeURIComponent(d):""),"_blank");
 }
-function downloadDaily(){
-    window.location.href = "/download-word";
-}
+function downloadDaily(){ window.location.href = "/download-word"; }
 function loadBorrowHistory(){
     fetch("/get-borrow-records").then(r=>r.json()).then(d=>{
         const recs = (d.records||[]).slice(0,15);
         const el = document.getElementById("borrow-history-table");
         if(!recs.length){el.innerHTML='<p style="text-align:center;color:#64748b;padding:24px;font-size:14px;">No borrow transactions yet.</p>';return;}
-        el.innerHTML='<table><tr><th>Book</th><th>Borrower</th><th>Type</th><th>Due</th><th>Borrowed</th><th>Returned</th><th>Status</th></tr>'+
-            recs.map(r=>'<tr><td><strong>'+r.title+'</strong><br><span style="color:#64748b;font-size:11px;">'+r.access_code+'</span></td><td>'+r.borrower+'<br><span style="color:#64748b;font-size:11px;">'+r.borrower_id+'</span></td><td>'+(r.borrow_type==="Outside"?'<span class="badge badge-outside">Outside</span>':'<span class="badge badge-inside">Inside</span>')+'</td><td>'+r.due_date+'</td><td>'+r.borrow_date+' '+r.borrow_time+'</td><td>'+(r.return_date!=="-"?r.return_date+" "+r.return_time:"-")+'</td><td>'+(r.status==="Returned"?'<span class="badge badge-avail">Returned</span>':'<span class="badge badge-borrowed">Borrowed</span>')+(r.fine_amount>0?'<br><span style="color:#8a1f1f;font-size:11px;">₱'+Number(r.fine_amount).toFixed(2)+'</span>':'')+'</td></tr>').join("")+'</table>';
+        el.innerHTML='<table><tr><th>Book Title / Book ID</th><th>Borrower Name &amp; ID</th><th>Borrow Type</th><th>Due Date</th><th>Date &amp; Time Borrowed</th><th>Date &amp; Time Returned</th><th>Current Status</th></tr>'+
+            recs.map(r=>'<tr><td><strong>'+r.title+'</strong><br><span style="color:#64748b;font-size:11px;">'+r.access_code+'</span></td>'+
+            '<td>'+r.borrower+'<br><span style="color:#64748b;font-size:11px;">'+r.borrower_id+'</span></td>'+
+            '<td>'+(r.borrow_type==="Outside"?'<span class="badge badge-outside">Outside</span>':'<span class="badge badge-inside">Inside</span>')+'</td>'+
+            '<td>'+r.due_date+'</td>'+
+            '<td>'+r.borrow_date+' '+r.borrow_time+'</td>'+
+            '<td>'+(r.return_date!=="-"?r.return_date+" "+r.return_time:"-")+'</td>'+
+            '<td>'+(r.status==="Returned"?'<span class="badge badge-avail">Returned</span>':'<span class="badge badge-borrowed">Borrowed</span>')+(r.fine_amount>0?'<br><span style="color:#8a1f1f;font-size:11px;">Fine: ₱'+Number(r.fine_amount).toFixed(2)+'</span>':'')+'</td></tr>').join("")+'</table>';
     }).catch(err=>console.error(err));
 }
 function loadBorrowHistoryFull(){
@@ -2568,8 +2658,15 @@ function loadBorrowHistoryFull(){
         const recs=d.records||[];
         const el=document.getElementById("borrow-full-table");
         if(!recs.length){el.innerHTML='<p style="text-align:center;color:#64748b;padding:24px;font-size:14px;">No borrow records match.</p>';return;}
-        el.innerHTML='<table><tr><th>Book</th><th>Borrower</th><th>Type</th><th>Email</th><th>Borrowed</th><th>Due</th><th>Returned</th><th>Fine</th><th>Status</th></tr>'+
-            recs.map(r=>'<tr><td><strong>'+r.title+'</strong><br><span style="color:#64748b;font-size:11px;">'+r.access_code+'</span></td><td>'+r.borrower+'<br><span style="color:#64748b;font-size:11px;">'+r.borrower_id+'</span></td><td>'+(r.borrow_type==="Outside"?'<span class="badge badge-outside">Outside</span>':'<span class="badge badge-inside">Inside</span>')+'</td><td>'+r.borrower_email+(r.email_sent?' <span style="color:#1e6b34;font-size:11px;">(sent)</span>':'')+'</td><td>'+r.borrow_date+' '+r.borrow_time+'</td><td>'+r.due_date+'</td><td>'+(r.return_date!=="-"?r.return_date+" "+r.return_time:"-")+'</td><td>'+(r.fine_amount>0?'<strong style="color:#8a1f1f;">₱'+Number(r.fine_amount).toFixed(2)+'</strong>':'-')+'</td><td>'+(r.status==="Returned"?'<span class="badge badge-avail">Returned</span>':'<span class="badge badge-borrowed">Borrowed</span>')+'</td></tr>').join("")+'</table>';
+        el.innerHTML='<table><tr><th>Book Title / Book ID</th><th>Borrower Name &amp; ID</th><th>Borrow Type</th><th>Date &amp; Time Borrowed</th><th>Due Date</th><th>Date &amp; Time Returned</th><th>Overdue Fine (₱)</th><th>Current Status</th></tr>'+
+            recs.map(r=>'<tr><td><strong>'+r.title+'</strong><br><span style="color:#64748b;font-size:11px;">'+r.access_code+'</span></td>'+
+            '<td>'+r.borrower+'<br><span style="color:#64748b;font-size:11px;">'+r.borrower_id+'</span></td>'+
+            '<td>'+(r.borrow_type==="Outside"?'<span class="badge badge-outside">Outside</span>':'<span class="badge badge-inside">Inside</span>')+'</td>'+
+            '<td>'+r.borrow_date+' '+r.borrow_time+'</td>'+
+            '<td>'+r.due_date+'</td>'+
+            '<td>'+(r.return_date!=="-"?r.return_date+" "+r.return_time:"-")+'</td>'+
+            '<td>'+(r.fine_amount>0?'<strong style="color:#8a1f1f;">₱'+Number(r.fine_amount).toFixed(2)+'</strong>':'-')+'</td>'+
+            '<td>'+(r.status==="Returned"?'<span class="badge badge-avail">Returned</span>':'<span class="badge badge-borrowed">Borrowed</span>')+'</td></tr>').join("")+'</table>';
     }).catch(err=>console.error(err));
 }
 function doBookSearch(){
@@ -2683,9 +2780,10 @@ document.addEventListener("DOMContentLoaded", function(){
 </html>
 """
 
-
 # ============================================================
-#  ADMIN FRONTEND — registration form REMOVED; full access + barcode book reg + overdue reminders
+#  ADMIN FRONTEND — full access. Users list: ID Number | Full Name | Type |
+#  Department | Major | Action (Email column removed, BPA tab added).
+#  Borrow flow: small checkbox (Inside/Outside) + Privacy & Terms "I Agree" checkbox.
 # ============================================================
 ADMIN_FRONTEND = """
 <!DOCTYPE html>
@@ -2752,7 +2850,7 @@ ADMIN_FRONTEND = """
         tr:hover{background:#eef1f5;}
         .tab-content{display:none;}
         .tab-content.active{display:block;}
-        .barcode-img{width:60mm;height:18mm;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
+        .barcode-img{width:60mm;height:20mm;max-width:100%;margin:18px auto;display:block;padding:6px;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;word-break:break-word;}
         .book-qr-img{width:160px;height:160px;max-width:100%;object-fit:contain;image-rendering:crisp-edges;margin:10px auto;display:block;background:#fff;border:1px solid #d8dbe0;padding:6px;border-radius:4px;}
         .btn-print{background:#1e6b34;color:white;}
@@ -2776,12 +2874,6 @@ ADMIN_FRONTEND = """
         .btn-save:hover{background:#175628;}
         .btn-cancel{background:#5b6472;color:white;}
         .btn-cancel:hover{background:#464d59;}
-        .btn-inside{background:#1e6b34;color:#fff;padding:13px 22px;font-weight:700;flex:1 1 200px;}
-        .btn-inside:hover{background:#175628;}
-        .btn-outside{background:#8a6d1f;color:#fff;padding:13px 22px;font-weight:700;flex:1 1 200px;}
-        .btn-outside:hover{background:#6e5718;}
-        .btn-confirm-email{background:#1b4f72;color:#fff;padding:11px 22px;font-weight:700;}
-        .btn-confirm-email:hover{background:#143a55;}
         .btn-return{background:#1e6b34;color:white;padding:8px 16px;font-size:12px;border-radius:4px;}
         .btn-return:hover{background:#175628;}
         .btn-remind{background:#7a1f1f;color:white;padding:8px 16px;font-size:12px;border-radius:4px;}
@@ -2816,14 +2908,20 @@ ADMIN_FRONTEND = """
         .book-meta div strong{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#64748b;margin-bottom:2px;}
         .borrower-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;margin-top:8px;font-size:13px;flex-wrap:wrap;gap:8px;word-break:break-word;}
         .awaiting-box{background:#fdf6e3;border:2px dashed #c9a227;border-radius:6px;padding:16px;text-align:center;margin-top:14px;font-weight:600;color:#8a6d1f;word-break:break-word;}
-        .email-panel{background:#eaf1f8;border:2px solid #3a75a3;border-radius:6px;padding:18px;margin-top:14px;}
-        .email-panel label{font-size:13px;}
+        /* small borrow-type checkbox (unchecked=Inside, checked=Outside) */
+        .borrow-type-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:12px 14px;background:#fff;border:1px solid #d8dbe0;border-radius:6px;}
+        .borrow-type-row label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151;cursor:pointer;text-transform:none;letter-spacing:0;margin:0;}
+        .borrow-type-row input[type=checkbox]{width:18px;height:18px;cursor:pointer;flex:0 0 auto;}
+        .borrow-type-hint{font-size:12px;color:#64748b;}
         .qr-result{display:none;margin-top:24px;text-align:center;padding:24px;background:#f7f8fa;border-radius:6px;border:1px solid #d8dbe0;}
         .action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
         .terms-modal{position:fixed;inset:0;background:rgba(15,25,43,.62);display:flex;align-items:center;justify-content:center;padding:16px;z-index:300;}
         .terms-modal.hidden{display:none;}
         .terms-dialog{background:#fff;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;border-radius:6px;box-shadow:0 12px 40px rgba(15,25,43,.35);padding:26px;}
         .terms-dialog h3{color:#8a1f1f;font-family:Georgia,'Times New Roman',serif;margin-bottom:14px;font-size:18px;word-break:break-word;}
+        .i-agree-row{display:flex;align-items:center;gap:10px;margin-top:16px;padding:12px 14px;background:#f7f8fa;border:1px solid #d8dbe0;border-radius:6px;}
+        .i-agree-row label{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;cursor:pointer;color:#1b2a41;text-transform:none;letter-spacing:0;margin:0;}
+        .i-agree-row input[type=checkbox]{width:18px;height:18px;cursor:pointer;flex:0 0 auto;}
         .terms-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-content:flex-end;}
         .btn-agree{background:#1e6b34;color:#fff;border:none;padding:12px 24px;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;}
         .btn-agree:hover{background:#175628;}
@@ -2891,24 +2989,27 @@ ADMIN_FRONTEND = """
                 <h1 id="page-title">Scan / Attendance</h1>
             </div>
             <div class="content-card">
-                <!-- ===== OUTSIDE BORROW LEGAL TERMS MODAL ===== -->
+                <!-- ===== OUTSIDE BORROW PRIVACY & TERMS AGREEMENT MODAL (with I Agree checkbox) ===== -->
                 <div id="terms-modal" class="terms-modal hidden">
                     <div class="terms-dialog">
-                        <h3>OUTSIDE BORROW — Terms &amp; Conditions</h3>
+                        <h3>OUTSIDE BORROW — Privacy &amp; Terms Agreement</h3>
                         <div style="text-align:left;font-size:13px;line-height:1.7;color:#374151;">
                             <p style="margin-bottom:8px;">By choosing <strong>OUTSIDE</strong> (taking the book home), the borrower acknowledges and agrees to the following:</p>
                             <ol style="padding-left:20px;margin-bottom:10px;">
                                 <li style="margin-bottom:6px;"><strong>LIABILITY FOR DAMAGE:</strong> The borrower is fully responsible for any damage, destruction, or alteration to the book while it is in their care. They must pay the cost of repair or replacement.</li>
                                 <li style="margin-bottom:6px;"><strong>PAYMENT IF LOST:</strong> If the book is lost, the borrower must <strong>pay the full replacement cost</strong> or replace it with an identical copy.</li>
                                 <li style="margin-bottom:6px;"><strong>TIMELY RETURN:</strong> The book must be returned within three (3) working days or as set by the librarian. A late fine of ₱5.00 per day applies after the due date.</li>
+                                <li style="margin-bottom:6px;"><strong>EMAIL NOTIFICATION (auto from profile):</strong> The confirmation and overdue reminders will be sent automatically to the email address on the borrower's registered profile — no need to type it again.</li>
                                 <li style="margin-bottom:6px;"><strong>LOSS OF PRIVILEGE:</strong> Repeated violations may result in suspension or permanent loss of borrowing privileges.</li>
-                                <li style="margin-bottom:6px;"><strong>EMAIL NOTIFICATION:</strong> A confirmation and fine reminder will be automatically sent to the email address provided by the borrower.</li>
                             </ol>
-                            <p style="background:#fdf6e3;border-left:4px solid #c9a227;padding:10px 14px;font-size:12px;color:#8a6d1f;">By clicking <strong>"I Agree &amp; Continue"</strong>, you agree to the terms above freely and with full understanding.</p>
+                            <p style="background:#fdf6e3;border-left:4px solid #c9a227;padding:10px 14px;font-size:12px;color:#8a6d1f;">You must tick the <strong>"I Agree"</strong> checkbox below before continuing.</p>
+                        </div>
+                        <div class="i-agree-row">
+                            <label><input type="checkbox" id="i-agree-check"> I Agree to the Privacy &amp; Terms above</label>
                         </div>
                         <div class="terms-actions">
                             <button class="btn-cancel" onclick="closeTermsModal()">Cancel</button>
-                            <button class="btn-agree" onclick="agreeOutsideTerms()">I Agree &amp; Continue → Scan ID</button>
+                            <button class="btn-agree" onclick="agreeOutsideTerms()">I Agree &amp; Continue → Record Borrow</button>
                         </div>
                     </div>
                 </div>
@@ -2921,7 +3022,7 @@ ADMIN_FRONTEND = """
                     </div>
                     <div id="admin-book-detail" style="display:none;"></div>
                 </div>
-                <!-- 02 USERS LIST (registration form removed from admin; edit/delete/print/download only) -->
+                <!-- 02 USERS LIST — BPA tab added, Email column removed, columns: ID Number | Full Name | Type | Department | Major | Action -->
                 <div id="students" class="tab-content">
                     <h2>Registered Users — Edit / Print / Delete / Download</h2>
                     <div class="search-box"><input type="text" id="search-input" placeholder="Search by Name or ID Number..." oninput="filterStudents()"></div>
@@ -2932,6 +3033,7 @@ ADMIN_FRONTEND = """
                         <button class="dept-tab" id="dept-BEED" onclick="switchDept('BEED')">BEED</button>
                         <button class="dept-tab" id="dept-BSFAS" onclick="switchDept('BSFAS')">BSFAS</button>
                         <button class="dept-tab" id="dept-BSBA" onclick="switchDept('BSBA')">BSBA</button>
+                        <button class="dept-tab" id="dept-BPA" onclick="switchDept('BPA')">BPA</button>
                         <button class="dept-tab" id="dept-EMPLOYEE" onclick="switchDept('EMPLOYEE')">EMPLOYEE</button>
                         <button class="dept-tab" id="dept-Visitor" onclick="switchDept('Visitor')">VISITOR</button>
                     </div>
@@ -2966,7 +3068,7 @@ ADMIN_FRONTEND = """
                                     <div class="form-group"><label>Contact Number</label><input type="text" id="edit-contact" name="contact_number"></div>
                                 </div>
                                 <div class="form-group"><label>Complete Address</label><input type="text" id="edit-address" name="address"></div>
-                                <div class="form-group"><label>Email (for outside-borrow notifications)</label><input type="email" id="edit-email" name="email" placeholder="you@example.com"></div>
+                                <div class="form-group"><label>Email (for outside-borrow notifications — auto-used at borrow time)</label><input type="email" id="edit-email" name="email" placeholder="you@example.com"></div>
                                 <button type="submit" class="btn-save">Save Changes</button>
                                 <button type="button" class="btn-cancel" onclick="hideEditForm()">Cancel</button>
                             </form>
@@ -3003,7 +3105,6 @@ ADMIN_FRONTEND = """
                 <!-- 05 MANAGE BOOKS — with barcode scanner + generate new barcode -->
                 <div id="books" class="tab-content">
                     <h2>Register New Book</h2>
-                    <!-- Option A: scan existing barcode -->
                     <div class="barcode-scan-box">
                         <label style="font-size:13px;">Option A — Scan existing book barcode (books that already have barcode):</label>
                         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
@@ -3012,13 +3113,11 @@ ADMIN_FRONTEND = """
                         </div>
                         <div id="barcode-scan-status" style="font-size:13px;margin-top:10px;word-break:break-word;"></div>
                     </div>
-                    <!-- Option B: generate new barcode -->
                     <div class="new-barcode-box">
                         <label style="font-size:13px;text-transform:none;letter-spacing:0;">Option B — Books with NO barcode yet: generate a new one automatically.</label><br>
                         <button class="btn-barcode" style="margin-top:10px;" onclick="generateNewBookBarcode()">Generate New Barcode</button>
                         <div id="new-barcode-status" style="font-size:13px;margin-top:10px;word-break:break-word;"></div>
                     </div>
-                    <!-- Fill-up table -->
                     <form id="book-form">
                         <div class="form-row">
                             <div class="form-group"><label>Barcode Number (auto-filled from scan/generate)</label><input type="text" name="barcode_number" id="book-barcode-number" placeholder="Will be used as Access Code"></div>
@@ -3042,7 +3141,7 @@ ADMIN_FRONTEND = """
                         <p id="book-qr-title" style="font-weight:600;color:#1b2a41;margin-top:8px;word-break:break-word;"></p>
                         <p id="book-qr-code" style="font-size:13px;color:#64748b;"></p>
                         <img id="book-qr-img" class="book-qr-img">
-                        <img id="book-barcode-img" class="barcode-img" style="height:18mm;width:60mm;">
+                        <img id="book-barcode-img" class="barcode-img" style="height:20mm;width:60mm;">
                         <div class="action-row" style="justify-content:center;">
                             <button class="btn-print" onclick="printBookQR()">Print QR</button>
                             <button class="btn-download" onclick="downloadBookQR()">Download QR</button>
@@ -3081,7 +3180,7 @@ ADMIN_FRONTEND = """
                         </div>
                     </div>
                 </div>
-                <!-- 06 BOOK RECORDS -->
+                <!-- 06 BOOK RECORDS (new headers, no Email column) -->
                 <div id="bookrecords" class="tab-content">
                     <h2>Borrow &amp; Return Records — Edit / Print / Download</h2>
                     <div class="filter-row">
@@ -3095,7 +3194,7 @@ ADMIN_FRONTEND = """
                     </div>
                     <div class="table-wrap" id="borrow-records-table"></div>
                 </div>
-                <!-- 07 OVERDUE REMINDERS (new) -->
+                <!-- 07 OVERDUE REMINDERS -->
                 <div id="overdue" class="tab-content">
                     <h2>Overdue Books — Send Return Reminders via Gmail</h2>
                     <div class="overdue-summary" id="overdue-summary">Loading overdue list...</div>
@@ -3125,8 +3224,9 @@ const PAGE_TITLES = {scan:"Scan / Attendance",students:"Registered Users — Ful
 const MENU_ORDER = ["scan","students","records","history","books","bookrecords","overdue","export","privacy"];
 let editingStudentId=null, currentDept="ALL", allStudents=[], barcodeSelectionMode=false;
 let scannerBuffer="", scannerLastKeyAt=0, scannerResetTimer=null, recordsRefreshInProgress=false;
-let scanState="idle", borrowType=null, pendingBook=null, pendingBorrower=null;
+let scanState="idle", pendingBook=null, pendingBorrowerCode=null;
 let allBooks=[], bookQRSelectionMode=false, lastBookQRCode=null, lastBookBarcode=null;
+
 function toggleSidebar(){
     const s=document.getElementById("sidebar");
     const ov=document.getElementById("sidebar-overlay");
@@ -3165,56 +3265,25 @@ function showContent(pageId){
 }
 function setStatus(msg,type){const b=document.getElementById("status-box");if(b){b.className="status "+type;b.textContent=msg;}}
 function submitScan(){const i=document.getElementById("scan-input");const v=i.value.trim();if(v){handleScannedCode(v);i.value="";}}
-function resetBorrowFlow(){scanState="idle";borrowType=null;pendingBook=null;pendingBorrower=null;}
+function resetBorrowFlow(){scanState="idle";pendingBook=null;pendingBorrowerCode=null;}
+function isOutsideChecked(){ return !!(document.getElementById("outside-borrow-check") && document.getElementById("outside-borrow-check").checked); }
 function openTermsModal(){document.getElementById("terms-modal").classList.remove("hidden");}
-function closeTermsModal(){document.getElementById("terms-modal").classList.add("hidden");}
-function defaultDueDate(){const d=new Date();d.setDate(d.getDate()+3);return d.toISOString().slice(0,10);}
+function closeTermsModal(){
+    document.getElementById("terms-modal").classList.add("hidden");
+    const chk=document.getElementById("i-agree-check"); if(chk) chk.checked=false;
+}
 function agreeOutsideTerms(){
+    const chk=document.getElementById("i-agree-check");
+    if(!chk || !chk.checked){
+        alert("Please tick the 'I Agree' checkbox first to accept the Privacy & Terms Agreement.");
+        return;
+    }
     closeTermsModal();
-    borrowType="Outside";
-    scanState="awaiting_borrower";
-    const a=document.getElementById("admin-awaiting");if(a)a.style.display="block";
-    setStatus("OUTSIDE borrow agreed. Now scan the borrower's User ID barcode.","warning");
-    setTimeout(()=>document.getElementById("scan-input")?.focus(),100);
-}
-function chooseInside(){
-    borrowType="Inside";
-    scanState="awaiting_borrower";
-    const a=document.getElementById("admin-awaiting");if(a)a.style.display="block";
-    setStatus("INSIDE borrow. Now scan the borrower's User ID barcode to record.","warning");
-    setTimeout(()=>document.getElementById("scan-input")?.focus(),100);
-}
-function chooseOutside(){openTermsModal();}
-function showAdminEmailPanel(user){
-    const panel=document.getElementById("admin-book-detail");
-    if(!panel) return;
-    const b=pendingBook;
-    panel.innerHTML='<div class="book-detail">'+
-        '<h3>'+b.title+' <span class="badge badge-outside">OUTSIDE Borrow</span></h3>'+
-        '<div class="book-meta">'+
-        '<div><strong>Author</strong>'+(b.author||'-')+'</div>'+
-        '<div><strong>Access Code</strong>'+b.access_code+'</div>'+
-        '<div><strong>Borrower</strong>'+user.full_name+' ('+user.id_number+')</div></div>'+
-        '<div class="email-panel">'+
-        '<label>Email Address — where borrow notification &amp; overdue reminders will be sent *</label>'+
-        '<input type="email" id="outside-email-input" placeholder="you@example.com" value="'+(user.email||"")+'">'+
-        '<label style="margin-top:12px;display:block;">Due Date (return on or before) * — late fine ₱5.00/day</label>'+
-        '<input type="date" id="outside-due-input" value="'+defaultDueDate()+'">'+
-        '<div class="action-row">'+
-        '<button class="btn-confirm-email" onclick="confirmOutsideBorrow()">Confirm Borrow &amp; Send Email Notification</button>'+
-        '<button class="btn-cancel" onclick="cancelAdminBookFlow()">Cancel</button>'+
-        '</div></div></div>';
-    panel.style.display="block";
-    setTimeout(()=>document.getElementById("outside-email-input")?.focus(),100);
-}
-function confirmOutsideBorrow(){
-    const email=(document.getElementById("outside-email-input")?.value||"").trim();
-    const due=(document.getElementById("outside-due-input")?.value||"").trim();
-    if(!email){alert("Email address is required for OUTSIDE borrow.");return;}
-    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){alert("Invalid email format.");return;}
-    if(!due){alert("Due date is required.");return;}
+    const code=pendingBorrowerCode;
+    pendingBorrowerCode=null;
+    if(!code){ setStatus("No borrower ID scanned.","error"); return; }
     fetch("/api/borrow-book",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({book_id:pendingBook.id,id_number:pendingBorrower.id_number,borrow_type:"Outside",email:email,due_date:due})})
+        body:JSON.stringify({book_id:pendingBook.id,id_number:code,borrow_type:"Outside"})})
     .then(r=>r.json()).then(d=>{
         if(d.success){
             setStatus(d.message, d.email_sent?"success":"warning");
@@ -3226,7 +3295,8 @@ function confirmOutsideBorrow(){
 function handleScannedCode(code){
     code=(code||"").trim(); if(!code) return;
     if(scanState==="awaiting_borrower" && pendingBook){
-        if(borrowType==="Inside"){
+        if(!isOutsideChecked()){
+            // INSIDE READING — record immediately, no extra steps
             fetch("/api/borrow-book",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({book_id:pendingBook.id,id_number:code,borrow_type:"Inside"})})
             .then(r=>r.json()).then(d=>{
                 if(d.success){setStatus(d.message,"success");resetBorrowFlow();renderAdminBookDetail(null);}
@@ -3234,17 +3304,11 @@ function handleScannedCode(code){
             }).catch(e=>setStatus("Error: "+e,"error"));
             return;
         }
-        if(borrowType==="Outside"){
-            fetch("/api/lookup-user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id_number:code})})
-            .then(r=>r.json()).then(d=>{
-                if(!d.success){setStatus(d.message||"User not found.","error");return;}
-                pendingBorrower=d.user;
-                scanState="awaiting_email";
-                showAdminEmailPanel(d.user);
-                setStatus("Borrower: "+d.user.full_name+". Enter/confirm email & due date.","info");
-            }).catch(e=>setStatus("Error: "+e,"error"));
-            return;
-        }
+        // OUTSIDE — hold the ID, show Privacy & Terms Agreement with "I Agree" checkbox first
+        pendingBorrowerCode=code;
+        setStatus("OUTSIDE borrow selected. Please read the Privacy & Terms Agreement and tick 'I Agree'.","warning");
+        openTermsModal();
+        return;
     }
     fetch("/api/smart-scan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:code})})
     .then(r=>r.json()).then(d=>{
@@ -3253,8 +3317,9 @@ function handleScannedCode(code){
         else if(d.type==="book"){
             showContent("scan");
             pendingBook=d.book;
+            scanState="awaiting_borrower";
             renderAdminBookDetail(d);
-            setStatus("Book found: "+d.book.title+" by "+(d.book.author||"Unknown")+". Choose INSIDE or OUTSIDE.","info");
+            setStatus("Book found: "+d.book.title+". Tick 'Outside Borrow' only if taking home, then scan the borrower's ID.","info");
         }
     }).catch(e=>setStatus("Error: "+e,"error"));
 }
@@ -3268,16 +3333,17 @@ function renderAdminBookDetail(data){
         borrowers='<h3 style="font-size:15px;margin:16px 0 6px;color:#1b2a41;">Currently borrowed by:</h3>'+
             data.active_borrows.map(br=>'<div class="borrower-row"><span><strong>'+br.borrower_name+'</strong> ('+br.borrower_id+') — '+br.borrow_type+' — '+br.borrow_date+' '+br.borrow_time+'</span><button class="btn-return" onclick="confirmReturn('+br.borrow_id+')">Confirm Return</button></div>').join("");
     }
-    const borrowButtons=data.available_qty>0
-        ? '<button class="btn-inside" onclick="chooseInside()">INSIDE — Read in Library (scan ID only)</button>'+
-          '<button class="btn-outside" onclick="chooseOutside()">OUTSIDE — Take Home (terms + email + due date)</button>'
-        : '';
+    const borrowTypeRow = data.available_qty>0
+        ? '<div class="borrow-type-row">'+
+          '<label><input type="checkbox" id="outside-borrow-check"> Outside Borrow (take home)</label>'+
+          '<span class="borrow-type-hint">Unchecked = Inside Reading (in-library only). If checked, the Privacy &amp; Terms Agreement will appear before recording.</span>'+
+          '</div>'+
+          '<div id="admin-awaiting" style="display:block;" class="awaiting-box">Now scan the borrower\'s Student/Employee/Visitor ID barcode...</div>'
+        : '<p style="color:#8a1f1f;font-weight:600;margin-top:10px;">No copies available — cannot borrow.</p>';
     panel.innerHTML='<div class="book-detail"><h3>'+b.title+' '+badge+'</h3>'+
         '<div class="book-meta">'+
         '<div><strong>Author</strong>'+(b.author||'-')+'</div><div><strong>ISBN</strong>'+(b.isbn||'-')+'</div><div><strong>Category</strong>'+(b.category||'-')+'</div><div><strong>Shelf</strong>'+(b.shelf_location||'-')+'</div><div><strong>Code</strong>'+b.access_code+'</div><div><strong>Times Borrowed</strong>'+(b.times_borrowed||0)+'</div></div>'+
-        '<p style="font-size:13px;color:#64748b;margin-bottom:6px;">Choose borrow type:</p>'+
-        '<div class="action-row">'+borrowButtons+'</div>'+
-        '<div id="admin-awaiting" style="display:none;" class="awaiting-box">AWAITING BORROWER — Scan the Student/Employee/Visitor ID barcode now...</div>'+
+        borrowTypeRow +
         '<div class="action-row" style="margin-top:10px;"><button class="btn-cancel" onclick="cancelAdminBookFlow()">Clear</button></div>'+borrowers+'</div>';
     panel.style.display="block";
 }
@@ -3320,6 +3386,15 @@ function generateNewBookBarcode(){
 function switchDept(d){document.querySelectorAll(".dept-tab").forEach(t=>t.classList.remove("active"));document.getElementById("dept-"+d).classList.add("active");currentDept=d;filterStudents();}
 function updateMajorOptions(ds,ms){const dept=document.getElementById(ds).value;const m=document.getElementById(ms);m.innerHTML='<option value="">-- Select Major --</option>';if(dept==="BPA"||!dept){m.disabled=true;return;}m.disabled=false;(MAJORS[dept]||[]).forEach(x=>{const o=document.createElement("option");o.value=x;o.textContent=x;m.appendChild(o);});}
 function loadStudents(){fetch("/get-students").then(r=>r.json()).then(d=>{allStudents=d.students||[];filterStudents();}).catch(e=>alert("Load Error: "+e));}
+function userDepartment(x){
+    if(x.id_type==="Student") return x.department_display || x.department || "-";
+    if(x.id_type==="Employee") return "EMPLOYEE";
+    return "-";
+}
+function userMajor(x){
+    if(x.id_type==="Student") return x.major || "-";
+    return "-";
+}
 function filterStudents(){
     const s=(document.getElementById("search-input")?.value||"").toLowerCase();
     let f=allStudents;
@@ -3327,28 +3402,33 @@ function filterStudents(){
     const t=document.getElementById("students-table");
     const selCol = barcodeSelectionMode ? '<th>Select</th>' : '';
     const selCell = (x) => barcodeSelectionMode ? '<td><input class="student-check student-row-check" type="checkbox" value="'+x.id_number+'"></td>' : '';
-    const actionCell = (x) => '<td><button class="btn-edit" onclick="editStudent('+x.id+')">Edit</button></td>';
-    const nonStudentHead = '<tr>'+selCol+'<th>Full Name</th><th>Type</th><th>Email</th><th>Address</th><th>Contact Number</th><th>Action</th></tr>';
-    const nonStudentRow = (x) => '<tr>'+selCell(x)+'<td>'+x.full_name+'</td><td>'+x.id_type+'</td><td>'+(x.email||"-")+'</td><td>'+(x.address||"-")+'</td><td>'+(x.contact_number||"-")+'</td>'+actionCell(x)+'</tr>';
-    const studentHead = '<tr>'+selCol+'<th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Major</th><th>Email</th><th>Action</th></tr>';
-    const studentRow = (x) => '<tr>'+selCell(x)+'<td><strong>'+x.id_number+'</strong></td><td>'+x.full_name+'</td><td>'+x.id_type+'</td><td>'+x.department_display+'</td><td>'+(x.major||"-")+'</td><td>'+(x.email||"-")+'</td>'+actionCell(x)+'</tr>';
+    // Unified columns: ID Number | Full Name | Type | Department | Major | Action  (Email removed)
+    const head = '<tr>'+selCol+'<th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Major</th><th>Action</th></tr>';
+    const row = (x) => '<tr>'+selCell(x)+
+        '<td><strong>'+x.id_number+'</strong></td>'+
+        '<td>'+x.full_name+'</td>'+
+        '<td>'+x.id_type+'</td>'+
+        '<td>'+userDepartment(x)+'</td>'+
+        '<td>'+userMajor(x)+'</td>'+
+        '<td><button class="btn-edit" onclick="editStudent('+x.id+')">Edit</button></td></tr>';
     let html='';
     if(currentDept==="ALL"){
         const students = f.filter(x=>x.id_type==="Student");
         const employees = f.filter(x=>x.id_type==="Employee"||x.department==="EMPLOYEE");
         const visitors = f.filter(x=>x.id_type==="Visitor");
-        if(students.length) html += '<h3 style="margin-top:8px;color:#1b2a41;font-size:16px;">Students ('+students.length+')</h3><div class="table-wrap"><table style="min-width:620px;">'+studentHead+students.map(studentRow).join("")+'</table></div>';
-        if(employees.length) html += '<h3 style="margin-top:28px;color:#1b2a41;font-size:16px;">Employees ('+employees.length+')</h3><div class="table-wrap"><table style="min-width:560px;">'+nonStudentHead+employees.map(nonStudentRow).join("")+'</table></div>';
-        if(visitors.length) html += '<h3 style="margin-top:28px;color:#1b2a41;font-size:16px;">Visitors ('+visitors.length+')</h3><div class="table-wrap"><table style="min-width:560px;">'+nonStudentHead+visitors.map(nonStudentRow).join("")+'</table></div>';
+        if(students.length) html += '<h3 style="margin-top:8px;color:#1b2a41;font-size:16px;">Students ('+students.length+')</h3><div class="table-wrap"><table style="min-width:620px;">'+head+students.map(row).join("")+'</table></div>';
+        if(employees.length) html += '<h3 style="margin-top:28px;color:#1b2a41;font-size:16px;">Employees ('+employees.length+')</h3><div class="table-wrap"><table style="min-width:560px;">'+head+employees.map(row).join("")+'</table></div>';
+        if(visitors.length) html += '<h3 style="margin-top:28px;color:#1b2a41;font-size:16px;">Visitors ('+visitors.length+')</h3><div class="table-wrap"><table style="min-width:560px;">'+head+visitors.map(row).join("")+'</table></div>';
         if(!html) html='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
     } else if(currentDept==="EMPLOYEE"||currentDept==="Visitor"){
         const list = (currentDept==="EMPLOYEE") ? f.filter(x=>x.id_type==="Employee"||x.department==="EMPLOYEE") : f.filter(x=>x.id_type==="Visitor");
-        if(list.length) html='<div class="table-wrap"><table style="min-width:560px;">'+nonStudentHead+list.map(nonStudentRow).join("")+'</table></div>';
+        if(list.length) html='<div class="table-wrap"><table style="min-width:560px;">'+head+list.map(row).join("")+'</table></div>';
         else html='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
     } else {
+        // department filter (CT, BSED, BEED, BSFAS, BSBA, BPA) — matches on department field
         const students = f.filter(x=>x.department===currentDept);
-        if(students.length) html='<div class="table-wrap"><table style="min-width:620px;">'+studentHead+students.map(studentRow).join("")+'</table></div>';
-        else html='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
+        if(students.length) html='<div class="table-wrap"><table style="min-width:620px;">'+head+students.map(row).join("")+'</table></div>';
+        else html='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found for '+currentDept+'.</p>';
     }
     t.innerHTML=html;
 }
@@ -3453,8 +3533,15 @@ function loadBorrowRecords(){
     let q="/get-borrow-records?";if(date)q+="date="+encodeURIComponent(date)+"&";if(borrower)q+="borrower="+encodeURIComponent(borrower)+"&";if(status)q+="status="+encodeURIComponent(status)+"&";
     fetch(q).then(r=>r.json()).then(d=>{
         const recs=d.records||[];const t=document.getElementById("borrow-records-table");
-        if(recs.length){t.innerHTML='<table><tr><th>Book</th><th>Borrower</th><th>Type</th><th>Email</th><th>Borrowed</th><th>Due</th><th>Returned</th><th>Fine</th><th>Status</th></tr>'+
-            recs.map(r=>'<tr><td><strong>'+r.title+'</strong><br><span style="color:#64748b;font-size:11px;">'+r.access_code+'</span></td><td>'+r.borrower+'<br><span style="color:#64748b;font-size:11px;">'+r.borrower_id+'</span></td><td>'+(r.borrow_type==="Outside"?'<span class="badge badge-outside">Outside</span>':'<span class="badge badge-inside">Inside</span>')+'</td><td>'+r.borrower_email+(r.email_sent?' <span style="color:#1e6b34;font-size:11px;">(sent)</span>':'')+'</td><td>'+r.borrow_date+' '+r.borrow_time+'</td><td>'+r.due_date+'</td><td>'+(r.return_date!=="-"?r.return_date+" "+r.return_time:"-")+'</td><td>'+(r.fine_amount>0?'<strong style="color:#8a1f1f;">₱'+Number(r.fine_amount).toFixed(2)+'</strong>':'-')+'</td><td>'+(r.status==="Returned"?'<span class="badge badge-avail">Returned</span>':'<span class="badge badge-borrowed">Borrowed</span>')+'</td></tr>').join("")+'</table>';}
+        if(recs.length){t.innerHTML='<table><tr><th>Book Title / Book ID</th><th>Borrower Name &amp; ID</th><th>Borrow Type</th><th>Date &amp; Time Borrowed</th><th>Due Date</th><th>Date &amp; Time Returned</th><th>Overdue Fine (₱)</th><th>Current Status</th></tr>'+
+            recs.map(r=>'<tr><td><strong>'+r.title+'</strong><br><span style="color:#64748b;font-size:11px;">'+r.access_code+'</span></td>'+
+            '<td>'+r.borrower+'<br><span style="color:#64748b;font-size:11px;">'+r.borrower_id+'</span></td>'+
+            '<td>'+(r.borrow_type==="Outside"?'<span class="badge badge-outside">Outside</span>':'<span class="badge badge-inside">Inside</span>')+'</td>'+
+            '<td>'+r.borrow_date+' '+r.borrow_time+'</td>'+
+            '<td>'+r.due_date+'</td>'+
+            '<td>'+(r.return_date!=="-"?r.return_date+" "+r.return_time:"-")+'</td>'+
+            '<td>'+(r.fine_amount>0?'<strong style="color:#8a1f1f;">₱'+Number(r.fine_amount).toFixed(2)+'</strong>':'-')+'</td>'+
+            '<td>'+(r.status==="Returned"?'<span class="badge badge-avail">Returned</span>':'<span class="badge badge-borrowed">Borrowed</span>')+'</td></tr>').join("")+'</table>';}
         else t.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No borrow records match the filters.</p>';
     }).catch(e=>alert("Load Error: "+e));
 }
@@ -3527,4 +3614,3 @@ document.addEventListener("DOMContentLoaded",function(){
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000, debug=False)
-
