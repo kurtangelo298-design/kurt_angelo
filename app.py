@@ -396,19 +396,6 @@ def barcode_image(id_number):
         return jsonify({"error": str(e)}), 400
 
 
-@app.route('/book-qr/<path:access_code>')
-def book_qr_image(access_code):
-    if not is_logged_in():
-        return jsonify({"error": "Unauthorized"}), 401
-    try:
-        image_data = base64.b64decode(generate_qr_b64(access_code))
-        response = make_response(image_data)
-        response.headers['Content-Type'] = 'image/png'
-        response.headers['Content-Disposition'] = f'attachment; filename="book_qr_{access_code}.png"'
-        response.headers['Cache-Control'] = 'no-store'
-        return response
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
 
 
 @app.route('/book-barcode/<path:barcode_number>')
@@ -491,80 +478,6 @@ def download_barcodes():
         return jsonify({"error": str(e)}), 400
 
 
-@app.route('/download-book-qrcodes', methods=['POST'])
-def download_book_qrcodes():
-    if not is_logged_in():
-        return jsonify({"error": "Unauthorized"}), 401
-    try:
-        payload = request.get_json(silent=True, force=True) or {}
-        book_ids = [int(v) for v in payload.get('book_ids', []) if str(v).strip()]
-        if not book_ids:
-            return jsonify({"error": "Please select at least one book."}), 400
-        conn = get_db()
-        if not conn:
-            return jsonify({"error": "Database connection failed."}), 500
-        c = conn.cursor()
-        c.execute("SELECT id, access_code, title FROM books WHERE id = ANY(%s) ORDER BY id", (book_ids,))
-        books = c.fetchall()
-        conn.close()
-        page_size = (round(210 / 25.4 * 300), round(297 / 25.4 * 300))
-        columns = 3
-        rows = 6
-        box_width = round(60 / 25.4 * 300)
-        box_height = round(42 / 25.4 * 300)
-        gap = round(4 / 25.4 * 300)
-        grid_width = columns * box_width + (columns - 1) * gap
-        grid_height = rows * box_height + (rows - 1) * gap
-        grid_left = (page_size[0] - grid_width) // 2
-        grid_top = (page_size[1] - grid_height) // 2
-        qr_size = (round(35 / 25.4 * 300), round(35 / 25.4 * 300))
-        pages = []
-        for page_start in range(0, len(books), columns * rows):
-            page = Image.new('RGB', page_size, 'white')
-            draw = ImageDraw.Draw(page)
-            page_books = books[page_start:page_start + columns * rows]
-            for index, (bid, access_code, title) in enumerate(page_books):
-                column = index % columns
-                row = index // columns
-                cell_left = grid_left + column * (box_width + gap)
-                cell_top = grid_top + row * (box_height + gap)
-                qr_img = Image.open(BytesIO(base64.b64decode(generate_qr_b64(access_code))))
-                qr_img = qr_img.resize(qr_size, Image.Resampling.NEAREST)
-                qr_left = cell_left + (box_width - qr_img.width) // 2
-                qr_top = cell_top + round(2 / 25.4 * 300)
-                page.paste(qr_img, (qr_left, qr_top))
-                label = title if len(title) <= 38 else title[:35] + "..."
-                label_box = draw.textbbox((0, 0), label)
-                label_width = label_box[2] - label_box[0]
-                draw.text(
-                    (cell_left + (box_width - label_width) // 2, cell_top + box_height - round(6 / 25.4 * 300)),
-                    label,
-                    fill='black'
-                )
-                code_label = access_code
-                code_box = draw.textbbox((0, 0), code_label)
-                code_width = code_box[2] - code_box[0]
-                draw.text(
-                    (cell_left + (box_width - code_width) // 2, cell_top + box_height - round(3 / 25.4 * 300)),
-                    code_label,
-                    fill='black'
-                )
-                draw.rectangle(
-                    (cell_left, cell_top, cell_left + box_width, cell_top + box_height),
-                    outline='black',
-                    width=3,
-                )
-            pages.append(page)
-        output = BytesIO()
-        pages[0].save(output, format='PDF', resolution=300.0, save_all=True, append_images=pages[1:])
-        output.seek(0)
-        response = make_response(output.getvalue())
-        response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = 'attachment; filename="book_qrcodes.pdf"'
-        return response
-    except Exception as e:
-        print(f"DOWNLOAD BOOK QR ERROR: {e}")
-        return jsonify({"error": str(e)}), 400
 
 
 @app.route('/delete-students', methods=['POST'])
@@ -676,23 +589,6 @@ def scan_book_barcode():
                     "message": f"Barcode '{code}' not yet registered. Fill in the book details below."})
 
 
-@app.route('/api/generate-new-book-barcode')
-def generate_new_book_barcode():
-    """Generate a brand-new unique barcode number for books that have no printed barcode."""
-    if not is_logged_in() or get_role() != 'admin':
-        return jsonify({"success": False, "error": "Unauthorized"}), 401
-    conn = get_db()
-    if not conn:
-        return jsonify({"success": False, "error": "Database connection failed."}), 500
-    c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM books")
-    count = c.fetchone()[0]
-    conn.close()
-    new_num = f"BK{str(count + 1).zfill(6)}"
-    barcode_number = f"LIB-{new_num}"
-    return jsonify({"success": True, "barcode_number": barcode_number,
-                    "barcode_img": generate_barcode_b64(barcode_number),
-                    "message": f"New barcode generated: {barcode_number}. Print and stick it on the book."})
 
 
 @app.route('/register-book', methods=['POST'])
@@ -728,14 +624,12 @@ def register_book():
         c.execute("UPDATE books SET access_code = %s WHERE id = %s", (access_code, book_id))
         conn.commit()
         conn.close()
-        qr_b64 = generate_qr_b64(access_code)
         barcode_b64 = generate_barcode_b64(access_code)
         return jsonify({
             "success": True,
             "book_id": book_id,
             "access_code": access_code,
             "title": title,
-            "qr": qr_b64,
             "barcode": barcode_b64,
             "message": f"Book registered: {title} (Code: {access_code})"
         })
@@ -3117,21 +3011,16 @@ ADMIN_FRONTEND = """
                 <div id="books" class="tab-content">
                     <h2>Register New Book</h2>
                     <div class="barcode-scan-box">
-                        <label style="font-size:13px;">Option A — Scan existing book barcode (books that already have barcode):</label>
+                        <label style="font-size:13px;">Scan existing printed barcode (optional — leave blank and a barcode is auto-generated on register):</label>
                         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
                             <input type="text" id="book-barcode-scan" placeholder="Scan or type the printed barcode number here..." style="flex:1 1 260px;max-width:none;" onkeypress="if(event.key==='Enter')scanBookBarcode()">
                             <button type="button" class="btn-barcode" style="margin:0;" onclick="scanBookBarcode()">Scan / Lookup</button>
                         </div>
                         <div id="barcode-scan-status" style="font-size:13px;margin-top:10px;word-break:break-word;"></div>
                     </div>
-                    <div class="new-barcode-box">
-                        <label style="font-size:13px;text-transform:none;letter-spacing:0;">Option B — Books with NO barcode yet: generate a new one automatically.</label><br>
-                        <button type="button" class="btn-barcode" style="margin-top:10px;" onclick="generateNewBookBarcode()">Generate New Barcode</button>
-                        <div id="new-barcode-status" style="font-size:13px;margin-top:10px;word-break:break-word;"></div>
-                    </div>
                     <form id="book-form">
                         <div class="form-row">
-                            <div class="form-group"><label>Barcode Number (auto-filled from scan/generate)</label><input type="text" name="barcode_number" id="book-barcode-number" placeholder="Will be used as Access Code"></div>
+                            <div class="form-group"><label>Barcode Number (leave blank — auto-generated)</label><input type="text" name="barcode_number" id="book-barcode-number" placeholder="Auto-generated if blank"></div>
                             <div class="form-group"><label>Quantity</label><input type="number" name="quantity" value="1" min="1"></div>
                         </div>
                         <div class="form-row">
@@ -3145,17 +3034,15 @@ ADMIN_FRONTEND = """
                         <div class="form-row">
                             <div class="form-group"><label>Shelf / Location *</label><input type="text" name="shelf_location" placeholder="e.g. Shelf A-3" required></div>
                         </div>
-                        <button type="submit" class="btn-save">Register Book &amp; Generate QR + Barcode</button>
+                        <button type="submit" class="btn-save">Register Book &amp; Generate Barcode</button>
                     </form>
                     <div id="book-qr-result" class="qr-result">
-                        <h3>Book Registered — QR &amp; Barcode Generated</h3>
+                        <h3>Book Registered — Barcode Generated</h3>
                         <p id="book-qr-title" style="font-weight:600;color:#1b2a41;margin-top:8px;word-break:break-word;"></p>
                         <p id="book-qr-code" style="font-size:13px;color:#64748b;"></p>
-                        <img id="book-qr-img" class="book-qr-img">
                         <img id="book-barcode-img" class="barcode-img" style="height:20mm;width:60mm;">
                         <div class="action-row" style="justify-content:center;">
-                            <button type="button" class="btn-print" onclick="printBookQR()">Print QR</button>
-                            <button type="button" class="btn-download" onclick="downloadBookQR()">Download QR</button>
+                            <button type="button" class="btn-print" onclick="window.print()">Print Barcode</button>
                             <button type="button" class="btn-barcode" onclick="downloadBookBarcode()">Download Barcode</button>
                         </div>
                     </div>
@@ -3167,10 +3054,9 @@ ADMIN_FRONTEND = """
                         <label style="margin-bottom:0;font-size:13px;">Sort:</label>
                         <select id="book-sort" onchange="filterBooks()"><option value="title">Title A-Z</option><option value="most_borrowed">Most Borrowed</option><option value="recent">Recently Added</option></select>
                         <button type="button" onclick="loadBooks()">Refresh</button>
-                        <button type="button" class="btn-barcode" id="choose-book-qr-btn" onclick="enableBookQRSelection()">Select Books for QR</button>
+                        <button type="button" class="btn-barcode" id="choose-book-qr-btn" onclick="enableBookQRSelection()">Select Books</button>
                         <div id="book-qr-actions" class="hidden">
                             <label style="text-transform:none;font-size:13px;margin:0;font-weight:600;"><input class="student-check" type="checkbox" id="select-all-books" onchange="toggleAllBooks(this.checked)"> Select All</label>
-                            <button type="button" class="btn-download" onclick="downloadSelectedBookQRs()">Download QR PDF</button>
                             <button type="button" class="btn-delete" onclick="deleteSelectedBooks()">Delete Selected</button>
                             <button type="button" class="btn-cancel" onclick="disableBookQRSelection()">Cancel</button>
                         </div>
@@ -3237,7 +3123,7 @@ const MENU_ORDER = ["scan","students","records","history","books","bookrecords",
 let editingStudentId=null, currentDept="ALL", allStudents=[], barcodeSelectionMode=false;
 let scannerBuffer="", scannerLastKeyAt=0, scannerResetTimer=null, recordsRefreshInProgress=false;
 let scanState="idle", pendingBook=null, pendingBorrowerCode=null;
-let allBooks=[], bookQRSelectionMode=false, lastBookQRCode=null, lastBookBarcode=null;
+let allBooks=[], bookQRSelectionMode=false, lastBookBarcode=null;
 
 function toggleSidebar(){
     const s=document.getElementById("sidebar");
@@ -3385,15 +3271,6 @@ function scanBookBarcode(){
         }
     }).catch(e=>alert("Error: "+e));
 }
-function generateNewBookBarcode(){
-    fetch("/api/generate-new-book-barcode").then(r=>r.json()).then(d=>{
-        const st=document.getElementById("new-barcode-status");
-        if(!d.success){st.innerHTML='<span style="color:#8a1f1f;">'+(d.error||"Error")+'</span>';return;}
-        document.getElementById("book-barcode-number").value=d.barcode_number;
-        document.getElementById("book-title-input").focus();
-        st.innerHTML='<span style="color:#1b4f72;">New barcode generated: <strong>'+d.barcode_number+'</strong>. Print and stick it on the book, then fill details below.</span><br><img src="data:image/png;base64,'+d.barcode_img+'" style="max-width:240px;margin-top:8px;border:1px solid #d8dbe0;background:#fff;padding:4px;">';
-    }).catch(e=>alert("Error: "+e));
-}
 // ===== Users list =====
 function switchDept(d){document.querySelectorAll(".dept-tab").forEach(t=>t.classList.remove("active"));document.getElementById("dept-"+d).classList.add("active");currentDept=d;filterStudents();}
 function updateMajorOptions(ds,ms){const dept=document.getElementById(ds).value;const m=document.getElementById(ms);m.innerHTML='<option value="">-- Select Major --</option>';if(dept==="BPA"||!dept){m.disabled=true;return;}m.disabled=false;(MAJORS[dept]||[]).forEach(x=>{const o=document.createElement("option");o.value=x;o.textContent=x;m.appendChild(o);});}
@@ -3513,19 +3390,12 @@ function filterBooks(){
         '<td><strong>'+b.access_code+'</strong>'+(b.barcode_number?'<br><span style="color:#64748b;font-size:10px;">bc:'+b.barcode_number+'</span>':'')+'</td><td>'+b.title+'</td><td>'+(b.author||"-")+'</td><td>'+(b.category||"-")+'</td><td>'+(b.shelf_location||"-")+'</td><td>'+b.available_qty+'/'+b.quantity+'</td>'+
         '<td>'+(b.available_qty>0?'<span class="badge badge-avail">Available</span>':'<span class="badge badge-borrowed">Borrowed</span>')+'</td>'+
         '<td>'+b.times_borrowed+'</td>'+
-        '<td><button type="button" class="btn-barcode" data-code="'+b.access_code+'" onclick="viewBookQR(this.dataset.code)">QR</button> <button type="button" class="btn-edit" onclick="editBook('+b.id+')">Edit</button></td></tr>').join("")+'</table>';}
+        '<td><button type="button" class="btn-edit" onclick="editBook('+b.id+')">Edit</button></td></tr>').join("")+'</table>';}
     else t.innerHTML='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No books found.</p>';
 }
-function viewBookQR(code){lastBookQRCode=code;const w=window.open("","_blank","width=400,height=500");if(!w){alert("Allow pop-ups.");return;}w.document.write('<!DOCTYPE html><html><head><title>Book QR '+code+'</title><style>body{font-family:Arial;text-align:center;padding:20px}img{width:200px;height:200px}h2{font-size:14px}</style></head><body><h2>'+code+'</h2><img src="/book-qr/'+encodeURIComponent(code)+'" onload="window.print()"></body></html>');w.document.close();}
 function enableBookQRSelection(){bookQRSelectionMode=true;document.getElementById("choose-book-qr-btn").classList.add("hidden");document.getElementById("book-qr-actions").classList.remove("hidden");document.getElementById("select-all-books").checked=false;filterBooks();}
 function disableBookQRSelection(){bookQRSelectionMode=false;document.getElementById("choose-book-qr-btn").classList.remove("hidden");document.getElementById("book-qr-actions").classList.add("hidden");filterBooks();}
 function toggleAllBooks(c){document.querySelectorAll(".book-row-check").forEach(x=>x.checked=c);}
-function downloadSelectedBookQRs(){
-    const sel=Array.from(document.querySelectorAll(".book-row-check:checked")).map(x=>parseInt(x.value));
-    if(!sel.length){alert("Select at least one book.");return;}
-    fetch("/download-book-qrcodes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({book_ids:sel})})
-    .then(r=>{if(!r.ok)throw new Error("Download failed.");return r.blob();}).then(b=>{const l=document.createElement("a");const u=URL.createObjectURL(b);l.href=u;l.download="book_qrcodes.pdf";document.body.appendChild(l);l.click();l.remove();URL.revokeObjectURL(u);}).catch(e=>alert(e.message));
-}
 function deleteSelectedBooks(){
     const sel=Array.from(document.querySelectorAll(".book-row-check:checked")).map(x=>parseInt(x.value));
     if(!sel.length){alert("Select at least one book.");return;}
@@ -3535,8 +3405,6 @@ function deleteSelectedBooks(){
 }
 function editBook(id){const b=allBooks.find(x=>x.id===id);if(!b)return;document.getElementById("book-edit-id").value=b.id;document.getElementById("book-edit-title").value=b.title;document.getElementById("book-edit-author").value=b.author||"";document.getElementById("book-edit-isbn").value=b.isbn||"";document.getElementById("book-edit-category").value=b.category||"";document.getElementById("book-edit-shelf").value=b.shelf_location||"";document.getElementById("book-edit-qty").value=b.quantity;document.getElementById("book-edit-barcode").value=b.barcode_number||"";document.getElementById("book-edit-modal").classList.remove("hidden");}
 function hideBookEdit(){document.getElementById("book-edit-modal").classList.add("hidden");document.getElementById("book-edit-form").reset();}
-function printBookQR(){if(!lastBookQRCode){alert('Register a book first (Register Book & Generate QR) — then the QR will be available to print.');return;}const w=window.open("","_blank","width=400,height=500");if(!w){alert("Allow pop-ups.");return;}w.document.write('<!DOCTYPE html><html><head><title>Book QR</title><style>body{font-family:Arial;text-align:center;padding:20px}img{width:200px;height:200px}h2{font-size:14px}</style></head><body><h2>'+lastBookQRCode+'</h2><img src="/book-qr/'+encodeURIComponent(lastBookQRCode)+'" onload="window.print()"></body></html>');w.document.close();}
-function downloadBookQR(){if(!lastBookQRCode){alert('Register a book first — then the QR will be available to download.');return;}window.location.href="/book-qr/"+encodeURIComponent(lastBookQRCode);}
 function downloadBookBarcode(){if(!lastBookBarcode){alert('Register a book first — then its barcode will be available to download.');return;}window.location.href="/book-barcode/"+encodeURIComponent(lastBookBarcode);}
 function loadBorrowRecords(){
     const date=document.getElementById("br-date")?.value||"";
@@ -3608,12 +3476,10 @@ document.addEventListener("DOMContentLoaded",function(){
             const res=document.getElementById("book-qr-result");res.style.display="block";
             document.getElementById("book-qr-title").textContent=d.title;
             document.getElementById("book-qr-code").textContent="Access Code: "+d.access_code;
-            document.getElementById("book-qr-img").src="data:image/png;base64,"+d.qr;
             if(d.barcode){document.getElementById("book-barcode-img").src="data:image/png;base64,"+d.barcode;document.getElementById("book-barcode-img").style.display="block";}
-            lastBookQRCode=d.access_code; lastBookBarcode=d.access_code;
+            lastBookBarcode=d.access_code;
             bf.reset();document.querySelector('#book-form input[name="quantity"]').value=1;
             document.getElementById("barcode-scan-status").innerHTML="";
-            document.getElementById("new-barcode-status").innerHTML="";
             loadBooks();
         }else alert("Error: "+d.error);}).catch(err=>alert("Error: "+err));});
     const bef=document.getElementById("book-edit-form");
