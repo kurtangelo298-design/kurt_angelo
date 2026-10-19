@@ -413,6 +413,75 @@ def book_barcode_image(barcode_number):
         return jsonify({"error": str(e)}), 400
 
 
+@app.route('/download-book-barcodes', methods=['POST'])
+def download_book_barcodes():
+    """Bulk download selected books' barcodes as a print-ready PDF (A4 grid).
+    Uses barcode_number if set, otherwise the access_code. Each cell shows the
+    book title + code above the barcode, like the user barcode sheet."""
+    if not is_logged_in():
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        payload = request.get_json(silent=True, force=True) or {}
+        book_ids = [int(v) for v in payload.get('book_ids', []) if str(v).strip()]
+        if not book_ids:
+            return jsonify({"error": "Please select at least one book."}), 400
+        conn = get_db()
+        if not conn:
+            return jsonify({"error": "Database connection failed."}), 500
+        c = conn.cursor()
+        c.execute("SELECT id, access_code, title, barcode_number FROM books WHERE id = ANY(%s) ORDER BY id", (book_ids,))
+        books = c.fetchall()
+        conn.close()
+        # barcode to print = barcode_number if present, else access_code
+        items = []
+        for bid, access_code, title, bc in books:
+            code = (bc or "").strip() or access_code
+            items.append((code, title or ""))
+        page_size = (round(210 / 25.4 * 300), round(297 / 25.4 * 300))
+        columns = 4
+        rows = 10
+        box_width = round(48 / 25.4 * 300)
+        box_height = round(32 / 25.4 * 300)
+        gap = round(2 / 25.4 * 300)
+        grid_width = columns * box_width + (columns - 1) * gap
+        grid_height = rows * box_height + (rows - 1) * gap
+        grid_left = (page_size[0] - grid_width) // 2
+        grid_top = (page_size[1] - grid_height) // 2
+        barcode_size = (round(44 / 25.4 * 300), round(16 / 25.4 * 300))
+        pages = []
+        for page_start in range(0, len(items), columns * rows):
+            page = Image.new('RGB', page_size, 'white')
+            draw = ImageDraw.Draw(page)
+            page_items = items[page_start:page_start + columns * rows]
+            for index, (code, title) in enumerate(page_items):
+                column = index % columns
+                row = index // columns
+                cell_left = grid_left + column * (box_width + gap)
+                cell_top = grid_top + row * (box_height + gap)
+                bc_img = Image.open(BytesIO(base64.b64decode(generate_barcode_b64(code))))
+                bc_img.thumbnail(barcode_size, Image.Resampling.LANCZOS)
+                bc_left = cell_left + (box_width - bc_img.width) // 2
+                bc_top = cell_top + round(12 / 25.4 * 300)
+                page.paste(bc_img, (bc_left, bc_top))
+                title_label = title if len(title) <= 26 else title[:23] + "..."
+                code_label = "Code: " + code
+                for li, lab in enumerate([title_label, code_label]):
+                    lb = draw.textbbox((0, 0), lab)
+                    lw = lb[2] - lb[0]
+                    draw.text((cell_left + (box_width - lw) // 2, cell_top + round(2 / 25.4 * 300) + li * round(3.5 / 25.4 * 300)), lab, fill='black')
+                draw.rectangle((cell_left, cell_top, cell_left + box_width, cell_top + box_height), outline='black', width=3)
+            pages.append(page)
+        output = BytesIO()
+        pages[0].save(output, format='PDF', resolution=300.0, save_all=True, append_images=pages[1:])
+        output.seek(0)
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = 'attachment; filename="book_barcodes.pdf"'
+        return response
+    except Exception as e:
+        print(f"DOWNLOAD BOOK BARCODES ERROR: {e}")
+        return jsonify({"error": str(e)}), 400
+
 @app.route('/download-barcodes', methods=['POST'])
 def download_barcodes():
     if not is_logged_in():
@@ -3057,6 +3126,8 @@ ADMIN_FRONTEND = """
                         <button type="button" class="btn-barcode" id="choose-book-qr-btn" onclick="enableBookQRSelection()">Select Books</button>
                         <div id="book-qr-actions" class="hidden">
                             <label style="text-transform:none;font-size:13px;margin:0;font-weight:600;"><input class="student-check" type="checkbox" id="select-all-books" onchange="toggleAllBooks(this.checked)"> Select All</label>
+                            <button type="button" class="btn-barcode" onclick="printSelectedBookBarcodes()">Print Selected</button>
+                            <button type="button" class="btn-download" onclick="downloadSelectedBookBarcodes()">Download Selected</button>
                             <button type="button" class="btn-delete" onclick="deleteSelectedBooks()">Delete Selected</button>
                             <button type="button" class="btn-cancel" onclick="disableBookQRSelection()">Cancel</button>
                         </div>
@@ -3396,6 +3467,22 @@ function filterBooks(){
 function enableBookQRSelection(){bookQRSelectionMode=true;document.getElementById("choose-book-qr-btn").classList.add("hidden");document.getElementById("book-qr-actions").classList.remove("hidden");document.getElementById("select-all-books").checked=false;filterBooks();}
 function disableBookQRSelection(){bookQRSelectionMode=false;document.getElementById("choose-book-qr-btn").classList.remove("hidden");document.getElementById("book-qr-actions").classList.add("hidden");filterBooks();}
 function toggleAllBooks(c){document.querySelectorAll(".book-row-check").forEach(x=>x.checked=c);}
+function printSelectedBookBarcodes(){
+    const sel=Array.from(document.querySelectorAll(".book-row-check:checked")).map(x=>parseInt(x.value));
+    if(!sel.length){alert("Please select at least one book.");return;}
+    // fetch book details to get title+code for labels
+    const books = allBooks.filter(b=>sel.includes(b.id));
+    const w=window.open("","_blank","width=600,height=800");if(!w){alert("Allow pop-ups.");return;}
+    const cells=books.map(b=>{const code=(b.barcode_number||"").trim()||b.access_code;const t=(b.title||"").length>26?(b.title||"").slice(0,23)+"...":(b.title||"");return '<section class="bi"><div class="ttl">'+t+'</div><div class="cd">'+code+'</div><img src="/book-barcode/'+encodeURIComponent(code)+'"></section>';}).join("");
+    w.document.write('<!DOCTYPE html><html><head><style>*{box-sizing:border-box}@page{size:A4;margin:1mm}body{font-family:Arial;text-align:center;display:grid;grid-template-columns:repeat(4,48mm);grid-auto-rows:32mm;gap:2mm;justify-content:center}.bi{width:48mm;height:32mm;border:1px solid #000;font-size:7pt;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:1mm 0;overflow:hidden}.bi .ttl{font-weight:700;max-width:46mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bi .cd{color:#555;margin-bottom:1mm}.bi img{width:44mm;height:16mm;object-fit:contain;image-rendering:crisp-edges;margin:auto;display:block}</style></head><body>'+cells+'</body></html>');
+    w.document.close();const imgs=w.document.images;let n=0;const pw=()=>{n++;if(n===imgs.length)w.print();};Array.from(imgs).forEach(i=>{i.onload=pw;i.onerror=pw;});
+}
+function downloadSelectedBookBarcodes(){
+    const sel=Array.from(document.querySelectorAll(".book-row-check:checked")).map(x=>parseInt(x.value));
+    if(!sel.length){alert("Please select at least one book.");return;}
+    fetch("/download-book-barcodes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({book_ids:sel})})
+    .then(r=>{if(!r.ok)throw new Error("Download failed.");return r.blob();}).then(b=>{const l=document.createElement("a");const u=URL.createObjectURL(b);l.href=u;l.download="book_barcodes.pdf";document.body.appendChild(l);l.click();l.remove();URL.revokeObjectURL(u);}).catch(e=>alert(e.message));
+}
 function deleteSelectedBooks(){
     const sel=Array.from(document.querySelectorAll(".book-row-check:checked")).map(x=>parseInt(x.value));
     if(!sel.length){alert("Select at least one book.");return;}
