@@ -484,6 +484,12 @@ def download_book_barcodes():
 
 @app.route('/download-barcodes', methods=['POST'])
 def download_barcodes():
+    """Print-ready Student ID Label Sheet.
+    Page: Letter (8.5x11in) Portrait, 0.5in margins, 3 labels/page, 1 column, centered.
+    Each label: 2.2in wide x 1.0in tall, HORIZONTAL layout — left 'Student Number: X'
+    (Arial 11pt black), right Code-128 horizontal barcode (0.5in bar height, human-readable
+    text below, generous quiet zone), 300 DPI. Thin black border per label, light gray
+    dotted divider between labels, white background, black only."""
     if not is_logged_in():
         return jsonify({"error": "Unauthorized"}), 401
     try:
@@ -492,62 +498,85 @@ def download_barcodes():
         id_numbers = list(dict.fromkeys(str(value).strip() for value in id_numbers if str(value).strip()))
         if not id_numbers:
             return jsonify({"error": "Please select at least one student."}), 400
-        page_size = (round(210 / 25.4 * 300), round(297 / 25.4 * 300))
-        columns = 4
-        rows = 11
-        box_width = round(60 / 25.4 * 300)
-        box_height = round(30 / 25.4 * 300)
-        gap = round(2 / 25.4 * 300)
-        grid_width = columns * box_width + (columns - 1) * gap
-        grid_height = rows * box_height + (rows - 1) * gap
-        grid_left = (page_size[0] - grid_width) // 2
-        grid_top = (page_size[1] - grid_height) // 2
-        barcode_size = (round(56 / 25.4 * 300), round(18 / 25.4 * 300))
+
+        DPI = 300
+        IN = DPI  # pixels per inch
+        page_w, page_h = int(8.5 * IN), int(11 * IN)   # Letter, portrait
+        margin = int(0.5 * IN)                          # 0.5in margins all sides
+        label_w, label_h = int(2.2 * IN), int(1.0 * IN) # 2.2in x 1.0in per label
+        gap = int(0.15 * IN)                            # equal small spacing between labels
+        labels_per_page = 3                             # only 3 labels per page, 1 column
+        strip_h = labels_per_page * label_h + (labels_per_page - 1) * gap
+        usable_w = page_w - 2 * margin
+        usable_h = page_h - 2 * margin
+        strip_left = margin + (usable_w - label_w) // 2   # centered horizontally
+        strip_top = margin + (usable_h - strip_h) // 2    # centered vertically
+
+        # Font: Arial metric-compatible (Liberation Sans), 11pt
+        from PIL import ImageFont
+        font_paths = [
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ]
+        font_path = next((p for p in font_paths if os.path.exists(p)), None)
+        font_px = int(round(11 * DPI / 72))  # 11pt @300dpi ~ 46px
+        base_font = ImageFont.truetype(font_path, font_px) if font_path else ImageFont.load_default()
+
+        # Barcode box on the right of each label (1.25in wide x 0.85in tall; 0.5in bars + text below)
+        bc_box_w = int(1.25 * IN)
+        bc_box_h = int(0.85 * IN)
+        bc_left_in_label = label_w - bc_box_w - int(0.08 * IN)
+        bc_top_in_label = (label_h - bc_box_h) // 2
+
         pages = []
-        for page_start in range(0, len(id_numbers), columns * rows):
-            page = Image.new('RGB', page_size, 'white')
+        for page_start in range(0, len(id_numbers), labels_per_page):
+            page = Image.new('RGB', (page_w, page_h), 'white')
             draw = ImageDraw.Draw(page)
-            page_ids = id_numbers[page_start:page_start + columns * rows]
-            for index, id_number in enumerate(page_ids):
-                column = index % columns
-                row = index // columns
-                cell_left = grid_left + column * (box_width + gap)
-                cell_top = grid_top + row * (box_height + gap)
-                barcode_image = Image.open(BytesIO(base64.b64decode(generate_barcode_b64(id_number))))
-                barcode_image.thumbnail(barcode_size, Image.Resampling.LANCZOS)
-                barcode_left = cell_left + (box_width - barcode_image.width) // 2
-                barcode_top = cell_top + round(10 / 25.4 * 300)
-                page.paste(barcode_image, (barcode_left, barcode_top))
-                label = f"ID Number: {id_number}"
-                label_box = draw.textbbox((0, 0), label)
-                label_width = label_box[2] - label_box[0]
-                draw.text(
-                    (cell_left + (box_width - label_width) // 2, cell_top + round(2 / 25.4 * 300)),
-                    label,
-                    fill='black'
-                )
-            for column in range(columns):
-                for row in range(rows):
-                    cell_left = grid_left + column * (box_width + gap)
-                    cell_top = grid_top + row * (box_height + gap)
-                    draw.rectangle(
-                        (cell_left, cell_top, cell_left + box_width, cell_top + box_height),
-                        outline='black',
-                        width=3,
-                    )
+            page_ids = id_numbers[page_start:page_start + labels_per_page]
+            for i, id_number in enumerate(page_ids):
+                x0 = strip_left
+                y0 = strip_top + i * (label_h + gap)
+                x1 = x0 + label_w
+                y1 = y0 + label_h
+                # thin black border around each label (aligned edges form outer strip border)
+                draw.rectangle((x0, y0, x1, y1), outline='black', width=3)
+                # light gray dotted divider line in the gap between labels
+                if i > 0:
+                    dy = y0 - gap // 2
+                    dash = int(0.06 * IN); spc = int(0.05 * IN)
+                    dx = x0 + int(0.1 * IN)
+                    while dx < x1 - int(0.1 * IN):
+                        draw.line((dx, dy, min(dx + dash, x1 - int(0.1 * IN)), dy), fill=(180, 180, 180), width=3)
+                        dx += dash + spc
+                # Left side: "Student Number: [ID]" — Arial 11pt, black, vertically centered
+                text = "Student Number: " + id_number
+                f = base_font
+                max_text_w = int(0.95 * IN)
+                while font_path and draw.textlength(text, font=f) > max_text_w and f.size > 18:
+                    f = ImageFont.truetype(font_path, f.size - 2)
+                tbox = draw.textbbox((0, 0), text, font=f)
+                th = tbox[3] - tbox[1]
+                tx = x0 + int(0.12 * IN)
+                ty = y0 + (label_h - th) // 2 - tbox[1]
+                draw.text((tx, ty), text, fill='black', font=f)
+                # Right side: Code-128 HORIZONTAL barcode (300 DPI, quiet zone, text below)
+                bc_img = Image.open(BytesIO(base64.b64decode(generate_barcode_b64(id_number))))
+                bc_img.thumbnail((bc_box_w, bc_box_h), Image.Resampling.LANCZOS)
+                bcx = x0 + bc_left_in_label + (bc_box_w - bc_img.width) // 2
+                bcy = y0 + bc_top_in_label + (bc_box_h - bc_img.height) // 2
+                page.paste(bc_img, (bcx, bcy))
             pages.append(page)
+
         output = BytesIO()
-        pages[0].save(output, format='PDF', resolution=300.0, save_all=True, append_images=pages[1:])
+        pages[0].save(output, format='PDF', resolution=float(DPI), save_all=True, append_images=pages[1:])
         output.seek(0)
         response = make_response(output.getvalue())
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = 'attachment; filename="user_barcodes.pdf"'
+        response.headers['Content-Disposition'] = 'attachment; filename="student_id_labels.pdf"'
         return response
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-
-
-
 
 @app.route('/delete-students', methods=['POST'])
 def delete_students():
@@ -3399,8 +3428,8 @@ function printSelectedBarcodes(){
     const sel=Array.from(document.querySelectorAll(".student-row-check:checked")).map(x=>x.value);
     if(!sel.length){alert("Please select at least one user.");return;}
     const w=window.open("","_blank","width=600,height=800");if(!w){alert("Allow pop-ups.");return;}
-    const m=sel.map(id=>'<section class="bi"><div>ID Number: '+id+'</div><img src="/barcode/'+encodeURIComponent(id)+'"></section>').join("");
-    w.document.write('<!DOCTYPE html><html><head><style>*{box-sizing:border-box}@page{size:A4;margin:1mm}body{font-family:Arial;text-align:center;display:grid;grid-template-columns:repeat(4,60mm);grid-auto-rows:28mm;gap:2mm;justify-content:center}.bi{width:60mm;height:28mm;border:1px solid #000;font-size:8pt;display:flex;flex-direction:column;align-items:center;padding:1mm 0}.bi img{width:60mm;height:18mm;object-fit:contain;image-rendering:crisp-edges;margin:1mm auto 0;display:block}</style></head><body>'+m+'</body></html>');
+    const m=sel.map(id=>'<section class="bi"><div class="lbl">Student Number: '+id+'</div><img src="/barcode/'+encodeURIComponent(id)+'"></section>').join("");
+    w.document.write('<!DOCTYPE html><html><head><style>*{box-sizing:border-box}@page{size:Letter portrait;margin:0.5in}body{font-family:Arial,sans-serif;margin:0;display:grid;grid-template-columns:2.2in;grid-auto-rows:1.0in;gap:0.15in;justify-content:center;align-content:center;min-height:100vh;padding:0}.bi{width:2.2in;height:1.0in;border:1px solid #000;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0.08in;background:#fff}.bi .lbl{font-family:Arial,sans-serif;font-size:11pt;color:#000;width:1.0in;text-align:left;word-break:break-word}.bi img{width:1.1in;height:0.85in;object-fit:contain;image-rendering:crisp-edges;display:block}</style></head><body>'+m+'</body></html>');
     w.document.close();const imgs=w.document.images;let n=0;const pw=()=>{n++;if(n===imgs.length)w.print();};Array.from(imgs).forEach(i=>{i.onload=pw;i.onerror=pw;});
 }
 function downloadSelectedBarcodes(){
