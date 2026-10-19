@@ -1368,6 +1368,7 @@ LOGIN_PAGE = """<!DOCTYPE html>
     </style>
 </head>
 <body>
+
     <div class="site-header">
         <img class="seal" src="__SLSU_LOGO__" alt="SLSU Official Seal">
         <div class="header-text">
@@ -1401,6 +1402,7 @@ LOGIN_PAGE = """<!DOCTYPE html>
         <br>SLSU-JGE Library Management System © 2026
     </div>
     <script>
+window.onerror=function(msg,src,line,col,err){var b=document.createElement('div');b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#a52b2b;color:#fff;padding:12px 18px;font-family:Arial;font-size:13px;line-height:1.5;box-shadow:0 2px 10px rgba(0,0,0,.4);word-break:break-word;';b.innerHTML='<strong>JS ERROR (screenshot & send to dev):</strong><br>'+msg+' (line '+line+')';document.body.appendChild(b);return false;};
         function togglePassword(){
             const p = document.getElementById('login-password');
             const open = document.getElementById('eye-open');
@@ -1833,6 +1835,7 @@ button{{padding:11px 26px;font-size:14px;cursor:pointer;background:#1b2a41;color
 @media print{{button{{display:none;}}body{{padding:0;}}}}
 </style>
 </head><body>
+
 <div class="report-header">
 <h1>Monthly Attendance Report — {month}</h1>
 <p class="meta">SLSU–JGE Library Management System &nbsp;•&nbsp; Generated: {get_ph_date()} {get_ph_time()}</p>
@@ -1969,6 +1972,7 @@ STUDENT_FRONTEND = """
     </style>
 </head>
 <body>
+
     <div class="container">
         <div class="card">
             <div class="card-top"></div>
@@ -2058,6 +2062,7 @@ STUDENT_FRONTEND = """
         </div>
     </div>
 <script>
+window.onerror=function(msg,src,line,col,err){var b=document.createElement('div');b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#a52b2b;color:#fff;padding:12px 18px;font-family:Arial;font-size:13px;line-height:1.5;box-shadow:0 2px 10px rgba(0,0,0,.4);word-break:break-word;';b.innerHTML='<strong>JS ERROR (screenshot & send to dev):</strong><br>'+msg+' (line '+line+')';document.body.appendChild(b);return false;};
 const MAJORS = {
     "BSBA": ["Marketing Management", "Financial Management"],
     "BSED": ["English", "Mathematics", "Science"],
@@ -2072,7 +2077,7 @@ function logout(e){
 function downloadUserBarcode(){
     const barcodeImage = document.getElementById("barcode-img");
     const idNumber = document.getElementById("barcode-id").textContent.replace("ID Number: ", "").trim();
-    if(!barcodeImage.src || !idNumber) return;
+    if(!barcodeImage.src || !idNumber){alert('Register first (Register & Generate Barcode) — then the barcode will be available to download.');return;}
     const link = document.createElement("a");
     link.href = barcodeImage.src;
     link.download = "barcode_" + idNumber + ".png";
@@ -2259,6 +2264,7 @@ USER_FRONTEND = """
     </style>
 </head>
 <body>
+
     <div class="topnav">
         <div class="brand">
             <div class="brand-mark">SLSU<br>JGE</div>
@@ -2447,6 +2453,7 @@ USER_FRONTEND = """
         </div>
     </div>
 <script>
+window.onerror=function(msg,src,line,col,err){var b=document.createElement('div');b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#a52b2b;color:#fff;padding:12px 18px;font-family:Arial;font-size:13px;line-height:1.5;box-shadow:0 2px 10px rgba(0,0,0,.4);word-break:break-word;';b.innerHTML='<strong>JS ERROR (screenshot & send to dev):</strong><br>'+msg+' (line '+line+')';document.body.appendChild(b);return false;};
 const MAJORS = {"BSBA":["Marketing Management","Financial Management"],"BSED":["English","Mathematics","Science"],"CT":["Computer Technology","Food Technology","BINDTECH","CULINARY"]};
 const STAFF_TABS = ["scan","daily","borrowed","search","register"];
 let scanState = "idle";          // idle | awaiting_borrower
@@ -2584,7 +2591,7 @@ function renderBookDetail(data){
           '<label><input type="checkbox" id="outside-borrow-check"> Outside Borrow (take home)</label>' +
           '<span class="borrow-type-hint">Unchecked = Inside Reading (in-library only). If checked, the Privacy &amp; Terms Agreement will appear before recording.</span>' +
           '</div>' +
-          '<div id="awaiting-box" style="display:block;" class="awaiting-box">Now scan the borrower\'s Student/Employee/Visitor ID barcode...</div>'
+          '<div id="awaiting-box" style="display:block;" class="awaiting-box">Now scan the borrower&apos;s Student/Employee/Visitor ID barcode...</div>'
         : '<p style="color:#8a1f1f;font-weight:600;margin-top:10px;">No copies available — cannot borrow.</p>';
     panel.innerHTML = '<div class="book-detail">' +
         '<h3>'+b.title+' '+statusBadge+'</h3>' +
@@ -2698,7 +2705,7 @@ function renderSearchResults(books, title){
 function downloadUserBarcode(){
     const barcodeImage = document.getElementById("barcode-img");
     const idNumber = document.getElementById("barcode-id").textContent.replace("ID Number: ", "").trim();
-    if(!barcodeImage.src || !idNumber) return;
+    if(!barcodeImage.src || !idNumber){alert('Register first (Register & Generate Barcode) — then the barcode will be available to download.');return;}
     const link = document.createElement("a");
     link.href = barcodeImage.src;
     link.download = "barcode_" + idNumber + ".png";
@@ -2964,6 +2971,7 @@ ADMIN_FRONTEND = """
     </style>
 </head>
 <body>
+
     <div class="app-container">
         <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
         <div class="sidebar" id="sidebar">
@@ -3222,6 +3230,7 @@ ADMIN_FRONTEND = """
         </div>
     </div>
 <script>
+window.onerror=function(msg,src,line,col,err){var b=document.createElement('div');b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#a52b2b;color:#fff;padding:12px 18px;font-family:Arial;font-size:13px;line-height:1.5;box-shadow:0 2px 10px rgba(0,0,0,.4);word-break:break-word;';b.innerHTML='<strong>JS ERROR (screenshot & send to dev):</strong><br>'+msg+' (line '+line+')';document.body.appendChild(b);return false;};
 const MAJORS = {"BSBA":["Marketing Management","Financial Management"],"BSED":["English","Mathematics","Science"],"CT":["Computer Technology","Food Technology","BINDTECH","CULINARY"]};
 const PAGE_TITLES = {scan:"Scan / Attendance",students:"Registered Users — Full Access",records:"Daily Attendance Records",history:"Monthly Attendance History",books:"Manage Books — Barcode Scan & Generate",bookrecords:"Book Borrow Records",overdue:"Overdue Books — Email Reminders",export:"Export & Print Reports",privacy:"Privacy Policy"};
 const MENU_ORDER = ["scan","students","records","history","books","bookrecords","overdue","export","privacy"];
@@ -3341,7 +3350,7 @@ function renderAdminBookDetail(data){
           '<label><input type="checkbox" id="outside-borrow-check"> Outside Borrow (take home)</label>'+
           '<span class="borrow-type-hint">Unchecked = Inside Reading (in-library only). If checked, the Privacy &amp; Terms Agreement will appear before recording.</span>'+
           '</div>'+
-          '<div id="admin-awaiting" style="display:block;" class="awaiting-box">Now scan the borrower\'s Student/Employee/Visitor ID barcode...</div>'
+          '<div id="admin-awaiting" style="display:block;" class="awaiting-box">Now scan the borrower&apos;s Student/Employee/Visitor ID barcode...</div>'
         : '<p style="color:#8a1f1f;font-weight:600;margin-top:10px;">No copies available — cannot borrow.</p>';
     panel.innerHTML='<div class="book-detail"><h3>'+b.title+' '+badge+'</h3>'+
         '<div class="book-meta">'+
@@ -3526,9 +3535,9 @@ function deleteSelectedBooks(){
 }
 function editBook(id){const b=allBooks.find(x=>x.id===id);if(!b)return;document.getElementById("book-edit-id").value=b.id;document.getElementById("book-edit-title").value=b.title;document.getElementById("book-edit-author").value=b.author||"";document.getElementById("book-edit-isbn").value=b.isbn||"";document.getElementById("book-edit-category").value=b.category||"";document.getElementById("book-edit-shelf").value=b.shelf_location||"";document.getElementById("book-edit-qty").value=b.quantity;document.getElementById("book-edit-barcode").value=b.barcode_number||"";document.getElementById("book-edit-modal").classList.remove("hidden");}
 function hideBookEdit(){document.getElementById("book-edit-modal").classList.add("hidden");document.getElementById("book-edit-form").reset();}
-function printBookQR(){if(!lastBookQRCode)return;const w=window.open("","_blank","width=400,height=500");if(!w){alert("Allow pop-ups.");return;}w.document.write('<!DOCTYPE html><html><head><title>Book QR</title><style>body{font-family:Arial;text-align:center;padding:20px}img{width:200px;height:200px}h2{font-size:14px}</style></head><body><h2>'+lastBookQRCode+'</h2><img src="/book-qr/'+encodeURIComponent(lastBookQRCode)+'" onload="window.print()"></body></html>');w.document.close();}
-function downloadBookQR(){if(!lastBookQRCode)return;window.location.href="/book-qr/"+encodeURIComponent(lastBookQRCode);}
-function downloadBookBarcode(){if(!lastBookBarcode)return;window.location.href="/book-barcode/"+encodeURIComponent(lastBookBarcode);}
+function printBookQR(){if(!lastBookQRCode){alert('Register a book first (Register Book & Generate QR) — then the QR will be available to print.');return;}const w=window.open("","_blank","width=400,height=500");if(!w){alert("Allow pop-ups.");return;}w.document.write('<!DOCTYPE html><html><head><title>Book QR</title><style>body{font-family:Arial;text-align:center;padding:20px}img{width:200px;height:200px}h2{font-size:14px}</style></head><body><h2>'+lastBookQRCode+'</h2><img src="/book-qr/'+encodeURIComponent(lastBookQRCode)+'" onload="window.print()"></body></html>');w.document.close();}
+function downloadBookQR(){if(!lastBookQRCode){alert('Register a book first — then the QR will be available to download.');return;}window.location.href="/book-qr/"+encodeURIComponent(lastBookQRCode);}
+function downloadBookBarcode(){if(!lastBookBarcode){alert('Register a book first — then its barcode will be available to download.');return;}window.location.href="/book-barcode/"+encodeURIComponent(lastBookBarcode);}
 function loadBorrowRecords(){
     const date=document.getElementById("br-date")?.value||"";
     const borrower=document.getElementById("br-borrower")?.value||"";
