@@ -313,18 +313,16 @@ def send_overdue_reminder(to_email, borrower_name, book_title, access_code, borr
 #  BARCODE / QR GENERATORS  (high-contrast, scanner-friendly, 300 DPI)
 # ============================================================
 def generate_barcode_b64(id_number):
-    """Create a 48 mm Code128 symbol with 38 mm bars, 5 mm quiet zones and 20 mm bars."""
+    """Create a text-free 48 mm Code128 symbol with 38 mm bars and 5 mm quiet zones."""
     code128 = barcode.get_barcode_class("code128")
     code = code128(str(id_number), writer=ImageWriter())
     module_count = len(code.build()[0])
     image = code.render({
         "module_width": 38.0 / module_count,
         "module_height": 20.0,
-        "font_size": 11,
-        "text_distance": 4.0,
         "quiet_zone": 5.0,
         "center_text": True,
-        "write_text": True,
+        "write_text": False,
         "dpi": 300,
     }).convert("RGB")
     buffered = BytesIO()
@@ -1270,140 +1268,69 @@ def privacy_policy():
     return render_template_string(PRIVACY_PAGE)
 
 
-# ---- Shared login page markup (redesigned to match SLSU-JGE header + dark translucent card) ----
+# ---- Shared login page markup ----
 LOGIN_PAGE = """<!DOCTYPE html>
 <html>
 <head>
-    <title>Sign In — Library Management System</title>
+    <title>Login — SLSU-JGE Library Management System</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/png" href="/static/app-icon.png">
     <link rel="apple-touch-icon" href="/static/app-icon.png">
-    <meta name="theme-color" content="#0b5d2b">
+    <meta name="theme-color" content="#10243b">
     <style>
-        *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;}
-        body{
-            background:#0f1c30 url('/static/jge.jpg') center/cover no-repeat fixed;
-            min-height:100vh;display:flex;flex-direction:column;position:relative;overflow-x:hidden;
-        }
-        /* Dark overlay over background image so text stays readable */
-        body:before{content:"";position:fixed;inset:0;background:rgba(8,16,28,.55);z-index:0;}
-        /* ===== Top green institutional header (SLSU-JGE) ===== */
-        .site-header{
-            position:relative;z-index:2;background:linear-gradient(180deg,#0e6b34,#0a5227);
-            color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:center;gap:16px;
-            box-shadow:0 2px 10px rgba(0,0,0,.35);border-bottom:2px solid #e8c766;
-        }
-        .seal{
-            width:52px;height:52px;flex:0 0 52px;object-fit:contain;
-            border-radius:8px;background:#fff;padding:3px;
-            box-shadow:0 1px 4px rgba(0,0,0,.25);
-        }
-        @media(max-width:520px){.seal{width:42px;height:42px;flex:0 0 42px;}}
-        .header-text{text-align:center;max-width:720px;}
-        .header-text h1{font-family:Georgia,'Times New Roman',serif;font-size:17px;font-weight:700;line-height:1.25;word-break:break-word;}
-        .header-text p{font-size:12px;margin-top:3px;color:#d9e8dd;letter-spacing:.4px;}
-        .login-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:34px 16px;position:relative;z-index:1;}
-        /* ===== Dark translucent rounded card ===== */
-        .login-card{
-            width:100%;max-width:420px;background:rgba(15,23,42,.72);
-            border:1px solid rgba(255,255,255,.18);border-radius:18px;
-            backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-            padding:38px 32px 30px;box-shadow:0 14px 40px rgba(0,0,0,.45);
-        }
-        .login-card h2{
-            color:#fff;font-family:Georgia,'Times New Roman',serif;font-size:34px;font-weight:700;
-            margin-bottom:26px;letter-spacing:.5px;
-        }
-        .field{margin-bottom:18px;position:relative;}
-        .field input{
-            width:100%;padding:15px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.28);
-            background:rgba(255,255,255,.10);color:#fff;font-size:15px;transition:border-color .2s,background .2s;
-        }
-        .field input::placeholder{color:rgba(255,255,255,.65);}
-        .field input:focus{outline:none;border-color:#e8c766;background:rgba(255,255,255,.16);}
-        .field input[type="password"]{padding-right:48px;}
-        .eye-btn{
-            position:absolute;right:10px;top:50%;transform:translateY(-50%);
-            background:transparent;border:none;cursor:pointer;padding:6px;color:rgba(255,255,255,.75);
-            display:flex;align-items:center;justify-content:center;
-        }
-        .eye-btn:hover{color:#fff;}
-        .forgot-row{text-align:right;margin:-6px 0 20px;}
-        .forgot-row a{color:#e8c766;font-size:13px;text-decoration:underline;cursor:pointer;}
-        .forgot-row a:hover{color:#fff;}
-        .signin-btn{
-            width:100%;padding:14px;background:#3b82f6;border:none;border-radius:10px;color:#fff;
-            font-size:16px;font-weight:700;cursor:pointer;letter-spacing:.4px;transition:background .2s,transform .1s;
-        }
-        .signin-btn:hover{background:#2563eb;}
-        .signin-btn:active{transform:scale(.99);}
-        .create-row{text-align:center;margin-top:18px;}
-        .create-row a{color:#fff;font-size:14px;text-decoration:underline;cursor:pointer;}
-        .create-row a:hover{color:#e8c766;}
-        .error-box{
-            background:rgba(192,57,43,.18);border:1px solid rgba(231,76,60,.5);color:#ffd7d0;
-            padding:12px 14px;border-radius:8px;margin-bottom:18px;font-size:13px;word-break:break-word;
-        }
-        .footer-note{
-            position:relative;z-index:2;text-align:center;color:rgba(255,255,255,.75);
-            font-size:12px;padding:14px 16px 22px;
-        }
-        .footer-note a{color:#e8c766;text-decoration:none;margin:0 6px;}
-        .footer-note a:hover{text-decoration:underline;}
-        @media(max-width:520px){
-            .seal{width:42px;height:42px;flex:0 0 42px;font-size:8px;}
-            .header-text h1{font-size:14px;}
-            .header-text p{font-size:11px;}
-            .login-card{padding:30px 22px 24px;}
-            .login-card h2{font-size:28px;}
-            .field input{font-size:16px;}
-        }
+        *{box-sizing:border-box}
+        html,body{width:100%;min-height:100%;margin:0}
+        body{min-height:100vh;min-height:100svh;display:flex;flex-direction:column;position:relative;isolation:isolate;overflow:hidden;background:#10243b;color:#fff;font-family:'Segoe UI',Arial,sans-serif}
+        body:before,body:after{content:"";position:fixed;inset:-24px;pointer-events:none}
+        body:before{z-index:-2;background:#10243b url('/static/jge.jpg') center/cover no-repeat;filter:blur(3px) saturate(1.08);transform:scale(1.045);animation:background-drift 28s ease-in-out infinite alternate}
+        body:after{z-index:-1;background:linear-gradient(120deg,rgba(7,20,39,.7),rgba(12,39,65,.35) 48%,rgba(7,20,39,.62)),radial-gradient(ellipse at 18% 18%,rgba(123,229,255,.32),transparent 38%),radial-gradient(ellipse at 82% 70%,rgba(71,157,226,.25),transparent 42%)}
+        @keyframes background-drift{from{transform:scale(1.045) translate3d(-.5%,0,0)}to{transform:scale(1.085) translate3d(.5%,-.4%,0)}}
+        .site-header{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:15px;padding:18px 24px;background:rgba(10,28,49,.74);border-bottom:1px solid rgba(143,225,255,.42);box-shadow:0 8px 28px rgba(3,15,30,.22);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+        .seal{width:54px;height:54px;flex:0 0 54px;object-fit:contain;border-radius:50%;background:rgba(255,255,255,.96);padding:3px;box-shadow:0 0 0 1px rgba(174,237,255,.6),0 5px 18px rgba(0,0,0,.25)}
+        .header-text{text-align:center;max-width:760px}
+        .header-text h1{margin:0;font-family:Georgia,'Times New Roman',serif;font-size:clamp(15px,2vw,19px);font-weight:700;line-height:1.3;letter-spacing:.15px}
+        .header-text p{margin:4px 0 0;color:#bcefff;font-size:12px;letter-spacing:1.3px;text-transform:uppercase}
+        .login-wrap{position:relative;z-index:1;flex:1;display:flex;align-items:center;justify-content:center;padding:32px 18px}
+        .login-card{position:relative;width:min(100%,390px);padding:34px;background:linear-gradient(145deg,rgba(230,248,255,.2),rgba(177,221,245,.08) 48%,rgba(16,43,70,.28));border:1px solid rgba(224,247,255,.46);border-radius:22px;backdrop-filter:blur(20px) saturate(145%);-webkit-backdrop-filter:blur(20px) saturate(145%);box-shadow:0 28px 80px rgba(3,15,30,.42),inset 0 1px 0 rgba(255,255,255,.42);transform:perspective(1000px) translateZ(0)}
+        .login-card:before{content:"";position:absolute;inset:0 12% auto;height:1px;background:linear-gradient(90deg,transparent,rgba(221,249,255,.9),transparent);pointer-events:none}
+        .field{margin:0 0 16px}
+        .field:last-of-type{margin-bottom:22px}
+        .field-label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+        .field input{display:block;width:100%;min-height:54px;padding:15px 17px;border:1px solid rgba(220,244,255,.44);border-radius:12px;background:rgba(9,29,51,.38);color:#fff;font:500 16px 'Segoe UI',Arial,sans-serif;box-shadow:inset 0 1px 2px rgba(3,17,32,.18);transition:border-color .2s,background .2s,box-shadow .2s}
+        .field input::placeholder{color:rgba(228,247,255,.76)}
+        .field input:focus{outline:none;border-color:#8ce6ff;background:rgba(8,33,56,.56);box-shadow:0 0 0 3px rgba(110,218,255,.2),inset 0 1px 2px rgba(3,17,32,.16)}
+        .signin-btn{width:100%;min-height:54px;padding:14px 18px;border:1px solid rgba(194,244,255,.65);border-radius:12px;background:linear-gradient(135deg,#4ab9e4,#278acb 58%,#2476b5);color:#fff;font:700 16px 'Segoe UI',Arial,sans-serif;letter-spacing:.3px;cursor:pointer;box-shadow:0 10px 24px rgba(16,112,166,.32),inset 0 1px 0 rgba(255,255,255,.3);transition:filter .2s,transform .15s,box-shadow .2s}
+        .signin-btn:hover{filter:brightness(1.08);box-shadow:0 13px 28px rgba(16,112,166,.4),inset 0 1px 0 rgba(255,255,255,.34)}
+        .signin-btn:active{transform:translateY(1px)}
+        .signin-btn:focus-visible{outline:3px solid #c4f3ff;outline-offset:3px}
+        .error-box{margin:0 0 18px;padding:12px 14px;border:1px solid rgba(255,153,153,.55);border-radius:10px;background:rgba(116,27,40,.42);color:#fff0f0;font-size:14px;line-height:1.45;word-break:break-word}
+        @media(max-width:520px){.site-header{gap:11px;padding:15px 14px}.seal{width:44px;height:44px;flex-basis:44px}.header-text h1{font-size:14px}.header-text p{font-size:10px;letter-spacing:1px}.login-wrap{padding:24px 18px}.login-card{padding:28px 22px;border-radius:18px}}
+        @media(max-height:520px){body{overflow:auto}.login-wrap{flex:none;padding:22px 18px}.site-header{padding-top:10px;padding-bottom:10px}.seal{width:40px;height:40px;flex-basis:40px}}
+        @media(prefers-reduced-motion:reduce){body:before{animation:none}.signin-btn{transition:none}}
     </style>
 </head>
 <body>
-
     <div class="site-header">
         <img class="seal" src="__SLSU_LOGO__" alt="SLSU Official Seal">
         <div class="header-text">
             <h1>Southern Luzon State University – Judge Guillermo Eleazar</h1>
             <p>Library Management System</p>
         </div>
-        <img class="seal" src="__SLSU_LOGO__" alt="SLSU-JGE Campus Seal">
     </div>
     <div class="login-wrap">
-        <form class="login-card" method="POST" action="/login">
-            <h2>Sign In</h2>
+        <form class="login-card" method="POST" action="/login" aria-label="Login">
             __ERROR__
             <div class="field">
-                <input type="text" name="username" required placeholder="Username" autocomplete="username">
+                <label class="field-label" for="login-username">Username</label>
+                <input type="text" id="login-username" name="username" required placeholder="Username" autocomplete="username">
             </div>
             <div class="field">
+                <label class="field-label" for="login-password">Password</label>
                 <input type="password" name="password" id="login-password" required placeholder="Password" autocomplete="current-password">
-                <button type="button" class="eye-btn" onclick="togglePassword()" aria-label="Show password">
-                    <svg id="eye-open" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    <svg id="eye-closed" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                </button>
             </div>
-            <div class="forgot-row"><a href="javascript:void(0)" onclick="alert('Please approach the SLSU-JGE Librarian to reset your account.')">Forgot password?</a></div>
-            <button type="submit" class="signin-btn">Sign In</button>
-            <div class="create-row"><a href="javascript:void(0)" onclick="alert('Account creation is done at the library. Please approach the SLSU-JGE Librarian to register.')">Create an account</a></div>
+            <button type="submit" class="signin-btn">Log In</button>
         </form>
     </div>
-    <div class="footer-note">
-        <a href="/privacy" target="_blank">Privacy Policy</a> ·
-        <a href="javascript:void(0)" onclick="alert('Please approach the SLSU-JGE Librarian.')">Terms and Conditions</a>
-        <br>SLSU-JGE Library Management System © 2026
-    </div>
-    <script>
-window.onerror=function(msg,src,line,col,err){var b=document.createElement('div');b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#a52b2b;color:#fff;padding:12px 18px;font-family:Arial;font-size:13px;line-height:1.5;box-shadow:0 2px 10px rgba(0,0,0,.4);word-break:break-word;';b.innerHTML='<strong>JS ERROR (screenshot & send to dev):</strong><br>'+msg+' (line '+line+')';document.body.appendChild(b);return false;};
-        function togglePassword(){
-            const p = document.getElementById('login-password');
-            const open = document.getElementById('eye-open');
-            const closed = document.getElementById('eye-closed');
-            if(p.type === 'password'){ p.type = 'text'; open.style.display='none'; closed.style.display='block'; }
-            else { p.type = 'password'; open.style.display='block'; closed.style.display='none'; }
-        }
-    </script>
 </body>
 </html>"""
 
@@ -2069,7 +1996,7 @@ function logout(e){
 }
 function downloadUserBarcode(){
     const barcodeImage = document.getElementById("barcode-img");
-    const idNumber = document.getElementById("barcode-id").textContent.replace("ID Number: ", "").trim();
+    const idNumber = document.getElementById("barcode-id").textContent.replace("Student Number: ", "").trim();
     if(!barcodeImage.src || !idNumber){alert('Register first (Register & Generate Barcode) — then the barcode will be available to download.');return;}
     const link = document.createElement("a");
     link.href = barcodeImage.src;
@@ -2113,7 +2040,7 @@ document.addEventListener("DOMContentLoaded", function(){
         .then(res=>res.json()).then(data=>{
             if(data.success){
                 document.getElementById("barcode-result").style.display="block";
-                document.getElementById("barcode-id").textContent="ID Number: " + (data.id_number || formData.get("id_number"));
+                document.getElementById("barcode-id").textContent="Student Number: " + (data.id_number || formData.get("id_number"));
                 document.getElementById("barcode-img").src="data:image/png;base64,"+data.barcode;
                 form.reset();
                 document.getElementById("dept-select").value="";
@@ -2697,7 +2624,7 @@ function renderSearchResults(books, title){
 }
 function downloadUserBarcode(){
     const barcodeImage = document.getElementById("barcode-img");
-    const idNumber = document.getElementById("barcode-id").textContent.replace("ID Number: ", "").trim();
+    const idNumber = document.getElementById("barcode-id").textContent.replace("Student Number: ", "").trim();
     if(!barcodeImage.src || !idNumber){alert('Register first (Register & Generate Barcode) — then the barcode will be available to download.');return;}
     const link = document.createElement("a");
     link.href = barcodeImage.src;
@@ -2741,7 +2668,7 @@ document.addEventListener("DOMContentLoaded", function(){
         .then(res=>res.json()).then(data=>{
             if(data.success){
                 document.getElementById("barcode-result").style.display="block";
-                document.getElementById("barcode-id").textContent="ID Number: " + (data.id_number || formData.get("id_number"));
+                document.getElementById("barcode-id").textContent="Student Number: " + (data.id_number || formData.get("id_number"));
                 document.getElementById("barcode-img").src="data:image/png;base64,"+data.barcode;
                 form.reset();
                 document.getElementById("dept-select").value="";
