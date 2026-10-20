@@ -415,9 +415,7 @@ def book_barcode_image(barcode_number):
 
 @app.route('/download-book-barcodes', methods=['POST'])
 def download_book_barcodes():
-    """Bulk download selected books' barcodes as a print-ready PDF (A4 grid).
-    Uses barcode_number if set, otherwise the access_code. Each cell shows the
-    book title + code above the barcode, like the user barcode sheet."""
+    """Bulk download selected books' barcodes as an A4 PDF with 15 large labels per page."""
     if not is_logged_in():
         return jsonify({"error": "Unauthorized"}), 401
     try:
@@ -432,27 +430,41 @@ def download_book_barcodes():
         c.execute("SELECT id, access_code, title, barcode_number FROM books WHERE id = ANY(%s) ORDER BY id", (book_ids,))
         books = c.fetchall()
         conn.close()
+        if not books:
+            return jsonify({"error": "No selected books were found."}), 404
         # barcode to print = barcode_number if present, else access_code
         items = []
         for bid, access_code, title, bc in books:
             code = (bc or "").strip() or access_code
             items.append((code, title or ""))
-        page_size = (round(210 / 25.4 * 300), round(297 / 25.4 * 300))
-        columns = 4
-        rows = 10
-        box_width = round(48 / 25.4 * 300)
-        box_height = round(32 / 25.4 * 300)
-        gap = round(2 / 25.4 * 300)
+        DPI = 300
+        page_size = (round(210 / 25.4 * DPI), round(297 / 25.4 * DPI))
+        columns = 3
+        rows = 5
+        box_width = round(62 / 25.4 * DPI)
+        box_height = round(52 / 25.4 * DPI)
+        gap = round(2 / 25.4 * DPI)
         grid_width = columns * box_width + (columns - 1) * gap
         grid_height = rows * box_height + (rows - 1) * gap
         grid_left = (page_size[0] - grid_width) // 2
         grid_top = (page_size[1] - grid_height) // 2
-        barcode_size = (round(44 / 25.4 * 300), round(16 / 25.4 * 300))
+        barcode_size = (round(58 / 25.4 * DPI), round(36 / 25.4 * DPI))
+        from PIL import ImageFont
+        font_paths = [
+            "C:/Windows/Fonts/arial.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ]
+        font_path = next((path for path in font_paths if os.path.exists(path)), None)
+        title_font = ImageFont.truetype(font_path, round(8 * DPI / 72)) if font_path else ImageFont.load_default()
+        code_font = ImageFont.truetype(font_path, round(9 * DPI / 72)) if font_path else ImageFont.load_default()
         pages = []
-        for page_start in range(0, len(items), columns * rows):
+        labels_per_page = columns * rows
+        for page_start in range(0, len(items), labels_per_page):
             page = Image.new('RGB', page_size, 'white')
             draw = ImageDraw.Draw(page)
-            page_items = items[page_start:page_start + columns * rows]
+            page_items = items[page_start:page_start + labels_per_page]
             for index, (code, title) in enumerate(page_items):
                 column = index % columns
                 row = index // columns
@@ -461,14 +473,18 @@ def download_book_barcodes():
                 bc_img = Image.open(BytesIO(base64.b64decode(generate_barcode_b64(code))))
                 bc_img.thumbnail(barcode_size, Image.Resampling.LANCZOS)
                 bc_left = cell_left + (box_width - bc_img.width) // 2
-                bc_top = cell_top + round(12 / 25.4 * 300)
+                bc_top = cell_top + round(15 / 25.4 * DPI)
                 page.paste(bc_img, (bc_left, bc_top))
-                title_label = title if len(title) <= 26 else title[:23] + "..."
-                code_label = "Code: " + code
-                for li, lab in enumerate([title_label, code_label]):
-                    lb = draw.textbbox((0, 0), lab)
-                    lw = lb[2] - lb[0]
-                    draw.text((cell_left + (box_width - lw) // 2, cell_top + round(2 / 25.4 * 300) + li * round(3.5 / 25.4 * 300)), lab, fill='black')
+                title_label = title if len(title) <= 48 else title[:45] + "..."
+                for label, font, y in (
+                    (title_label, title_font, cell_top + round(2 / 25.4 * DPI)),
+                    ("Code: " + code, code_font, cell_top + round(8 / 25.4 * DPI)),
+                ):
+                    while font_path and draw.textlength(label, font=font) > box_width - round(4 / 25.4 * DPI) and font.size > 18:
+                        font = ImageFont.truetype(font_path, font.size - 2)
+                    bounds = draw.textbbox((0, 0), label, font=font)
+                    label_width = bounds[2] - bounds[0]
+                    draw.text((cell_left + (box_width - label_width) // 2 - bounds[0], y - bounds[1]), label, fill='black', font=font)
                 draw.rectangle((cell_left, cell_top, cell_left + box_width, cell_top + box_height), outline='black', width=3)
             pages.append(page)
         output = BytesIO()
@@ -485,11 +501,8 @@ def download_book_barcodes():
 @app.route('/download-barcodes', methods=['POST'])
 def download_barcodes():
     """Print-ready Student ID Label Sheet.
-    Page: Letter (8.5x11in) Portrait, 0.5in margins, 3 labels/page, 1 column, centered.
-    Each label: 2.2in wide x 1.0in tall, HORIZONTAL layout — left 'Student Number: X'
-    (Arial 11pt black), right Code-128 horizontal barcode (0.5in bar height, human-readable
-    text below, generous quiet zone), 300 DPI. Thin black border per label, light gray
-    dotted divider between labels, white background, black only."""
+    Page: Letter (8.5x11in) Portrait, 0.5in margins, 15 labels/page in a 3x5 grid.
+    Each label has the student number above a large Code-128 barcode, rendered at 300 DPI."""
     if not is_logged_in():
         return jsonify({"error": "Unauthorized"}), 401
     try:
@@ -503,31 +516,31 @@ def download_barcodes():
         IN = DPI  # pixels per inch
         page_w, page_h = int(8.5 * IN), int(11 * IN)   # Letter, portrait
         margin = int(0.5 * IN)                          # 0.5in margins all sides
-        label_w, label_h = int(2.2 * IN), int(1.0 * IN) # 2.2in x 1.0in per label
-        gap = int(0.15 * IN)                            # equal small spacing between labels
-        labels_per_page = 3                             # only 3 labels per page, 1 column
-        strip_h = labels_per_page * label_h + (labels_per_page - 1) * gap
-        usable_w = page_w - 2 * margin
-        usable_h = page_h - 2 * margin
-        strip_left = margin + (usable_w - label_w) // 2   # centered horizontally
-        strip_top = margin + (usable_h - strip_h) // 2    # centered vertically
+        label_w, label_h = int(2.4 * IN), int(1.9 * IN)
+        gap = int(0.1 * IN)
+        columns, rows = 3, 5
+        labels_per_page = columns * rows
+        grid_w = columns * label_w + (columns - 1) * gap
+        grid_h = rows * label_h + (rows - 1) * gap
+        grid_left = (page_w - grid_w) // 2
+        grid_top = (page_h - grid_h) // 2
 
-        # Font: Arial metric-compatible (Liberation Sans), 11pt
+        # Font: Arial metric-compatible (Liberation Sans), 10pt
         from PIL import ImageFont
         font_paths = [
+            "C:/Windows/Fonts/arial.ttf",
             "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
             "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         ]
         font_path = next((p for p in font_paths if os.path.exists(p)), None)
-        font_px = int(round(11 * DPI / 72))  # 11pt @300dpi ~ 46px
+        font_px = int(round(10 * DPI / 72))
         base_font = ImageFont.truetype(font_path, font_px) if font_path else ImageFont.load_default()
 
-        # Barcode box on the right of each label (1.25in wide x 0.85in tall; 0.5in bars + text below)
-        bc_box_w = int(1.25 * IN)
-        bc_box_h = int(0.85 * IN)
-        bc_left_in_label = label_w - bc_box_w - int(0.08 * IN)
-        bc_top_in_label = (label_h - bc_box_h) // 2
+        bc_box_w = int(2.2 * IN)
+        bc_box_h = int(1.4 * IN)
+        text_top = int(0.12 * IN)
+        bc_top = int(0.38 * IN)
 
         pages = []
         for page_start in range(0, len(id_numbers), labels_per_page):
@@ -535,37 +548,28 @@ def download_barcodes():
             draw = ImageDraw.Draw(page)
             page_ids = id_numbers[page_start:page_start + labels_per_page]
             for i, id_number in enumerate(page_ids):
-                x0 = strip_left
-                y0 = strip_top + i * (label_h + gap)
+                column = i % columns
+                row = i // columns
+                x0 = grid_left + column * (label_w + gap)
+                y0 = grid_top + row * (label_h + gap)
                 x1 = x0 + label_w
                 y1 = y0 + label_h
-                # thin black border around each label (aligned edges form outer strip border)
-                draw.rectangle((x0, y0, x1, y1), outline='black', width=3)
-                # light gray dotted divider line in the gap between labels
-                if i > 0:
-                    dy = y0 - gap // 2
-                    dash = int(0.06 * IN); spc = int(0.05 * IN)
-                    dx = x0 + int(0.1 * IN)
-                    while dx < x1 - int(0.1 * IN):
-                        draw.line((dx, dy, min(dx + dash, x1 - int(0.1 * IN)), dy), fill=(180, 180, 180), width=3)
-                        dx += dash + spc
-                # Left side: "Student Number: [ID]" — Arial 11pt, black, vertically centered
                 text = "Student Number: " + id_number
                 f = base_font
-                max_text_w = int(0.95 * IN)
+                max_text_w = label_w - int(0.2 * IN)
                 while font_path and draw.textlength(text, font=f) > max_text_w and f.size > 18:
                     f = ImageFont.truetype(font_path, f.size - 2)
                 tbox = draw.textbbox((0, 0), text, font=f)
-                th = tbox[3] - tbox[1]
-                tx = x0 + int(0.12 * IN)
-                ty = y0 + (label_h - th) // 2 - tbox[1]
+                text_w = tbox[2] - tbox[0]
+                tx = x0 + (label_w - text_w) // 2 - tbox[0]
+                ty = y0 + text_top - tbox[1]
                 draw.text((tx, ty), text, fill='black', font=f)
-                # Right side: Code-128 HORIZONTAL barcode (300 DPI, quiet zone, text below)
                 bc_img = Image.open(BytesIO(base64.b64decode(generate_barcode_b64(id_number))))
                 bc_img.thumbnail((bc_box_w, bc_box_h), Image.Resampling.LANCZOS)
-                bcx = x0 + bc_left_in_label + (bc_box_w - bc_img.width) // 2
-                bcy = y0 + bc_top_in_label + (bc_box_h - bc_img.height) // 2
+                bcx = x0 + (label_w - bc_img.width) // 2
+                bcy = y0 + bc_top + (bc_box_h - bc_img.height) // 2
                 page.paste(bc_img, (bcx, bcy))
+                draw.rectangle((x0, y0, x1, y1), outline='black', width=3)
             pages.append(page)
 
         output = BytesIO()
@@ -1949,7 +1953,7 @@ STUDENT_FRONTEND = """
         button.btn-primary:hover{background:#10192b;}
         #barcode-result{display:none;margin-top:28px;text-align:center;padding:26px;background:#f7f8fa;border-radius:6px;border:1px solid #d8dbe0;}
         #barcode-result h3{color:#1b2a41;margin-bottom:12px;font-size:16px;font-family:Georgia,'Times New Roman',serif;}
-        .barcode-img{width:60mm;height:20mm;max-width:100%;margin:18px auto;display:block;padding:6px;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
+        .barcode-img{width:58mm;height:36mm;max-width:100%;margin:18px auto;display:block;padding:4px;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;word-break:break-word;}
         .btn-print{background:#1e6b34;color:#fff;border:none;padding:12px 22px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;margin:4px;}
         .btn-print:hover{background:#175628;}
@@ -1959,7 +1963,7 @@ STUDENT_FRONTEND = """
         .logout-link:hover{color:#1b2a41;}
         .privacy-link{display:block;text-align:center;margin-top:12px;color:#1b2a41;text-decoration:none;font-size:13px;}
         .privacy-link:hover{text-decoration:underline;}
-        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:60mm;height:25mm;margin:0;padding:0;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:60mm;height:18mm;object-fit:contain;padding:0;border:0;margin:4mm auto 0;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print{display:none !important;}}
+        @media print{@page{size:62mm 52mm;margin:0;}body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:flex !important;flex-direction:column;align-items:center;justify-content:center;position:absolute;top:0;left:0;width:62mm;height:52mm;margin:0;padding:1mm;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:58mm;height:36mm;object-fit:contain;padding:0;border:0;margin:1mm auto;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print,.btn-download-barcode{display:none !important;}}
         @media(max-width:600px){.form-row{grid-template-columns:1fr;}.card-body{padding:30px 22px;}input,select{font-size:16px;}body{padding:16px 10px;}}
     </style>
 </head>
@@ -2175,7 +2179,7 @@ USER_FRONTEND = """
         button.btn-primary:hover{background:#10192b;}
         #barcode-result{display:none;margin-top:28px;text-align:center;padding:26px;background:#f7f8fa;border-radius:6px;border:1px solid #d8dbe0;}
         #barcode-result h3{color:#1b2a41;margin-bottom:12px;font-size:16px;font-family:Georgia,'Times New Roman',serif;}
-        .barcode-img{width:60mm;height:20mm;max-width:100%;margin:18px auto;display:block;padding:6px;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
+        .barcode-img{width:58mm;height:36mm;max-width:100%;margin:18px auto;display:block;padding:4px;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;word-break:break-word;}
         .btn-print{background:#1e6b34;color:#fff;border:none;padding:12px 22px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;margin:4px;}
         .btn-print:hover{background:#175628;}
@@ -2185,7 +2189,7 @@ USER_FRONTEND = """
         .logout-link:hover{color:#1b2a41;}
         .privacy-link{display:block;text-align:center;margin-top:12px;color:#1b2a41;text-decoration:none;font-size:13px;}
         .privacy-link:hover{text-decoration:underline;}
-        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:60mm;height:25mm;margin:0;padding:0;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:60mm;height:18mm;object-fit:contain;padding:0;border:0;margin:4mm auto 0;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print{display:none !important;}}
+        @media print{@page{size:62mm 52mm;margin:0;}body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:flex !important;flex-direction:column;align-items:center;justify-content:center;position:absolute;top:0;left:0;width:62mm;height:52mm;margin:0;padding:1mm;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:58mm;height:36mm;object-fit:contain;padding:0;border:0;margin:1mm auto;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print,.btn-download-barcode{display:none !important;}}
         .panel-card{background:#fff;border:1px solid #d8dbe0;border-radius:6px;padding:28px;box-shadow:0 2px 12px rgba(15,25,43,.08);}
         h2.panel-title{color:#1b2a41;font-size:19px;font-family:Georgia,'Times New Roman',serif;margin-bottom:18px;border-bottom:1px solid #eef0f3;padding-bottom:12px;word-break:break-word;}
         .scan-area{text-align:center;padding:30px;background:#f7f8fa;border-radius:6px;margin-bottom:18px;border:1px solid #d8dbe0;}
@@ -2852,7 +2856,7 @@ ADMIN_FRONTEND = """
         tr:hover{background:#eef1f5;}
         .tab-content{display:none;}
         .tab-content.active{display:block;}
-        .barcode-img{width:60mm;height:20mm;max-width:100%;margin:18px auto;display:block;padding:6px;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
+        .barcode-img{width:58mm;height:36mm;max-width:100%;margin:18px auto;display:block;padding:4px;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;word-break:break-word;}
         .book-qr-img{width:160px;height:160px;max-width:100%;object-fit:contain;image-rendering:crisp-edges;margin:10px auto;display:block;background:#fff;border:1px solid #d8dbe0;padding:6px;border-radius:4px;}
         .btn-print{background:#1e6b34;color:white;}
@@ -2863,7 +2867,7 @@ ADMIN_FRONTEND = """
         .student-actions button{margin:0;}
         .student-actions .btn-barcode,.student-actions .btn-download,.student-actions .btn-delete{width:150px;min-height:38px;padding:9px 12px;}
         .student-check{width:17px;height:17px;vertical-align:middle;}
-        @media print{body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:block !important;position:absolute;top:0;left:0;width:60mm;height:25mm;margin:0;padding:0;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:60mm;height:18mm;object-fit:contain;padding:0;border:0;margin:4mm auto 0;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print{display:none !important;}}
+        @media print{@page{size:62mm 52mm;margin:0;}body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:flex !important;flex-direction:column;align-items:center;justify-content:center;position:absolute;top:0;left:0;width:62mm;height:52mm;margin:0;padding:1mm;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:58mm;height:36mm;object-fit:contain;padding:0;border:0;margin:1mm auto;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print,.btn-download-barcode{display:none !important;}}
         .btn-download{background:#8a6d1f;color:white;}
         .btn-download:hover{background:#6e5718;}
         .btn-delete{background:#a52b2b;color:white;}
@@ -3138,9 +3142,9 @@ ADMIN_FRONTEND = """
                         <h3>Book Registered — Barcode Generated</h3>
                         <p id="book-qr-title" style="font-weight:600;color:#1b2a41;margin-top:8px;word-break:break-word;"></p>
                         <p id="book-qr-code" style="font-size:13px;color:#64748b;"></p>
-                        <img id="book-barcode-img" class="barcode-img" style="height:20mm;width:60mm;">
+                        <img id="book-barcode-img" class="barcode-img" style="height:36mm;width:58mm;">
                         <div class="action-row" style="justify-content:center;">
-                            <button type="button" class="btn-print" onclick="window.print()">Print Barcode</button>
+                            <button type="button" class="btn-print" onclick="printBookBarcode()">Print Barcode</button>
                             <button type="button" class="btn-barcode" onclick="downloadBookBarcode()">Download Barcode</button>
                         </div>
                     </div>
@@ -3367,7 +3371,7 @@ function scanBookBarcode(){
         }else{
             document.getElementById("book-barcode-number").value=d.barcode_number;
             document.getElementById("book-title-input").focus();
-            st.innerHTML='<span style="color:#1b4f72;">Barcode <strong>'+d.barcode_number+'</strong> is new. Fill in the book details below (Title, Author, Shelf, Category) then click Register.</span><br><img src="data:image/png;base64,'+d.barcode_img+'" style="max-width:240px;margin-top:8px;border:1px solid #d8dbe0;background:#fff;padding:4px;">';
+            st.innerHTML='<span style="color:#1b4f72;">Barcode <strong>'+d.barcode_number+'</strong> is new. Fill in the book details below (Title, Author, Shelf, Category) then click Register.</span><br><img src="data:image/png;base64,'+d.barcode_img+'" style="width:320px;max-width:100%;height:auto;margin-top:8px;border:1px solid #d8dbe0;background:#fff;padding:4px;">';
         }
     }).catch(e=>alert("Error: "+e));
 }
@@ -3428,9 +3432,15 @@ function printSelectedBarcodes(){
     const sel=Array.from(document.querySelectorAll(".student-row-check:checked")).map(x=>x.value);
     if(!sel.length){alert("Please select at least one user.");return;}
     const w=window.open("","_blank","width=600,height=800");if(!w){alert("Allow pop-ups.");return;}
-    const m=sel.map(id=>'<section class="bi"><div class="lbl">Student Number: '+id+'</div><img src="/barcode/'+encodeURIComponent(id)+'"></section>').join("");
-    w.document.write('<!DOCTYPE html><html><head><style>*{box-sizing:border-box}@page{size:Letter portrait;margin:0.5in}body{font-family:Arial,sans-serif;margin:0;display:grid;grid-template-columns:2.2in;grid-auto-rows:1.0in;gap:0.15in;justify-content:center;align-content:center;min-height:100vh;padding:0}.bi{width:2.2in;height:1.0in;border:1px solid #000;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0.08in;background:#fff}.bi .lbl{font-family:Arial,sans-serif;font-size:11pt;color:#000;width:1.0in;text-align:left;word-break:break-word}.bi img{width:1.1in;height:0.85in;object-fit:contain;image-rendering:crisp-edges;display:block}</style></head><body>'+m+'</body></html>');
-    w.document.close();const imgs=w.document.images;let n=0;const pw=()=>{n++;if(n===imgs.length)w.print();};Array.from(imgs).forEach(i=>{i.onload=pw;i.onerror=pw;});
+    const sheets=[];
+    for(let i=0;i<sel.length;i+=15){
+        const labels=sel.slice(i,i+15).map(id=>'<section class="bi"><div class="lbl">Student Number: '+id+'</div><img src="/barcode/'+encodeURIComponent(id)+'"></section>').join("");
+        sheets.push('<main class="sheet">'+labels+'</main>');
+    }
+    w.document.write('<!DOCTYPE html><html><head><style>*{box-sizing:border-box}@page{size:Letter portrait;margin:0.5in}html,body{margin:0;padding:0}body{font-family:Arial,sans-serif;color:#000}.sheet{width:7.5in;height:10in;display:grid;grid-template-columns:repeat(3,2.4in);grid-template-rows:repeat(5,1.9in);gap:0.1in;justify-content:center;align-content:center;page-break-after:always;break-after:page}.sheet:last-child{page-break-after:auto;break-after:auto}.bi{width:2.4in;height:1.9in;border:1px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:0.1in;background:#fff;break-inside:avoid;page-break-inside:avoid}.bi .lbl{width:100%;font-size:10pt;line-height:0.18in;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bi img{width:2.2in;height:1.4in;object-fit:contain;image-rendering:crisp-edges;display:block;margin-top:0.06in}</style></head><body>'+sheets.join("")+'</body></html>');
+    w.document.close();
+    const imgs=Array.from(w.document.images);
+    Promise.all(imgs.map(img=>new Promise((resolve,reject)=>{if(img.complete){if(img.naturalWidth>0)resolve();else reject(new Error("Barcode image failed to load."));return;}img.onload=()=>resolve();img.onerror=()=>reject(new Error("Barcode image failed to load."));}))).then(()=>w.print()).catch(error=>{w.close();alert(error.message);});
 }
 function downloadSelectedBarcodes(){
     const sel=Array.from(document.querySelectorAll(".student-row-check:checked")).map(x=>x.value);
@@ -3499,12 +3509,25 @@ function toggleAllBooks(c){document.querySelectorAll(".book-row-check").forEach(
 function printSelectedBookBarcodes(){
     const sel=Array.from(document.querySelectorAll(".book-row-check:checked")).map(x=>parseInt(x.value));
     if(!sel.length){alert("Please select at least one book.");return;}
-    // fetch book details to get title+code for labels
     const books = allBooks.filter(b=>sel.includes(b.id));
     const w=window.open("","_blank","width=600,height=800");if(!w){alert("Allow pop-ups.");return;}
-    const cells=books.map(b=>{const code=(b.barcode_number||"").trim()||b.access_code;const t=(b.title||"").length>26?(b.title||"").slice(0,23)+"...":(b.title||"");return '<section class="bi"><div class="ttl">'+t+'</div><div class="cd">'+code+'</div><img src="/book-barcode/'+encodeURIComponent(code)+'"></section>';}).join("");
-    w.document.write('<!DOCTYPE html><html><head><style>*{box-sizing:border-box}@page{size:A4;margin:1mm}body{font-family:Arial;text-align:center;display:grid;grid-template-columns:repeat(4,48mm);grid-auto-rows:32mm;gap:2mm;justify-content:center}.bi{width:48mm;height:32mm;border:1px solid #000;font-size:7pt;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:1mm 0;overflow:hidden}.bi .ttl{font-weight:700;max-width:46mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bi .cd{color:#555;margin-bottom:1mm}.bi img{width:44mm;height:16mm;object-fit:contain;image-rendering:crisp-edges;margin:auto;display:block}</style></head><body>'+cells+'</body></html>');
-    w.document.close();const imgs=w.document.images;let n=0;const pw=()=>{n++;if(n===imgs.length)w.print();};Array.from(imgs).forEach(i=>{i.onload=pw;i.onerror=pw;});
+    w.document.write('<!DOCTYPE html><html><head><title>Book Barcodes</title><style>*{box-sizing:border-box}@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;font-family:Arial,sans-serif;color:#000}.sheet{width:210mm;height:297mm;display:grid;grid-template-columns:repeat(3,62mm);grid-template-rows:repeat(5,52mm);gap:2mm;justify-content:center;align-content:center;page-break-after:always;break-after:page}.sheet:last-child{page-break-after:auto;break-after:auto}.bi{width:62mm;height:52mm;border:1px solid #000;display:flex;flex-direction:column;align-items:center;padding:2mm 1mm;overflow:hidden;break-inside:avoid;page-break-inside:avoid}.ttl{width:100%;font-size:8pt;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}.cd{width:100%;font-size:9pt;text-align:center;margin-top:1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bi img{width:58mm;height:36mm;object-fit:contain;image-rendering:crisp-edges;display:block;margin-top:2mm}</style></head><body></body></html>');
+    const body=w.document.body;
+    for(let offset=0;offset<books.length;offset+=15){
+        const sheet=w.document.createElement("main");sheet.className="sheet";
+        books.slice(offset,offset+15).forEach(book=>{
+            const code=(book.barcode_number||"").trim()||book.access_code;
+            const label=w.document.createElement("section");label.className="bi";
+            const title=w.document.createElement("div");title.className="ttl";title.textContent=book.title||"";
+            const codeText=w.document.createElement("div");codeText.className="cd";codeText.textContent=code;
+            const image=w.document.createElement("img");image.src="/book-barcode/"+encodeURIComponent(code);image.alt="Barcode "+code;
+            label.append(title,codeText,image);sheet.appendChild(label);
+        });
+        body.appendChild(sheet);
+    }
+    w.document.close();
+    const imgs=Array.from(w.document.images);
+    Promise.all(imgs.map(img=>new Promise((resolve,reject)=>{if(img.complete){if(img.naturalWidth>0)resolve();else reject(new Error("Barcode image failed to load."));return;}img.onload=()=>resolve();img.onerror=()=>reject(new Error("Barcode image failed to load."));}))).then(()=>w.print()).catch(error=>{w.close();alert(error.message);});
 }
 function downloadSelectedBookBarcodes(){
     const sel=Array.from(document.querySelectorAll(".book-row-check:checked")).map(x=>parseInt(x.value));
@@ -3521,6 +3544,21 @@ function deleteSelectedBooks(){
 }
 function editBook(id){const b=allBooks.find(x=>x.id===id);if(!b)return;document.getElementById("book-edit-id").value=b.id;document.getElementById("book-edit-title").value=b.title;document.getElementById("book-edit-author").value=b.author||"";document.getElementById("book-edit-isbn").value=b.isbn||"";document.getElementById("book-edit-category").value=b.category||"";document.getElementById("book-edit-shelf").value=b.shelf_location||"";document.getElementById("book-edit-qty").value=b.quantity;document.getElementById("book-edit-barcode").value=b.barcode_number||"";document.getElementById("book-edit-modal").classList.remove("hidden");}
 function hideBookEdit(){document.getElementById("book-edit-modal").classList.add("hidden");document.getElementById("book-edit-form").reset();}
+function printBookBarcode(){
+    if(!lastBookBarcode){alert("Register a book first — then its barcode will be available to print.");return;}
+    const source=document.getElementById("book-barcode-img");
+    if(!source||!source.src){alert("The book barcode is not available to print.");return;}
+    const w=window.open("","_blank","width=600,height=800");if(!w){alert("Allow pop-ups.");return;}
+    w.document.write('<!DOCTYPE html><html><head><title>Book Barcode</title><style>*{box-sizing:border-box}@page{size:62mm 52mm;margin:0}html,body{margin:0;padding:0;font-family:Arial,sans-serif;color:#000}.label{width:62mm;height:52mm;border:1px solid #000;padding:1mm;display:flex;flex-direction:column;align-items:center;justify-content:center}.title{font-size:8pt;font-weight:700;max-width:58mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}.code{font-size:9pt;margin:1mm 0;text-align:center}.barcode{width:58mm;height:36mm;object-fit:contain;image-rendering:crisp-edges}</style></head><body></body></html>');
+    const label=w.document.createElement("main");label.className="label";
+    const title=w.document.createElement("div");title.className="title";title.textContent=document.getElementById("book-qr-title").textContent;
+    const code=w.document.createElement("div");code.className="code";code.textContent=lastBookBarcode;
+    const image=w.document.createElement("img");image.className="barcode";image.alt="Barcode "+lastBookBarcode;
+    const loaded=new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;});
+    image.src=source.src;
+    label.append(title,code,image);w.document.body.appendChild(label);w.document.close();
+    loaded.then(()=>w.print()).catch(()=>{w.close();alert("Barcode image failed to load.");});
+}
 function downloadBookBarcode(){if(!lastBookBarcode){alert('Register a book first — then its barcode will be available to download.');return;}window.location.href="/book-barcode/"+encodeURIComponent(lastBookBarcode);}
 function loadBorrowRecords(){
     const date=document.getElementById("br-date")?.value||"";
