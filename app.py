@@ -1304,6 +1304,9 @@ LOGIN_PAGE = """<!DOCTYPE html>
         .signin-btn:active{transform:translateY(1px)}
         .signin-btn:focus-visible{outline:3px solid #c4f3ff;outline-offset:3px}
         .error-box{margin:0 0 18px;padding:12px 14px;border:1px solid rgba(255,153,153,.55);border-radius:10px;background:rgba(116,27,40,.42);color:#fff0f0;font-size:14px;line-height:1.45;word-break:break-word}
+        .login-footer{position:relative;z-index:1;padding:0 16px 22px;text-align:center}
+        .login-footer a{color:#c5f3ff;font-size:13px;text-underline-offset:3px}
+        .login-footer a:hover{color:#fff}
         @media(max-width:520px){.site-header{gap:11px;padding:15px 14px}.seal{width:44px;height:44px;flex-basis:44px}.header-text h1{font-size:14px}.header-text p{font-size:10px;letter-spacing:1px}.login-wrap{padding:24px 18px}.login-card{padding:28px 22px;border-radius:18px}}
         @media(max-height:520px){body{overflow:auto}.login-wrap{flex:none;padding:22px 18px}.site-header{padding-top:10px;padding-bottom:10px}.seal{width:40px;height:40px;flex-basis:40px}}
         @media(prefers-reduced-motion:reduce){body:before{animation:none}.signin-btn{transition:none}}
@@ -1316,6 +1319,7 @@ LOGIN_PAGE = """<!DOCTYPE html>
             <h1>Southern Luzon State University – Judge Guillermo Eleazar</h1>
             <p>Library Management System</p>
         </div>
+        <img class="seal" src="__SLSU_LOGO__" alt="SLSU-JGE Campus Seal">
     </div>
     <div class="login-wrap">
         <form class="login-card" method="POST" action="/login" aria-label="Login">
@@ -1331,6 +1335,9 @@ LOGIN_PAGE = """<!DOCTYPE html>
             <button type="submit" class="signin-btn">Log In</button>
         </form>
     </div>
+    <footer class="login-footer">
+        <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>
+    </footer>
 </body>
 </html>"""
 
