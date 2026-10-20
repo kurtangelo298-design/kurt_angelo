@@ -321,7 +321,7 @@ def generate_barcode_b64(id_number):
         "module_width": 38.0 / module_count,
         "module_height": 20.0,
         "font_size": 11,
-        "text_distance": 2.0,
+        "text_distance": 4.0,
         "quiet_zone": 5.0,
         "center_text": True,
         "write_text": True,
