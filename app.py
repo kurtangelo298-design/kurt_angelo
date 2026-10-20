@@ -313,25 +313,22 @@ def send_overdue_reminder(to_email, borrower_name, book_title, access_code, borr
 #  BARCODE / QR GENERATORS  (high-contrast, scanner-friendly, 300 DPI)
 # ============================================================
 def generate_barcode_b64(id_number):
-    """Code128 barcode — standard module width, tall bars, generous quiet zone, 300 DPI.
-    Sized so any handheld/USB barcode scanner reads it reliably on screen and in print."""
+    """Create a 48 mm Code128 symbol with 38 mm bars, 5 mm quiet zones and 20 mm bars."""
     code128 = barcode.get_barcode_class("code128")
-    writer = ImageWriter()
-    writer.set_options({
-        "module_width": 0.6,        # standard bar thickness (not too thin)
-        "module_height": 18.0,      # tall bars for reliable scan
-        "font_size": 12,            # readable human-readable digits below
-        "text_distance": 4,         # space between bars and digits
-        "quiet_zone": 4.0,          # generous white margin on both sides (quiet zone)
+    code = code128(str(id_number), writer=ImageWriter())
+    module_count = len(code.build()[0])
+    image = code.render({
+        "module_width": 38.0 / module_count,
+        "module_height": 20.0,
+        "font_size": 11,
+        "text_distance": 2.0,
+        "quiet_zone": 5.0,
         "center_text": True,
+        "write_text": True,
         "dpi": 300,
-    })
-    img = code128(str(id_number), writer=writer).render().convert("RGB")
-    pad = round(8 / 25.4 * 300)  # extra white padding around (>=5mm safe margin)
-    canvas = Image.new("RGB", (img.width + 2 * pad, img.height + 2 * pad), "white")
-    canvas.paste(img, (pad, pad))
+    }).convert("RGB")
     buffered = BytesIO()
-    canvas.save(buffered, format="PNG", dpi=(300, 300), optimize=True)
+    image.save(buffered, format="PNG", dpi=(300, 300), optimize=True)
     return base64.b64encode(buffered.getvalue()).decode()
 
 
@@ -1953,7 +1950,7 @@ STUDENT_FRONTEND = """
         button.btn-primary:hover{background:#10192b;}
         #barcode-result{display:none;margin-top:28px;text-align:center;padding:26px;background:#f7f8fa;border-radius:6px;border:1px solid #d8dbe0;}
         #barcode-result h3{color:#1b2a41;margin-bottom:12px;font-size:16px;font-family:Georgia,'Times New Roman',serif;}
-        .barcode-img{width:58mm;height:36mm;max-width:100%;margin:18px auto;display:block;padding:4px;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
+        .barcode-img{width:48mm;height:auto;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;word-break:break-word;}
         .btn-print{background:#1e6b34;color:#fff;border:none;padding:12px 22px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;margin:4px;}
         .btn-print:hover{background:#175628;}
@@ -1963,7 +1960,7 @@ STUDENT_FRONTEND = """
         .logout-link:hover{color:#1b2a41;}
         .privacy-link{display:block;text-align:center;margin-top:12px;color:#1b2a41;text-decoration:none;font-size:13px;}
         .privacy-link:hover{text-decoration:underline;}
-        @media print{@page{size:62mm 52mm;margin:0;}body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:flex !important;flex-direction:column;align-items:center;justify-content:center;position:absolute;top:0;left:0;width:62mm;height:52mm;margin:0;padding:1mm;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:58mm;height:36mm;object-fit:contain;padding:0;border:0;margin:1mm auto;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print,.btn-download-barcode{display:none !important;}}
+        @media print{@page{size:62mm 52mm;margin:0;}body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:flex !important;flex-direction:column;align-items:center;justify-content:center;position:absolute;top:0;left:0;width:62mm;height:52mm;margin:0;padding:1mm;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:48mm;height:auto;object-fit:contain;padding:0;border:0;margin:1mm auto;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print,.btn-download-barcode{display:none !important;}}
         @media(max-width:600px){.form-row{grid-template-columns:1fr;}.card-body{padding:30px 22px;}input,select{font-size:16px;}body{padding:16px 10px;}}
     </style>
 </head>
@@ -2179,7 +2176,7 @@ USER_FRONTEND = """
         button.btn-primary:hover{background:#10192b;}
         #barcode-result{display:none;margin-top:28px;text-align:center;padding:26px;background:#f7f8fa;border-radius:6px;border:1px solid #d8dbe0;}
         #barcode-result h3{color:#1b2a41;margin-bottom:12px;font-size:16px;font-family:Georgia,'Times New Roman',serif;}
-        .barcode-img{width:58mm;height:36mm;max-width:100%;margin:18px auto;display:block;padding:4px;background:white;border:1px solid #d8dbe0;border-radius:4px;object-fit:contain;image-rendering:crisp-edges;}
+        .barcode-img{width:48mm;height:auto;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;word-break:break-word;}
         .btn-print{background:#1e6b34;color:#fff;border:none;padding:12px 22px;border-radius:4px;font-size:14px;font-weight:600;cursor:pointer;margin:4px;}
         .btn-print:hover{background:#175628;}
@@ -2189,7 +2186,7 @@ USER_FRONTEND = """
         .logout-link:hover{color:#1b2a41;}
         .privacy-link{display:block;text-align:center;margin-top:12px;color:#1b2a41;text-decoration:none;font-size:13px;}
         .privacy-link:hover{text-decoration:underline;}
-        @media print{@page{size:62mm 52mm;margin:0;}body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:flex !important;flex-direction:column;align-items:center;justify-content:center;position:absolute;top:0;left:0;width:62mm;height:52mm;margin:0;padding:1mm;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:58mm;height:36mm;object-fit:contain;padding:0;border:0;margin:1mm auto;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print,.btn-download-barcode{display:none !important;}}
+        @media print{@page{size:62mm 52mm;margin:0;}body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:flex !important;flex-direction:column;align-items:center;justify-content:center;position:absolute;top:0;left:0;width:62mm;height:52mm;margin:0;padding:1mm;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:48mm;height:auto;object-fit:contain;padding:0;border:0;margin:1mm auto;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print,.btn-download-barcode{display:none !important;}}
         .panel-card{background:#fff;border:1px solid #d8dbe0;border-radius:6px;padding:28px;box-shadow:0 2px 12px rgba(15,25,43,.08);}
         h2.panel-title{color:#1b2a41;font-size:19px;font-family:Georgia,'Times New Roman',serif;margin-bottom:18px;border-bottom:1px solid #eef0f3;padding-bottom:12px;word-break:break-word;}
         .scan-area{text-align:center;padding:30px;background:#f7f8fa;border-radius:6px;margin-bottom:18px;border:1px solid #d8dbe0;}
@@ -2856,7 +2853,7 @@ ADMIN_FRONTEND = """
         tr:hover{background:#eef1f5;}
         .tab-content{display:none;}
         .tab-content.active{display:block;}
-        .barcode-img{width:58mm;height:36mm;max-width:100%;margin:18px auto;display:block;padding:4px;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
+        .barcode-img{width:48mm;height:auto;max-width:100%;margin:18px auto;display:block;padding:0;background:white;border:0;object-fit:contain;image-rendering:crisp-edges;}
         .barcode-id{font-size:18px;font-weight:700;color:#1b2a41;margin:12px 0;word-break:break-word;}
         .book-qr-img{width:160px;height:160px;max-width:100%;object-fit:contain;image-rendering:crisp-edges;margin:10px auto;display:block;background:#fff;border:1px solid #d8dbe0;padding:6px;border-radius:4px;}
         .btn-print{background:#1e6b34;color:white;}
@@ -2867,7 +2864,7 @@ ADMIN_FRONTEND = """
         .student-actions button{margin:0;}
         .student-actions .btn-barcode,.student-actions .btn-download,.student-actions .btn-delete{width:150px;min-height:38px;padding:9px 12px;}
         .student-check{width:17px;height:17px;vertical-align:middle;}
-        @media print{@page{size:62mm 52mm;margin:0;}body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:flex !important;flex-direction:column;align-items:center;justify-content:center;position:absolute;top:0;left:0;width:62mm;height:52mm;margin:0;padding:1mm;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:58mm;height:36mm;object-fit:contain;padding:0;border:0;margin:1mm auto;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print,.btn-download-barcode{display:none !important;}}
+        @media print{@page{size:62mm 52mm;margin:0;}body *{visibility:hidden !important;}#barcode-result,#barcode-result *{visibility:visible !important;}#barcode-result{display:flex !important;flex-direction:column;align-items:center;justify-content:center;position:absolute;top:0;left:0;width:62mm;height:52mm;margin:0;padding:1mm;border:1px solid #000;background:#fff;}#barcode-result h3{display:none;}.barcode-img{width:48mm;height:auto;object-fit:contain;padding:0;border:0;margin:1mm auto;}.barcode-id{font-size:8pt;margin:1mm 0 0;}.btn-print,.btn-download-barcode{display:none !important;}}
         .btn-download{background:#8a6d1f;color:white;}
         .btn-download:hover{background:#6e5718;}
         .btn-delete{background:#a52b2b;color:white;}
@@ -3142,7 +3139,7 @@ ADMIN_FRONTEND = """
                         <h3>Book Registered — Barcode Generated</h3>
                         <p id="book-qr-title" style="font-weight:600;color:#1b2a41;margin-top:8px;word-break:break-word;"></p>
                         <p id="book-qr-code" style="font-size:13px;color:#64748b;"></p>
-                        <img id="book-barcode-img" class="barcode-img" style="height:36mm;width:58mm;">
+                        <img id="book-barcode-img" class="barcode-img" style="width:48mm;height:auto;">
                         <div class="action-row" style="justify-content:center;">
                             <button type="button" class="btn-print" onclick="printBookBarcode()">Print Barcode</button>
                             <button type="button" class="btn-barcode" onclick="downloadBookBarcode()">Download Barcode</button>
@@ -3437,7 +3434,7 @@ function printSelectedBarcodes(){
         const labels=sel.slice(i,i+15).map(id=>'<section class="bi"><div class="lbl">Student Number: '+id+'</div><img src="/barcode/'+encodeURIComponent(id)+'"></section>').join("");
         sheets.push('<main class="sheet">'+labels+'</main>');
     }
-    w.document.write('<!DOCTYPE html><html><head><style>*{box-sizing:border-box}@page{size:Letter portrait;margin:0.5in}html,body{margin:0;padding:0}body{font-family:Arial,sans-serif;color:#000}.sheet{width:7.5in;height:10in;display:grid;grid-template-columns:repeat(3,2.4in);grid-template-rows:repeat(5,1.9in);gap:0.1in;justify-content:center;align-content:center;page-break-after:always;break-after:page}.sheet:last-child{page-break-after:auto;break-after:auto}.bi{width:2.4in;height:1.9in;border:1px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:0.1in;background:#fff;break-inside:avoid;page-break-inside:avoid}.bi .lbl{width:100%;font-size:10pt;line-height:0.18in;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bi img{width:2.2in;height:1.4in;object-fit:contain;image-rendering:crisp-edges;display:block;margin-top:0.06in}</style></head><body>'+sheets.join("")+'</body></html>');
+    w.document.write('<!DOCTYPE html><html><head><style>*{box-sizing:border-box}@page{size:Letter portrait;margin:0.5in}html,body{margin:0;padding:0}body{font-family:Arial,sans-serif;color:#000}.sheet{width:7.5in;height:10in;display:grid;grid-template-columns:repeat(3,2.4in);grid-template-rows:repeat(5,1.9in);gap:0.1in;justify-content:center;align-content:center;page-break-after:always;break-after:page}.sheet:last-child{page-break-after:auto;break-after:auto}.bi{width:2.4in;height:1.9in;border:1px solid #000;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:0.1in;background:#fff;break-inside:avoid;page-break-inside:avoid}.bi .lbl{width:100%;font-size:10pt;line-height:0.18in;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bi img{width:48mm;height:auto;object-fit:contain;image-rendering:crisp-edges;display:block;margin-top:0.06in}</style></head><body>'+sheets.join("")+'</body></html>');
     w.document.close();
     const imgs=Array.from(w.document.images);
     Promise.all(imgs.map(img=>new Promise((resolve,reject)=>{if(img.complete){if(img.naturalWidth>0)resolve();else reject(new Error("Barcode image failed to load."));return;}img.onload=()=>resolve();img.onerror=()=>reject(new Error("Barcode image failed to load."));}))).then(()=>w.print()).catch(error=>{w.close();alert(error.message);});
@@ -3511,7 +3508,7 @@ function printSelectedBookBarcodes(){
     if(!sel.length){alert("Please select at least one book.");return;}
     const books = allBooks.filter(b=>sel.includes(b.id));
     const w=window.open("","_blank","width=600,height=800");if(!w){alert("Allow pop-ups.");return;}
-    w.document.write('<!DOCTYPE html><html><head><title>Book Barcodes</title><style>*{box-sizing:border-box}@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;font-family:Arial,sans-serif;color:#000}.sheet{width:210mm;height:297mm;display:grid;grid-template-columns:repeat(3,62mm);grid-template-rows:repeat(5,52mm);gap:2mm;justify-content:center;align-content:center;page-break-after:always;break-after:page}.sheet:last-child{page-break-after:auto;break-after:auto}.bi{width:62mm;height:52mm;border:1px solid #000;display:flex;flex-direction:column;align-items:center;padding:2mm 1mm;overflow:hidden;break-inside:avoid;page-break-inside:avoid}.ttl{width:100%;font-size:8pt;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}.cd{width:100%;font-size:9pt;text-align:center;margin-top:1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bi img{width:58mm;height:36mm;object-fit:contain;image-rendering:crisp-edges;display:block;margin-top:2mm}</style></head><body></body></html>');
+    w.document.write('<!DOCTYPE html><html><head><title>Book Barcodes</title><style>*{box-sizing:border-box}@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;font-family:Arial,sans-serif;color:#000}.sheet{width:210mm;height:297mm;display:grid;grid-template-columns:repeat(3,62mm);grid-template-rows:repeat(5,52mm);gap:2mm;justify-content:center;align-content:center;page-break-after:always;break-after:page}.sheet:last-child{page-break-after:auto;break-after:auto}.bi{width:62mm;height:52mm;border:1px solid #000;display:flex;flex-direction:column;align-items:center;padding:2mm 1mm;overflow:hidden;break-inside:avoid;page-break-inside:avoid}.ttl{width:100%;font-size:8pt;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}.cd{width:100%;font-size:9pt;text-align:center;margin-top:1mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bi img{width:48mm;height:auto;object-fit:contain;image-rendering:crisp-edges;display:block;margin-top:2mm}</style></head><body></body></html>');
     const body=w.document.body;
     for(let offset=0;offset<books.length;offset+=15){
         const sheet=w.document.createElement("main");sheet.className="sheet";
@@ -3549,7 +3546,7 @@ function printBookBarcode(){
     const source=document.getElementById("book-barcode-img");
     if(!source||!source.src){alert("The book barcode is not available to print.");return;}
     const w=window.open("","_blank","width=600,height=800");if(!w){alert("Allow pop-ups.");return;}
-    w.document.write('<!DOCTYPE html><html><head><title>Book Barcode</title><style>*{box-sizing:border-box}@page{size:62mm 52mm;margin:0}html,body{margin:0;padding:0;font-family:Arial,sans-serif;color:#000}.label{width:62mm;height:52mm;border:1px solid #000;padding:1mm;display:flex;flex-direction:column;align-items:center;justify-content:center}.title{font-size:8pt;font-weight:700;max-width:58mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}.code{font-size:9pt;margin:1mm 0;text-align:center}.barcode{width:58mm;height:36mm;object-fit:contain;image-rendering:crisp-edges}</style></head><body></body></html>');
+    w.document.write('<!DOCTYPE html><html><head><title>Book Barcode</title><style>*{box-sizing:border-box}@page{size:62mm 52mm;margin:0}html,body{margin:0;padding:0;font-family:Arial,sans-serif;color:#000}.label{width:62mm;height:52mm;border:1px solid #000;padding:1mm;display:flex;flex-direction:column;align-items:center;justify-content:center}.title{font-size:8pt;font-weight:700;max-width:58mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}.code{font-size:9pt;margin:1mm 0;text-align:center}.barcode{width:48mm;height:auto;object-fit:contain;image-rendering:crisp-edges}</style></head><body></body></html>');
     const label=w.document.createElement("main");label.className="label";
     const title=w.document.createElement("div");title.className="title";title.textContent=document.getElementById("book-qr-title").textContent;
     const code=w.document.createElement("div");code.className="code";code.textContent=lastBookBarcode;
