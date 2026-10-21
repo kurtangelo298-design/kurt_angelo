@@ -2,6 +2,7 @@ from flask import Flask, render_template_string, request, jsonify, make_response
 import psycopg2
 import os
 import datetime
+from html import escape as html_escape
 import barcode
 from barcode.writer import ImageWriter
 import base64
@@ -35,7 +36,7 @@ except Exception:
     SMTP_PORT = 465
 SMTP_USER = os.environ.get("SMTP_USER", "").strip()
 SMTP_PASS = os.environ.get("SMTP_PASS", "").strip()
-SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER).strip() or SMTP_USER
+SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER or "library@slsu-jge.edu.ph").strip() or SMTP_USER or "library@slsu-jge.edu.ph"
 SMTP_FROM_NAME = os.environ.get("SMTP_FROM_NAME", "SLSU-JGE Library").strip()
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
 
@@ -228,47 +229,51 @@ def _send_email(to_email, subject, html_body):
         return False, f"Email not sent: {str(e)}"
 
 
-def send_borrow_notification(to_email, borrower_name, book_title, access_code, borrow_date, borrow_time, borrow_type, due_date=None):
-    due_line = ""
-    if due_date:
-        due_line = f"""<tr><td style="padding:10px;border:1px solid #d8dbe0;background:#f7f8fa;"><strong>Due Date (Return On or Before)</strong></td>
-            <td style="padding:10px;border:1px solid #d8dbe0;"><strong style="color:#8a1f1f;">{due_date}</strong></td></tr>"""
+def send_borrow_notification(to_email, borrower_name, book_title, book_author, access_code, borrow_date, borrow_time, borrow_type, due_date=None):
+    borrower_name = html_escape(str(borrower_name))
+    book_title = html_escape(str(book_title))
+    book_author = html_escape(str(book_author or "Not provided"))
+    access_code = html_escape(str(access_code))
+    borrow_date = html_escape(str(borrow_date))
+    borrow_time = html_escape(str(borrow_time))
+    borrow_type = html_escape(str(borrow_type))
+    due_date = html_escape(str(due_date or "Not specified"))
     html = f"""
     <html><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.6;">
     <div style="max-width:560px;margin:0 auto;border:1px solid #d8dbe0;border-radius:6px;overflow:hidden;">
       <div style="background:#1b2a41;color:#e8c766;padding:18px 24px;font-family:Georgia,serif;font-size:18px;font-weight:700;">
-        SLSU-JGE Library — Borrow Confirmation
+        Book Borrowed — Confirmation from SLSU-JGE Library
       </div>
       <div style="padding:24px;">
-        <p>Hello <strong>{borrower_name}</strong>,</p>
-        <p>This is to confirm that you borrowed the following book
-        <strong>{'for OUTSIDE use (take home)' if str(borrow_type).lower()=='outside' else 'for INSIDE use (in-library reading)'}</strong>
-        today at the SLSU-JGE Library:</p>
+        <p>This is to confirm your outside book borrowing:</p>
         <table style="width:100%;border-collapse:collapse;margin:14px 0;">
+          <tr><td style="padding:10px;border:1px solid #d8dbe0;background:#f7f8fa;width:40%;"><strong>Full Name of Borrower</strong></td>
+              <td style="padding:10px;border:1px solid #d8dbe0;">{borrower_name}</td></tr>
           <tr><td style="padding:10px;border:1px solid #d8dbe0;background:#f7f8fa;width:40%;"><strong>Book Title</strong></td>
               <td style="padding:10px;border:1px solid #d8dbe0;">{book_title}</td></tr>
+          <tr><td style="padding:10px;border:1px solid #d8dbe0;background:#f7f8fa;"><strong>Author</strong></td>
+              <td style="padding:10px;border:1px solid #d8dbe0;">{book_author}</td></tr>
           <tr><td style="padding:10px;border:1px solid #d8dbe0;background:#f7f8fa;"><strong>Access Code</strong></td>
               <td style="padding:10px;border:1px solid #d8dbe0;">{access_code}</td></tr>
-          <tr><td style="padding:10px;border:1px solid #d8dbe0;background:#f7f8fa;"><strong>Date Borrowed</strong></td>
-              <td style="padding:10px;border:1px solid #d8dbe0;">{borrow_date}</td></tr>
-          <tr><td style="padding:10px;border:1px solid #d8dbe0;background:#f7f8fa;"><strong>Time Borrowed</strong></td>
-              <td style="padding:10px;border:1px solid #d8dbe0;">{borrow_time}</td></tr>
-          {due_line}
-          <tr><td style="padding:10px;border:1px solid #d8dbe0;background:#f7f8fa;"><strong>Borrow Type</strong></td>
+          <tr><td style="padding:10px;border:1px solid #d8dbe0;background:#f7f8fa;"><strong>Date &amp; Time Borrowed</strong></td>
+              <td style="padding:10px;border:1px solid #d8dbe0;">{borrow_date} {borrow_time}</td></tr>
+          <tr><td style="padding:10px;border:1px solid #d8dbe0;background:#f7f8fa;"><strong>Borrowed Type</strong></td>
               <td style="padding:10px;border:1px solid #d8dbe0;">{borrow_type}</td></tr>
+          <tr><td style="padding:10px;border:1px solid #d8dbe0;background:#f7f8fa;"><strong>Due Date for Return</strong></td>
+              <td style="padding:10px;border:1px solid #d8dbe0;"><strong style="color:#8a1f1f;">{due_date}</strong></td></tr>
         </table>
         <p style="background:#fdf6e3;border-left:4px solid #c9a227;padding:12px 14px;font-size:13px;color:#8a6d1f;">
-          <strong>Reminder:</strong> Please take good care of the book. For OUTSIDE borrows, you are fully
-          responsible for any damage and must pay the replacement cost if the book is lost.
-          A late fine of <strong>₱{LATE_FINE_PER_DAY:.2f} per day</strong> will be charged if returned after the due date.
+          <strong>Reminder:</strong> Please return on or before the due date. Thank you!
         </p>
+        <p>A late fine of <strong>₱{LATE_FINE_PER_DAY:.2f} per day</strong> applies after the due date.
+        Please take good care of the book; lost or damaged books may require replacement or repair.</p>
         <p style="font-size:12px;color:#64748b;margin-top:20px;">SLSU-JGE Library Management System<br>
         Southern Luzon State University — Judge Guillermo Eleazar</p>
       </div>
     </div>
     </body></html>
     """
-    return _send_email(to_email, f"Book Borrow Confirmation — {book_title} — SLSU-JGE Library", html)
+    return _send_email(to_email, "Book Borrowed — Confirmation from SLSU-JGE Library", html)
 
 
 def send_overdue_reminder(to_email, borrower_name, book_title, access_code, borrow_date, due_date, days_late, fine_amount):
@@ -1070,12 +1075,12 @@ def borrow_book():
         return jsonify({"success": False, "message": "Database connection error"}), 500
     c = conn.cursor()
     try:
-        c.execute("SELECT id, title, access_code, quantity FROM books WHERE id = %s", (int(book_id),))
+        c.execute("SELECT id, title, access_code, author, quantity FROM books WHERE id = %s", (int(book_id),))
         book = c.fetchone()
         if not book:
             conn.close()
             return jsonify({"success": False, "message": "Book not found."})
-        active, available, _ = book_status_info(book[0], book[3])
+        active, available, _ = book_status_info(book[0], book[4])
         if available <= 0:
             conn.close()
             return jsonify({"success": False, "message": f"'{book[1]}' is fully borrowed. No copies available."})
@@ -1111,7 +1116,7 @@ def borrow_book():
     email_ok = False
     if borrow_type == "Outside" and email and EMAIL_RE.match(email):
         email_ok, email_msg = send_borrow_notification(
-            email, full_name, book[1], book[2], today, now, borrow_type, due_date
+            email, full_name, book[1], book[3], book[2], today, now, borrow_type, due_date
         )
         if email_ok:
             conn2 = get_db()
@@ -1219,9 +1224,9 @@ def get_borrow_records():
             "borrower_id": r[4], "borrow_date": r[5], "borrow_time": r[6],
             "return_date": r[7] or "-", "return_time": r[8] or "-",
             "status": "Returned" if r[8] else "Borrowed",
-            "borrow_type": r[9] or "Inside",
-            "borrower_email": r[10] or "-",
-            "email_sent": bool(r[11]),
+            "borrow_type": r[10] or "Inside",
+            "borrower_email": r[11] or "-",
+            "email_sent": bool(r[12]),
             "due_date": r[13] or "-",
             "fine_amount": r[14] or fine,
             "days_late": days_late,
@@ -2718,8 +2723,8 @@ document.addEventListener("DOMContentLoaded", function(){
 """
 
 # ============================================================
-#  ADMIN FRONTEND — full access. Users list: ID Number | Full Name | Type |
-#  Department | Major | Action (Email column removed, BPA tab added).
+#  ADMIN FRONTEND — full access. User lists are separated by role and display
+#  only Full Name, Contact Number, Address, and Gmail / Email.
 #  Borrow flow: small checkbox (Inside/Outside) + Privacy & Terms "I Agree" checkbox.
 # ============================================================
 ADMIN_FRONTEND = """
@@ -2960,11 +2965,16 @@ ADMIN_FRONTEND = """
                     </div>
                     <div id="admin-book-detail" style="display:none;"></div>
                 </div>
-                <!-- 02 USERS LIST — BPA tab added, Email column removed, columns: ID Number | Full Name | Type | Department | Major | Action -->
+                <!-- 02 USERS LIST -->
                 <div id="students" class="tab-content">
                     <h2>Registered Users — Edit / Print / Delete / Download</h2>
-                    <div class="search-box"><input type="text" id="search-input" placeholder="Search by Name or ID Number..." oninput="filterStudents()"></div>
-                    <div class="dept-tabs">
+                    <div class="search-box"><input type="text" id="search-input" placeholder="Search by name, contact number, address, email, or ID..." oninput="filterStudents()"></div>
+                    <div class="dept-tabs user-role-tabs">
+                        <button type="button" class="dept-tab user-role-tab active" id="user-type-Student" onclick="switchUserType('Student')">Students</button>
+                        <button type="button" class="dept-tab user-role-tab" id="user-type-Employee" onclick="switchUserType('Employee')">Employees</button>
+                        <button type="button" class="dept-tab user-role-tab" id="user-type-Visitor" onclick="switchUserType('Visitor')">Visitors</button>
+                    </div>
+                    <div class="dept-tabs" id="student-dept-tabs">
                         <button type="button" class="dept-tab active" id="dept-ALL" onclick="switchDept('ALL')">ALL</button>
                         <button type="button" class="dept-tab" id="dept-CT" onclick="switchDept('CT')">CT</button>
                         <button type="button" class="dept-tab" id="dept-BSED" onclick="switchDept('BSED')">BSED</button>
@@ -2972,8 +2982,16 @@ ADMIN_FRONTEND = """
                         <button type="button" class="dept-tab" id="dept-BSFAS" onclick="switchDept('BSFAS')">BSFAS</button>
                         <button type="button" class="dept-tab" id="dept-BSBA" onclick="switchDept('BSBA')">BSBA</button>
                         <button type="button" class="dept-tab" id="dept-BPA" onclick="switchDept('BPA')">BPA</button>
-                        <button type="button" class="dept-tab" id="dept-EMPLOYEE" onclick="switchDept('EMPLOYEE')">EMPLOYEE</button>
-                        <button type="button" class="dept-tab" id="dept-Visitor" onclick="switchDept('Visitor')">VISITOR</button>
+                    </div>
+                    <div class="filter-row">
+                        <label for="user-sort" style="margin-bottom:0;font-size:13px;">Sort:</label>
+                        <select id="user-sort" onchange="filterStudents()">
+                            <option value="full_name-asc">Full Name A–Z</option>
+                            <option value="full_name-desc">Full Name Z–A</option>
+                            <option value="contact_number-asc">Contact Number</option>
+                            <option value="address-asc">Address</option>
+                            <option value="email-asc">Email</option>
+                        </select>
                     </div>
                     <button type="button" onclick="loadStudents()">Refresh List</button>
                     <div class="student-actions">
@@ -3155,7 +3173,7 @@ window.onerror=function(msg,src,line,col,err){var b=document.createElement('div'
 const MAJORS = {"BSBA":["Marketing Management","Financial Management"],"BSED":["English","Mathematics","Science"],"CT":["Computer Technology","Food Technology","BINDTECH","CULINARY"]};
 const PAGE_TITLES = {scan:"Scan / Attendance",students:"Registered Users — Full Access",records:"Daily Attendance Records",history:"Monthly Attendance History",books:"Manage Books — Barcode Scan & Generate",bookrecords:"Book Borrow Records",overdue:"Overdue Books — Email Reminders",export:"Export & Print Reports",privacy:"Privacy Policy"};
 const MENU_ORDER = ["scan","students","records","history","books","bookrecords","overdue","export","privacy"];
-let editingStudentId=null, currentDept="ALL", allStudents=[], barcodeSelectionMode=false;
+let editingStudentId=null, currentDept="ALL", currentUserType="Student", allStudents=[], barcodeSelectionMode=false;
 let scannerBuffer="", scannerLastKeyAt=0, scannerResetTimer=null, recordsRefreshInProgress=false;
 let scanState="idle", pendingBook=null, pendingBorrowerCode=null;
 let allBooks=[], bookQRSelectionMode=false, lastBookBarcode=null;
@@ -3307,54 +3325,42 @@ function scanBookBarcode(){
     }).catch(e=>alert("Error: "+e));
 }
 // ===== Users list =====
-function switchDept(d){document.querySelectorAll(".dept-tab").forEach(t=>t.classList.remove("active"));document.getElementById("dept-"+d).classList.add("active");currentDept=d;filterStudents();}
+function switchUserType(type){
+    currentUserType=type;
+    document.querySelectorAll(".user-role-tab").forEach(t=>t.classList.remove("active"));
+    document.getElementById("user-type-"+type).classList.add("active");
+    document.getElementById("student-dept-tabs").classList.toggle("hidden",type!=="Student");
+    filterStudents();
+}
+function switchDept(d){document.querySelectorAll("#student-dept-tabs .dept-tab").forEach(t=>t.classList.remove("active"));document.getElementById("dept-"+d).classList.add("active");currentDept=d;filterStudents();}
 function updateMajorOptions(ds,ms){const dept=document.getElementById(ds).value;const m=document.getElementById(ms);m.innerHTML='<option value="">-- Select Major --</option>';if(dept==="BPA"||!dept){m.disabled=true;return;}m.disabled=false;(MAJORS[dept]||[]).forEach(x=>{const o=document.createElement("option");o.value=x;o.textContent=x;m.appendChild(o);});}
 function loadStudents(){fetch("/get-students").then(r=>r.json()).then(d=>{allStudents=d.students||[];filterStudents();}).catch(e=>alert("Load Error: "+e));}
-function userDepartment(x){
-    if(x.id_type==="Student") return x.department_display || x.department || "-";
-    if(x.id_type==="Employee") return "EMPLOYEE";
-    return "-";
-}
-function userMajor(x){
-    if(x.id_type==="Student") return x.major || "-";
-    return "-";
-}
 function filterStudents(){
     const s=(document.getElementById("search-input")?.value||"").toLowerCase();
-    let f=allStudents;
-    if(s) f=f.filter(x=>x.full_name.toLowerCase().includes(s)||x.id_number.toLowerCase().includes(s));
+    const sort=document.getElementById("user-sort")?.value||"full_name-asc";
+    let f=allStudents.filter(x=>{
+        if(currentUserType==="Employee" ? !(x.id_type==="Employee"||x.department==="EMPLOYEE") : x.id_type!==currentUserType) return false;
+        if(currentUserType==="Student"&&currentDept!=="ALL"&&x.department!==currentDept) return false;
+        return !s||[x.full_name,x.contact_number,x.address,x.email,x.id_number]
+            .some(value=>String(value||"").toLowerCase().includes(s));
+    });
+    const [sortField,sortDirection]=sort.split("-");
+    f.sort((a,b)=>{
+        const result=String(a[sortField]||"").localeCompare(String(b[sortField]||""),undefined,{sensitivity:"base"});
+        return sortDirection==="desc"?-result:result;
+    });
     const t=document.getElementById("students-table");
     const selCol = barcodeSelectionMode ? '<th>Select</th>' : '';
     const selCell = (x) => barcodeSelectionMode ? '<td><input class="student-check student-row-check" type="checkbox" value="'+x.id_number+'"></td>' : '';
-    // Unified columns: ID Number | Full Name | Type | Department | Major | Action  (Email removed)
-    const head = '<tr>'+selCol+'<th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Major</th><th>Action</th></tr>';
+    const head = '<tr>'+selCol+'<th>Full Name</th><th>Contact Number</th><th>Address</th><th>Gmail / Email</th></tr>';
     const row = (x) => '<tr>'+selCell(x)+
-        '<td><strong>'+x.id_number+'</strong></td>'+
-        '<td>'+x.full_name+'</td>'+
-        '<td>'+x.id_type+'</td>'+
-        '<td>'+userDepartment(x)+'</td>'+
-        '<td>'+userMajor(x)+'</td>'+
-        '<td><button type="button" class="btn-edit" onclick="editStudent('+x.id+')">Edit</button></td></tr>';
-    let html='';
-    if(currentDept==="ALL"){
-        const students = f.filter(x=>x.id_type==="Student");
-        const employees = f.filter(x=>x.id_type==="Employee"||x.department==="EMPLOYEE");
-        const visitors = f.filter(x=>x.id_type==="Visitor");
-        if(students.length) html += '<h3 style="margin-top:8px;color:#1b2a41;font-size:16px;">Students ('+students.length+')</h3><div class="table-wrap"><table style="min-width:620px;">'+head+students.map(row).join("")+'</table></div>';
-        if(employees.length) html += '<h3 style="margin-top:28px;color:#1b2a41;font-size:16px;">Employees ('+employees.length+')</h3><div class="table-wrap"><table style="min-width:560px;">'+head+employees.map(row).join("")+'</table></div>';
-        if(visitors.length) html += '<h3 style="margin-top:28px;color:#1b2a41;font-size:16px;">Visitors ('+visitors.length+')</h3><div class="table-wrap"><table style="min-width:560px;">'+head+visitors.map(row).join("")+'</table></div>';
-        if(!html) html='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
-    } else if(currentDept==="EMPLOYEE"||currentDept==="Visitor"){
-        const list = (currentDept==="EMPLOYEE") ? f.filter(x=>x.id_type==="Employee"||x.department==="EMPLOYEE") : f.filter(x=>x.id_type==="Visitor");
-        if(list.length) html='<div class="table-wrap"><table style="min-width:560px;">'+head+list.map(row).join("")+'</table></div>';
-        else html='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
-    } else {
-        // department filter (CT, BSED, BEED, BSFAS, BSBA, BPA) — matches on department field
-        const students = f.filter(x=>x.department===currentDept);
-        if(students.length) html='<div class="table-wrap"><table style="min-width:620px;">'+head+students.map(row).join("")+'</table></div>';
-        else html='<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found for '+currentDept+'.</p>';
-    }
-    t.innerHTML=html;
+        '<td><strong>'+x.full_name+'</strong> <button type="button" class="btn-edit" onclick="editStudent('+x.id+')">Edit</button></td>'+
+        '<td>'+(x.contact_number||"-")+'</td>'+
+        '<td>'+(x.address||"-")+'</td>'+
+        '<td>'+(x.email||"-")+'</td></tr>';
+    t.innerHTML=f.length
+        ? '<div class="table-wrap"><table>'+head+f.map(row).join("")+'</table></div>'
+        : '<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
 }
 function enableBarcodeSelection(){barcodeSelectionMode=true;document.getElementById("choose-barcode-btn").classList.add("hidden");document.getElementById("barcode-selection-actions").classList.remove("hidden");document.getElementById("select-all-students").checked=false;filterStudents();}
 function disableBarcodeSelection(){barcodeSelectionMode=false;document.getElementById("choose-barcode-btn").classList.remove("hidden");document.getElementById("barcode-selection-actions").classList.add("hidden");filterStudents();}
