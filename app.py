@@ -3352,12 +3352,25 @@ function filterStudents(){
     const t=document.getElementById("students-table");
     const selCol = barcodeSelectionMode ? '<th>Select</th>' : '';
     const selCell = (x) => barcodeSelectionMode ? '<td><input class="student-check student-row-check" type="checkbox" value="'+x.id_number+'"></td>' : '';
-    const head = '<tr>'+selCol+'<th>Full Name</th><th>Contact Number</th><th>Address</th><th>Gmail / Email</th></tr>';
-    const row = (x) => '<tr>'+selCell(x)+
-        '<td><strong>'+x.full_name+'</strong> <button type="button" class="btn-edit" onclick="editStudent('+x.id+')">Edit</button></td>'+
-        '<td>'+(x.contact_number||"-")+'</td>'+
-        '<td>'+(x.address||"-")+'</td>'+
-        '<td>'+(x.email||"-")+'</td></tr>';
+    const editButton = (x) => '<button type="button" class="btn-edit" title="Edit user" aria-label="Edit '+x.full_name+'" onclick="editStudent('+x.id+')">✏️</button>';
+    let head, row;
+    if(currentUserType==="Student"){
+        head = '<tr>'+selCol+'<th>ID Number</th><th>Full Name</th><th>Type</th><th>Department</th><th>Major</th><th>Action</th></tr>';
+        row = (x) => '<tr>'+selCell(x)+
+            '<td><strong>'+x.id_number+'</strong></td>'+
+            '<td>'+x.full_name+'</td>'+
+            '<td>'+x.id_type+'</td>'+
+            '<td>'+(x.department_display||x.department||"-")+'</td>'+
+            '<td>'+(x.major||"-")+'</td>'+
+            '<td>'+editButton(x)+'</td></tr>';
+    }else{
+        head = '<tr>'+selCol+'<th>Full Name</th><th>Contact Number</th><th>Address</th><th>Gmail / Email</th></tr>';
+        row = (x) => '<tr>'+selCell(x)+
+            '<td><strong>'+x.full_name+'</strong> '+editButton(x)+'</td>'+
+            '<td>'+(x.contact_number||"-")+'</td>'+
+            '<td>'+(x.address||"-")+'</td>'+
+            '<td>'+(x.email||"-")+'</td></tr>';
+    }
     t.innerHTML=f.length
         ? '<div class="table-wrap"><table>'+head+f.map(row).join("")+'</table></div>'
         : '<p style="text-align:center;color:#64748b;padding:30px;font-size:14px;">No records found.</p>';
