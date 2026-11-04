@@ -230,9 +230,19 @@ def _send_email(to_email, subject, html_body):
         msg["To"] = to_email
         msg.attach(MIMEText(html_body, "html"))
         context = ssl.create_default_context()
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context, timeout=20) as server:
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_FROM, [to_email], msg.as_string())
+        if SMTP_PORT == 465:
+            # Implicit SSL (Gmail port 465)
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context, timeout=20) as server:
+                server.login(SMTP_USER, SMTP_PASS)
+                server.sendmail(SMTP_FROM, [to_email], msg.as_string())
+        else:
+            # Explicit STARTTLS (Gmail port 587, and most other ports)
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+                server.ehlo()
+                server.starttls(context=context)
+                server.ehlo()
+                server.login(SMTP_USER, SMTP_PASS)
+                server.sendmail(SMTP_FROM, [to_email], msg.as_string())
         return True, "Email sent."
     except Exception as e:
         print(f"SEND EMAIL ERROR: {e}")
